@@ -1,2 +1,16 @@
-application:
-  
+server:
+  port: 8080
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/risk-radar
+    username: risk-radar-admin
+    password: passwd
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true

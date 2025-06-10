@@ -80,6 +80,17 @@
 	<build>
 		<plugins>
 			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<!--
+                  ADD THIS CONFIGURATION BLOCK.
+                  It explicitly tells the plugin which class is the main entry point.
+                -->
+				<configuration>
+					<mainClass>com.riskRadar.user_service.UserServiceApplication</mainClass>
+				</configuration>
+			</plugin>
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
