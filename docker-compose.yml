@@ -4,10 +4,6 @@ services:
       context: ./services/user-service/user-service
       dockerfile: Dockerfile
     container_name: user-service
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/risk-radar
-      SPRING_DATASOURCE_USERNAME: risk-radar-admin
-      SPRING_DATASOURCE_PASSWORD: password
     depends_on:
       - postgres
       - redis
@@ -46,3 +42,4 @@ volumes:
 
 networks:
   backend:
+    name: backend

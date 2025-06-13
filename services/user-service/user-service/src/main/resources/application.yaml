@@ -1,10 +1,12 @@
-server:
-  port: 8080
 spring:
+  data:
+    redis:
+      host: redis
+      port: 6379
   application:
     name: user-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/risk-radar
+    url: jdbc:postgresql://postgres:5432/risk-radar
     username: risk-radar-admin
     password: passwd
   jpa:

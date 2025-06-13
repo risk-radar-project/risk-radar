@@ -1,13 +1,17 @@
 package com.riskRadar.user_service.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
-import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
 @Table(name = "users")
+@Getter @Setter
 public class User {
     @Id
     @GeneratedValue
@@ -27,7 +31,9 @@ public class User {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles")
     @Enumerated(EnumType.STRING)
-    private EnumSet<Role> roles = EnumSet.noneOf(Role.class);
+    private Set<Role> roles = new HashSet<>();
 
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
     private Instant createdAt;
 }
