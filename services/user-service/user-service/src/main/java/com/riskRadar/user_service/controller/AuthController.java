@@ -52,15 +52,14 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(request.username(), request.password())
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            // Load user details
+
             UserDetails userDetails = userService.loadUserByUsername(request.username());
-            System.out.println(userDetails);
-            // Generate JWT token
+
             String jwt = jwtService.generateToken(userDetails.getUsername());
 
-            //        tokenRedisService.saveToken(jwt);
-            //
-            //        bloomFilter.addToken(jwt);
+            tokenRedisService.saveToken(jwt);
+
+            bloomFilter.addToken(jwt);
 
             return ResponseEntity.ok(Map.of("token", jwt));
         }catch (BadCredentialsException ex) {

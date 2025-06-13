@@ -16,7 +16,7 @@ public class TokenRedisService {
     }
 
     public void saveToken(String token){
-        redisTemplate.opsForValue().set(token, "valid", Duration.ofHours(1));
+        redisTemplate.opsForValue().set(token, "valid", Duration.ofHours(24));
     }
 
     public boolean isTokenValid(String token){
@@ -25,4 +25,5 @@ public class TokenRedisService {
     public void removeToken(String token){
         redisTemplate.delete(token);
     }
+
 }

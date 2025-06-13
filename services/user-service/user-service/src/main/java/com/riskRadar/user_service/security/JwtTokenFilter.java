@@ -8,6 +8,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -29,6 +31,8 @@ public class JwtTokenFilter extends OncePerRequestFilter {
     private final CustomUserDetailsService userDetailsService;
     private final TokenBloomFilter bloomFilter;
     private final TokenRedisService redisService;
+    private static final Logger logger = LoggerFactory.getLogger(JwtTokenFilter.class);
+
 
     public JwtTokenFilter(@Lazy JwtService jwtService,
                           @Lazy CustomUserDetailsService userDetailsService,
@@ -50,7 +54,21 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             return;
         }
 
+
         final String token = authHeader.substring(7); // remove "Bearer "
+
+        if (!bloomFilter.mightContainToken(token)) {
+            System.out.println("Token not recognized (bloom filter): " + token + " (request: " + request.getRequestURI() + "");
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token not recognized (bloom filter)");
+            return;
+        }
+
+        // Redis check: if present, the token is revoked
+        if (!redisService.isTokenValid(token)) {
+            logger.warn("JWT token is missing or revoked: {}", token);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token is revoked");
+            return;
+        }
 
         String username;
         try {
