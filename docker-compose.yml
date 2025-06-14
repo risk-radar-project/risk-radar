@@ -1,16 +1,16 @@
 services:
-  user-service:
-    build:
-      context: ./services/user-service/user-service
-      dockerfile: Dockerfile
-    container_name: user-service
-    depends_on:
-      - postgres
-      - redis
-    networks:
-      - backend
-    ports:
-      - "8080:8080"
+#  user-service:
+#    build:
+#      context: ./services/user-service/user-service
+#      dockerfile: Dockerfile
+#    container_name: user-service
+#    depends_on:
+#      - postgres
+#      - redis
+#    networks:
+#      - backend
+#    ports:
+#      - "8080:8080"
 
   redis:
     image: redis:latest

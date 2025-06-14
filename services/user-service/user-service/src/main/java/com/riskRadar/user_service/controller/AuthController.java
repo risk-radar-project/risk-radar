@@ -4,13 +4,12 @@ import com.riskRadar.user_service.dto.LoginRequest;
 import com.riskRadar.user_service.dto.RegisterRequest;
 import com.riskRadar.user_service.exception.UserAlreadyExistsException;
 import com.riskRadar.user_service.security.TokenBloomFilter;
-import com.riskRadar.user_service.security.TokenRedisService;
+import com.riskRadar.user_service.service.TokenRedisService;
 import com.riskRadar.user_service.service.CustomUserDetailsService;
 import com.riskRadar.user_service.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -54,14 +53,22 @@ public class AuthController {
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             UserDetails userDetails = userService.loadUserByUsername(request.username());
+            String username = userDetails.getUsername();
 
-            String jwt = jwtService.generateToken(userDetails.getUsername());
+            String existingToken = tokenRedisService.getTokenByUsername(username);
+            System.out.println(existingToken);
+            if(existingToken != null
+            && bloomFilter.mightContainToken(existingToken)
+            && jwtService.isTokenValid(existingToken, username)) {
+                return ResponseEntity.ok(Map.of("token", existingToken));
+            }
+            System.out.println("Generating new token for user: " + username );
+            String newToken = jwtService.generateToken(userDetails.getUsername());
 
-            tokenRedisService.saveToken(jwt);
+            tokenRedisService.saveToken(newToken, username);
+            bloomFilter.addToken(newToken);
 
-            bloomFilter.addToken(jwt);
-
-            return ResponseEntity.ok(Map.of("token", jwt));
+            return ResponseEntity.ok(Map.of("token", newToken));
         }catch (BadCredentialsException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
         }

@@ -3,6 +3,7 @@ package com.riskRadar.user_service.security;
 import com.google.common.net.HttpHeaders;
 import com.riskRadar.user_service.service.CustomUserDetailsService;
 import com.riskRadar.user_service.service.JwtService;
+import com.riskRadar.user_service.service.TokenRedisService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -48,24 +49,25 @@ public class JwtTokenFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        logger.debug("Authorization header: {}", authHeader);
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            logger.debug("No Bearer token found, continuing filter chain");
             filterChain.doFilter(request, response);
             return;
         }
 
-
         final String token = authHeader.substring(7); // remove "Bearer "
-
+        logger.debug("Extracted token: {}", token);
+        System.out.println();
         if (!bloomFilter.mightContainToken(token)) {
-            System.out.println("Token not recognized (bloom filter): " + token + " (request: " + request.getRequestURI() + "");
+            logger.warn("Token not recognized by Bloom filter: {}", token);
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token not recognized (bloom filter)");
             return;
         }
 
-        // Redis check: if present, the token is revoked
         if (!redisService.isTokenValid(token)) {
-            logger.warn("JWT token is missing or revoked: {}", token);
+            logger.warn("JWT token is missing or revoked in Redis: {}", token);
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token is revoked");
             return;
         }
@@ -73,7 +75,9 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         String username;
         try {
             username = jwtService.extractUsername(token);
+            logger.debug("Username extracted from token: {}", username);
         } catch (Exception e) {
+            logger.warn("Exception extracting username from token: {}", e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
@@ -81,12 +85,14 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
                 boolean valid = jwtService.isTokenValid(token, userDetails.getUsername());
+                logger.debug("Token validity against user details: {}", valid);
 
                 if (valid) {
                     Claims claims = jwtService.extractAllClaims(token);
                     List<String> roles = claims.get("roles", List.class);
+                    logger.debug("User roles from token claims: {}", roles);
+
                     Set<GrantedAuthority> authorities = roles.stream()
                             .map(role -> (GrantedAuthority) () -> role)
                             .collect(Collectors.toSet());
@@ -96,9 +102,12 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
 
+                    logger.debug("Authentication set in SecurityContextHolder");
                 } else {
+                    logger.warn("Token is invalid for user: {}", username);
                 }
             } catch (Exception e) {
+                logger.warn("Exception during user authentication: {}", e.getMessage());
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
