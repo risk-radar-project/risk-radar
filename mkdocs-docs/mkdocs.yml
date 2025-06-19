@@ -1,0 +1,64 @@
+site_name: RiskRadar Documentation
+
+theme:
+  name: material
+  logo: assets/images/Logo.webp
+  features:
+    - content.code.copy       # Enable copy button on code blocks
+    - search.highlight       # Highlight search results
+    - navigation.instant     # Instant navigation transitions
+    - content.tabs.link      # Linkable tabs in content
+    - toc.integrate         # Integrate table of contents
+    - header.autohide       # Hide header on scroll down
+    - announce.dismiss      # Dismissable announcement bar
+    - content.code.annotate  # Code annotations
+
+  palette:
+    # Light mode palette with toggle icon and label
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Dark mode palette with toggle icon and label
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  font:
+    text: Roboto         # Main text font
+    code: Roboto Mono    # Code font
+
+nav:
+  - Home: index.md
+  - How to write DOCS: How-to-write-Docs/index.md
+
+  - Microservices:
+      - User Service: user-service/index.md
+      - Authz Service (RBAC): authz-service/index.md
+      - Notification Service: notification-service/index.md
+      - Report Service: report-service/index.md
+      - Map Service: map-service/index.md
+      - AI Categorization Service: ai-categorization-service/index.md
+      - AI Verification & Duplication Service: ai-verification-duplication-service/index.md
+      - AI Assistant Service: ai-assistant-service/index.md
+      - Statistics Service: statistics-service/index.md
+      - Community Service: community-service/index.md
+      - Media Service: media-service/index.md
+      - API Gateway: api-gateway/index.md
+      - Admin Service: admin-service/index.md
+      - Monitoring Service: monitoring-service/index.md
+      - Audit Log Service: audit-log-service/index.md
+
+plugins:
+  - search
+  - awesome-pages
+
+repo_url: https://github.com/risk-radar-project/risk-radar
+repo_name: risk-radar
+
+extra_css:
+  - assets/css/custom.css
