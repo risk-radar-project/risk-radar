@@ -24,8 +24,10 @@ public class JwtService {
     private final UserDetailsService userDetailsService;
     private Key signingKey;
 
-    // Token valid for 24 h
-    private static final long JWT_EXPIRATION_MS = 1000 * 60 * 60 * 24;
+    // Access token valid for 15 minutes
+    private static final long ACCESS_TOKEN_EXPIRATION_MS = 1000 * 60 * 15;
+    // Refresh token valid for 7 days
+    private static final long REFRESH_TOKEN_EXPIRATION_MS = 1000 * 60 * 60 * 24 * 7;
 
     public JwtService(@Lazy UserDetailsService userDetailsService) {
         this.userDetailsService = userDetailsService;
@@ -33,12 +35,12 @@ public class JwtService {
 
     @PostConstruct
     public void init() {
-        // Hardcoded secret key for development
+        // Hardcoded secret key for development - should be in config/env vars
         byte[] keyBytes = Base64.getDecoder().decode("aSV68OrraQ8m+mRxcmEZFcqjRoA4Hfk4fHVhtmKDeC9lhm2m95h9tRcietLUZs0vL19vX4nJZdflh/ju+Py+Kw==");
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(String username) {
+    public String generateAccessToken(String username) {
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
         var roles = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
@@ -48,15 +50,28 @@ public class JwtService {
                 .setSubject(username)
                 .claim("roles", roles)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION_MS))
+                .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION_MS))
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public boolean isTokenValid(String token, String username) {
+    public String generateRefreshToken(String username) {
+        return Jwts.builder()
+                .setHeaderParam("typ", "JWT")
+                .setSubject(username)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION_MS))
+                .signWith(signingKey, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public boolean isTokenValid(String token) {
         try {
-            final String extractedUsername = extractUsername(token);
-            return extractedUsername.equals(username) && !isTokenExpired(token);
+            Jwts.parserBuilder()
+                    .setSigningKey(signingKey) // secret key
+                    .build()
+                    .parseClaimsJws(token);
+            return isTokenExpired(token);
         } catch (JwtException e) {
             return false;
         }
@@ -83,7 +98,7 @@ public class JwtService {
                 .getBody();
     }
 
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
+    public boolean isTokenExpired(String token) {
+        return !extractExpiration(token).before(new Date());
     }
 }

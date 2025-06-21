@@ -1,4 +1,4 @@
 package com.riskRadar.user_service.dto;
 
-public record JwtResponse(String token) {
+public record JwtResponse(String token, String refreshToken) {
 }

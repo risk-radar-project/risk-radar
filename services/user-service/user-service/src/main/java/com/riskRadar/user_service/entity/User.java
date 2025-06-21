@@ -1,6 +1,7 @@
 package com.riskRadar.user_service.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
@@ -17,12 +18,15 @@ public class User {
     @GeneratedValue
     private long id;
 
+    @NotBlank(message = "Email must not be blank")
     @Column(unique = true, nullable = false)
     private String email;
 
+    @NotBlank(message = "Username must not be blank")
     @Column(unique = true, nullable = false)
     private String username;
 
+    @NotBlank(message = "Password must not be blank")
     @Column(nullable = false)
     private String password;
 

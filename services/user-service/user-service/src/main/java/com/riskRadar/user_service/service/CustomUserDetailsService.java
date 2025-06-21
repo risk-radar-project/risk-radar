@@ -21,7 +21,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public CustomUserDetailsService(UserRepository userRepository, PasswordEncoder passwordEncoder){
+    public CustomUserDetailsService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -35,7 +35,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
 
         Set<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.name()))  // role.getName() = "ROLE_USER", for example
+                .map(role -> new SimpleGrantedAuthority(role.name()))
                 .collect(Collectors.toSet());
 
         return new org.springframework.security.core.userdetails.User(
@@ -44,9 +44,10 @@ public class CustomUserDetailsService implements UserDetailsService {
                 authorities
         );
     }
+
     @Transactional
-    public User createUser(String username, String rawPassword, String email){
-        if (userRepository.findByUsernameOrEmail(username,email).isPresent()) {
+    public void createUser(String username, String rawPassword, String email) {
+        if (userRepository.findByUsernameOrEmail(username, email).isPresent()) {
             throw new UserAlreadyExistsException("User with this username or email already exists");
         }
         User user = new User();
@@ -55,7 +56,33 @@ public class CustomUserDetailsService implements UserDetailsService {
         user.setBanned(false);
         user.setPassword(passwordEncoder.encode(rawPassword));
         user.setRoles(Set.of(Role.ROLE_ADMIN, Role.ROLE_USER));
-        return userRepository.save(user);
+        userRepository.save(user);
+    }
+
+    public boolean isUserBanned(String username) {
+        try {
+            if(userRepository.findByUsername(username).isEmpty()){
+                return true;
+            }
+            User user = userRepository.findByUsername(username).get();
+            return user.isBanned();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Transactional
+    public void banUser(String username) {
+        if (userRepository.findByUsername(username).isEmpty()) {
+            throw new UsernameNotFoundException("User not found: " + username);
+        } else {
+            User user = userRepository.findByUsername(username).get();
+            if (user.isBanned()) {
+                return;
+            }
+            user.setBanned(true);
+            userRepository.save(user);
+        }
     }
 }
 

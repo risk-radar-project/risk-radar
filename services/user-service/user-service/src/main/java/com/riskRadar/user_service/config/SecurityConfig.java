@@ -1,7 +1,6 @@
 package com.riskRadar.user_service.config;
 
 import com.riskRadar.user_service.security.JwtTokenFilter;
-import com.riskRadar.user_service.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,8 +27,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/login", "/auth/register").permitAll()
-                        .requestMatchers("/auth/profile").hasRole("USER")
+                        .requestMatchers("/auth/login", "/auth/register", "/auth/refresh").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
