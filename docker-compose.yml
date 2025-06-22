@@ -1,0 +1,45 @@
+services:
+#  user-service:
+#    build:
+#      context: ./services/user-service/user-service
+#      dockerfile: Dockerfile
+#    container_name: user-service
+#    depends_on:
+#      - postgres
+#      - redis
+#    networks:
+#      - backend
+#    ports:
+#      - "8080:8080"
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_USER: risk-radar-admin
+      POSTGRES_PASSWORD: passwd
+      POSTGRES_DB: risk-radar
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  backend:
+    name: backend
