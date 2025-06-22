@@ -16,12 +16,12 @@ public class RedisService {
     }
 
     public void saveTokenToBlacklist(String token) {
-        redisTemplate.opsForValue().set("token:" + token, "blacklisted", Duration.ofMinutes(15));
+        redisTemplate.opsForValue().set("accessToken:" + token, "blacklisted", Duration.ofMinutes(15));
     }
 
     public void banUser(String username, String reason) {
         revokeRefreshToken(username);
-        redisTemplate.opsForValue().set("user:" + username, reason, Duration.ofHours(999999));
+        redisTemplate.opsForValue().set("bannedUser:" + username, reason, Duration.ofHours(999999));
     }
 
     public void storeRefreshToken(String username, String refreshToken) {
@@ -40,13 +40,13 @@ public class RedisService {
     }
 
     public boolean isTokenValid(String token) {
-        String redisKey = "token:" + token;
+        String redisKey = "accessToken:" + token;
         String value = redisTemplate.opsForValue().get(redisKey);
         return !"blacklisted".equals(value);
     }
 
     public boolean isUserBanned(String username) {
-        String redisKey = "user:" + username;
+        String redisKey = "bannedUser:" + username;
         String value = redisTemplate.opsForValue().get(redisKey);
         return "blacklisted".equals(value);
     }

@@ -35,6 +35,18 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - backend
+  docs-service:
+    build:
+      context: ./docs
+      dockerfile: Dockerfile
+    container_name: docs-service
+    ports:
+      - "8000:8000"
+    networks:
+      - backend
+    volumes:
+      - ./docs:/app
+
 
 volumes:
   redis_data:
