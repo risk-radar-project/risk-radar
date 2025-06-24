@@ -71,7 +71,7 @@ public class JwtService {
                     .setSigningKey(signingKey) // secret key
                     .build()
                     .parseClaimsJws(token);
-            return isTokenExpired(token);
+            return !isTokenExpired(token);
         } catch (JwtException e) {
             return false;
         }
@@ -99,6 +99,6 @@ public class JwtService {
     }
 
     public boolean isTokenExpired(String token) {
-        return !extractExpiration(token).before(new Date());
+        return extractExpiration(token).before(new Date());
     }
 }

@@ -48,7 +48,7 @@ public class RedisService {
     public boolean isUserBanned(String username) {
         String redisKey = "bannedUser:" + username;
         String value = redisTemplate.opsForValue().get(redisKey);
-        return "blacklisted".equals(value);
+        return value != null;
     }
 
 }
