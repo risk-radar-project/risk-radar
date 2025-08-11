@@ -27,6 +27,25 @@ services:
         ports:
             - "8081:8080"
 
+    audit-log-service:
+        build:
+            context: ./services/audit-log-service
+            dockerfile: Dockerfile
+        container_name: audit-log-service
+        depends_on:
+            - postgres
+        environment:
+            DATABASE_URL: postgres://risk-radar-admin:passwd@postgres:5432/risk-radar?sslmode=disable
+            PORT: 8080
+            NODE_ENV: production
+            LOG_LEVEL: info
+            WEBSOCKET_ENABLED: "true"
+            LOG_RETENTION_DAYS: 90
+        networks:
+            - backend
+        ports:
+            - "8082:8080"
+
     redis:
         image: redis:latest
         container_name: redis
