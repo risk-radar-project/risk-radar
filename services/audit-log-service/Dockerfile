@@ -1,45 +1,27 @@
-# Build stage
-FROM node:18-alpine AS builder
-
+FROM node:18-alpine AS build
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
+RUN if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+
 COPY tsconfig.json ./
+COPY src ./src
 
-# Install ALL dependencies (including dev dependencies for build)
-RUN npm ci
+RUN npm run build && npm prune --omit=dev && npm cache clean --force
 
-# Copy source code
-COPY src/ ./src/
-
-# Build the application
-RUN npm run build
-
-# Production stage
-FROM node:18-alpine AS production
-
+FROM node:18-alpine
 WORKDIR /app
 
-# Install production dependencies only
+ENV NODE_ENV=production PORT=8080
+
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
 
-# Copy built application
-COPY --from=builder /app/dist ./dist
+RUN addgroup -g 1001 -S nodejs && adduser -S auditlog -u 1001 && mkdir -p logs && chown -R auditlog:nodejs logs
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S auditlog -u 1001
-
-# Create logs directory
-RUN mkdir -p logs && chown -R auditlog:nodejs logs
-
-# Switch to non-root user
 USER auditlog
 
-# Expose port
 EXPOSE 8080
 
-# Start the application
-CMD ["node", "dist/server.js"]
+CMD ["node","dist/server.js"]
