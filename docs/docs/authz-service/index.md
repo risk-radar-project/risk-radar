@@ -938,4 +938,20 @@ The service automatically runs migrations on startup. Initial data includes:
 
 ## 📊 Monitoring & Logging
 
-Coming Soon
+### Audit Logging (Short Overview)
+The service sends structured audit events asynchronously to `audit-log-service` using a non‑blocking in‑memory queue.
+
+Key actions:
+- Access: `access_granted`, `access_denied`
+- Roles: `role_create`, `role_update`, `role_delete`
+- Permissions: `permission_create`, `permission_update`, `permission_delete`
+- User ↔ Role: `user_role_assign`, `user_role_remove`
+- Errors / Infra: `http_error`, `db_error`
+
+Reliability: network / 5xx retries with exponential backoff (100ms → 1600ms, max 5 attempts, jitter). 4xx are not retried.
+
+Config: optional `AUDIT_LOG_URL` (default `http://audit-log-service:8080/logs`).
+
+Counters (in‑memory): `sent`, `failed`, `dropped`, `retries`.
+
+HTTP Logging: colorized request logs to stdout; status ≥ 400 additionally emits `http_error` audit event.

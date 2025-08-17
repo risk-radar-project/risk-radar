@@ -1,11 +1,9 @@
 package services
 
 import (
+	"authz-service/internal/db"
 	"fmt"
 	"strings"
-
-	"authz-service/internal/db"
-	"authz-service/internal/utils"
 
 	"github.com/google/uuid"
 )
@@ -42,12 +40,6 @@ func (s *AuthzService) HasPermission(userID uuid.UUID, permission string) (bool,
 		return false, fmt.Errorf("failed to check permission: %w", err)
 	}
 
-	utils.LogEvent("permission.checked", map[string]interface{}{
-		"user_id":    userID.String(),
-		"permission": permission,
-		"allowed":    hasPermission,
-	})
-
 	return hasPermission, nil
 }
 
@@ -57,11 +49,6 @@ func (s *AuthzService) GetUserPermissions(userID uuid.UUID) ([]db.Permission, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user permissions: %w", err)
 	}
-
-	utils.LogEvent("user_permissions.retrieved", map[string]interface{}{
-		"user_id": userID.String(),
-		"count":   len(permissions),
-	})
 
 	return permissions, nil
 }
@@ -73,11 +60,6 @@ func (s *AuthzService) GetUserRoles(userID uuid.UUID) ([]db.Role, error) {
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
 	}
 
-	utils.LogEvent("user_roles.retrieved", map[string]interface{}{
-		"user_id": userID.String(),
-		"count":   len(roles),
-	})
-
 	return roles, nil
 }
 
@@ -87,11 +69,6 @@ func (s *AuthzService) AssignRole(userID uuid.UUID, req AssignRoleRequest) error
 		return fmt.Errorf("failed to assign role: %w", err)
 	}
 
-	utils.LogEvent("role.assigned", map[string]interface{}{
-		"user_id": userID.String(),
-		"role_id": req.RoleID.String(),
-	})
-
 	return nil
 }
 
@@ -100,11 +77,6 @@ func (s *AuthzService) RemoveRole(userID, roleID uuid.UUID) error {
 	if err := s.userRoleRepo.RemoveRole(userID, roleID); err != nil {
 		return fmt.Errorf("failed to remove role: %w", err)
 	}
-
-	utils.LogEvent("role.removed", map[string]interface{}{
-		"user_id": userID.String(),
-		"role_id": roleID.String(),
-	})
 
 	return nil
 }

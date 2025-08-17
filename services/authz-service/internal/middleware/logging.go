@@ -1,11 +1,10 @@
 package middleware
 
 import (
+	"authz-service/internal/audit"
 	"fmt"
 	"net/http"
 	"time"
-
-	"authz-service/internal/utils"
 )
 
 // ResponseWriter wrapper to capture status code and response size
@@ -67,8 +66,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		} else {
 			durationStr = fmt.Sprintf("%.2fs", duration.Seconds())
 		}
-		fmt.Printf("%s[AUTHZ]%s %s | %s%3d%s | %10s | %15s | %s%-7s%s %s\n",
-			"\033[90m", "\033[0m", // [AUTHZ] in gray
+		fmt.Printf("%s | %s%3d%s | %10s | %15s | %s%-7s%s %s\n",
 			time.Now().Format("2006/01/02 - 15:04:05"),
 			statusColor, rw.statusCode, "\033[0m", // Status code with color
 			durationStr,
@@ -79,7 +77,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 
 		// Also log to audit system for important events
 		if rw.statusCode >= 400 {
-			utils.LogEvent("http.request", map[string]interface{}{
+			audit.GenericEvent("http_error", map[string]any{
 				"method":      r.Method,
 				"path":        r.RequestURI,
 				"status":      rw.statusCode,

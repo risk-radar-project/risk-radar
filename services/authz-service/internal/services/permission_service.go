@@ -1,8 +1,8 @@
 package services
 
 import (
+	"authz-service/internal/audit"
 	"authz-service/internal/db"
-	"authz-service/internal/utils"
 	"fmt"
 	"strings"
 
@@ -39,15 +39,9 @@ type UpdatePermissionRequest struct {
 func (s *PermissionService) GetPermissions() ([]db.Permission, error) {
 	permissions, err := s.permissionRepo.GetAll()
 	if err != nil {
-		utils.LogEvent("permission.get_all.error", map[string]interface{}{
-			"error": err.Error(),
-		})
+		audit.DBError("permissions_get_all", "error")
 		return nil, err
 	}
-
-	utils.LogEvent("permission.get_all.success", map[string]interface{}{
-		"count": len(permissions),
-	})
 
 	return permissions, nil
 }
@@ -56,25 +50,12 @@ func (s *PermissionService) GetPermissions() ([]db.Permission, error) {
 func (s *PermissionService) GetPermission(permissionID uuid.UUID) (*db.Permission, error) {
 	permission, err := s.permissionRepo.GetByID(permissionID)
 	if err != nil {
-		utils.LogEvent("permission.get.error", map[string]interface{}{
-			"permission_id": permissionID.String(),
-			"error":         err.Error(),
-		})
+		audit.DBError("permission_get", "error")
 		return nil, err
 	}
-
 	if permission == nil {
-		utils.LogEvent("permission.get.not_found", map[string]interface{}{
-			"permission_id": permissionID.String(),
-		})
 		return nil, nil
 	}
-
-	utils.LogEvent("permission.get.success", map[string]interface{}{
-		"permission_id": permissionID.String(),
-		"name":          permission.Name,
-	})
-
 	return permission, nil
 }
 
@@ -87,30 +68,14 @@ func (s *PermissionService) CreatePermission(req CreatePermissionRequest) (*db.P
 
 	// Validate format - no colons allowed in resource or action
 	if strings.Contains(req.Resource, ":") || strings.Contains(req.Action, ":") {
-		utils.LogEvent("permission.create.validation_error", map[string]interface{}{
-			"error": "resource and action cannot contain colon (:) character",
-		})
 		return nil, fmt.Errorf("resource and action cannot contain colon (:) character")
 	}
 
 	permission, err := s.permissionRepo.Create(req.Resource, req.Action, req.Description)
 	if err != nil {
-		utils.LogEvent("permission.create.error", map[string]interface{}{
-			"resource":    req.Resource,
-			"action":      req.Action,
-			"description": req.Description,
-			"error":       err.Error(),
-		})
+		audit.DBError("permission_create", "error")
 		return nil, err
 	}
-
-	utils.LogEvent("permission.create.success", map[string]interface{}{
-		"permission_id": permission.ID.String(),
-		"name":          permission.Name,
-		"resource":      permission.Resource,
-		"action":        permission.Action,
-	})
-
 	return permission, nil
 }
 
@@ -123,32 +88,14 @@ func (s *PermissionService) UpdatePermission(permissionID uuid.UUID, req UpdateP
 
 	// Validate format - no colons allowed in resource or action
 	if strings.Contains(req.Resource, ":") || strings.Contains(req.Action, ":") {
-		utils.LogEvent("permission.update.validation_error", map[string]interface{}{
-			"permission_id": permissionID.String(),
-			"error":         "resource and action cannot contain colon (:) character",
-		})
 		return nil, fmt.Errorf("resource and action cannot contain colon (:) character")
 	}
 
 	permission, err := s.permissionRepo.Update(permissionID, req.Resource, req.Action, req.Description)
 	if err != nil {
-		utils.LogEvent("permission.update.error", map[string]interface{}{
-			"permission_id": permissionID.String(),
-			"resource":      req.Resource,
-			"action":        req.Action,
-			"description":   req.Description,
-			"error":         err.Error(),
-		})
+		audit.DBError("permission_update", "error")
 		return nil, err
 	}
-
-	utils.LogEvent("permission.update.success", map[string]interface{}{
-		"permission_id": permission.ID.String(),
-		"name":          permission.Name,
-		"resource":      permission.Resource,
-		"action":        permission.Action,
-	})
-
 	return permission, nil
 }
 
@@ -157,34 +104,16 @@ func (s *PermissionService) DeletePermission(permissionID uuid.UUID) error {
 	// Check if permission exists first
 	existing, err := s.permissionRepo.GetByID(permissionID)
 	if err != nil {
-		utils.LogEvent("permission.delete.check_error", map[string]interface{}{
-			"permission_id": permissionID.String(),
-			"error":         err.Error(),
-		})
+		audit.DBError("permission_delete_check", "error")
 		return err
 	}
-
 	if existing == nil {
-		utils.LogEvent("permission.delete.not_found", map[string]interface{}{
-			"permission_id": permissionID.String(),
-		})
 		return fmt.Errorf("permission not found")
 	}
-
 	err = s.permissionRepo.Delete(permissionID)
 	if err != nil {
-		utils.LogEvent("permission.delete.error", map[string]interface{}{
-			"permission_id": permissionID.String(),
-			"name":          existing.Name,
-			"error":         err.Error(),
-		})
+		audit.DBError("permission_delete", "error")
 		return err
 	}
-
-	utils.LogEvent("permission.delete.success", map[string]interface{}{
-		"permission_id": permissionID.String(),
-		"name":          existing.Name,
-	})
-
 	return nil
 }

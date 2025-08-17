@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"authz-service/internal/audit"
 	"authz-service/internal/services"
 	"authz-service/internal/utils"
 	"authz-service/internal/validation"
@@ -85,6 +86,11 @@ func (h *PermissionHandler) CreatePermission(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	actorID := r.Header.Get("X-User-ID")
+	if actorID == "" {
+		actorID = "unknown"
+	}
+	audit.PermissionChanged("create", actorID, permission.ID.String(), permission.Action, permission.Resource, permission.Description, nil)
 	utils.WriteJSON(w, http.StatusCreated, permission)
 }
 
@@ -126,6 +132,11 @@ func (h *PermissionHandler) UpdatePermission(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	actorID := r.Header.Get("X-User-ID")
+	if actorID == "" {
+		actorID = "unknown"
+	}
+	audit.PermissionChanged("update", actorID, permission.ID.String(), permission.Action, permission.Resource, permission.Description, nil)
 	utils.WriteJSON(w, http.StatusOK, permission)
 }
 
@@ -151,6 +162,11 @@ func (h *PermissionHandler) DeletePermission(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	actorID := r.Header.Get("X-User-ID")
+	if actorID == "" {
+		actorID = "unknown"
+	}
+	audit.PermissionChanged("delete", actorID, id.String(), "", "", "", nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 
