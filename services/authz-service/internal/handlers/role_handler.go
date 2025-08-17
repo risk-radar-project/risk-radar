@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"authz-service/internal/audit"
 	"authz-service/internal/services"
 	"authz-service/internal/utils"
 	"authz-service/internal/validation"
@@ -139,6 +140,11 @@ func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	actorID := r.Header.Get("X-User-ID")
+	if actorID == "" {
+		actorID = "unknown"
+	}
+	audit.RoleChanged("create", actorID, role.Role.ID.String(), role.Role.Name, nil, map[string]any{"description": role.Role.Description, "permissions": len(role.Permissions)})
 	utils.WriteJSON(w, http.StatusCreated, role)
 }
 
@@ -220,6 +226,7 @@ func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		Permissions: permissions,
 	}
 
+	oldRole, _ := h.roleService.GetRole(roleID)
 	role, err := h.roleService.UpdateRole(roleID, req)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update role", err)
@@ -231,6 +238,23 @@ func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	actorID := r.Header.Get("X-User-ID")
+	if actorID == "" {
+		actorID = "unknown"
+	}
+	changed := []string{}
+	if oldRole != nil {
+		if oldRole.Role.Name != role.Role.Name {
+			changed = append(changed, "name")
+		}
+		if oldRole.Role.Description != role.Role.Description {
+			changed = append(changed, "description")
+		}
+		if len(oldRole.Permissions) != len(role.Permissions) {
+			changed = append(changed, "permissions")
+		}
+	}
+	audit.RoleChanged("update", actorID, role.Role.ID.String(), role.Role.Name, changed, map[string]any{"description": role.Role.Description, "permissions": len(role.Permissions)})
 	utils.WriteJSON(w, http.StatusOK, role)
 }
 
@@ -251,6 +275,7 @@ func (h *RoleHandler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	roleBefore, _ := h.roleService.GetRole(roleID)
 	if err := h.roleService.DeleteRole(roleID); err != nil {
 		if strings.Contains(err.Error(), "role not found") {
 			utils.WriteError(w, http.StatusNotFound, "Role not found", err)
@@ -261,4 +286,11 @@ func (h *RoleHandler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+	actorID := r.Header.Get("X-User-ID")
+	if actorID == "" {
+		actorID = "unknown"
+	}
+	if roleBefore != nil {
+		audit.RoleChanged("delete", actorID, roleID.String(), roleBefore.Role.Name, nil, map[string]any{"description": roleBefore.Role.Description})
+	}
 }

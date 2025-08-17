@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"authz-service/internal/audit"
 	"encoding/json"
 	"net/http"
 )
@@ -17,7 +18,7 @@ func WriteJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
-		LogEvent("handler.error", map[string]interface{}{
+		audit.GenericEvent("handler_error", map[string]any{
 			"error":   "failed to encode JSON response",
 			"details": err.Error(),
 		})
@@ -33,7 +34,7 @@ func WriteError(w http.ResponseWriter, status int, message string, err error) {
 
 	if err != nil {
 		errorResp.Error = err.Error()
-		LogEvent("handler.error", map[string]interface{}{
+		audit.GenericEvent("handler_error", map[string]any{
 			"status":  status,
 			"message": message,
 			"error":   err.Error(),

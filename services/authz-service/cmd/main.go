@@ -9,11 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"authz-service/internal/audit"
 	"authz-service/internal/db"
 	apphandlers "authz-service/internal/handlers"
 	"authz-service/internal/middleware"
 	"authz-service/internal/services"
-	"authz-service/internal/utils"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -49,6 +49,9 @@ func main() {
 	if err := database.Migrate(); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
+
+	// Init audit subsystem
+	audit.Init()
 
 	// Initialize services
 	roleRepo := db.NewRoleRepository(database.DB)
@@ -104,12 +107,6 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Log startup
-	utils.LogEvent("service.startup", map[string]interface{}{
-		"service": "authz-service",
-		"port":    port,
-	})
-
 	// Start server in a goroutine
 	go func() {
 		log.Printf("authz-service starting on port %s", port)
@@ -124,6 +121,9 @@ func main() {
 	<-quit
 
 	log.Println("Shutting down server...")
+	ctxShutdown, cancelAudit := context.WithTimeout(context.Background(), 2*time.Second)
+	audit.Shutdown(ctxShutdown)
+	cancelAudit()
 
 	// Create a context with timeout for shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

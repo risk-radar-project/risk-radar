@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"authz-service/internal/audit"
 	"authz-service/internal/services"
 	"authz-service/internal/utils"
 	"authz-service/internal/validation"
@@ -66,6 +67,9 @@ func (h *AuthzHandler) HasPermission(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to check permission", err)
 		return
 	}
+
+	// Emit audit (actor = checked user, target permission components)
+	audit.AccessDecision(userID.String(), "permission", permission, "check", hasPermission, nil, r.RemoteAddr)
 
 	response := HasPermissionResponse{
 		HasPermission: hasPermission,
@@ -186,6 +190,12 @@ func (h *AuthzHandler) AssignRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	actorID := r.Header.Get("X-User-ID")
+	if actorID == "" {
+		actorID = userID.String()
+	}
+	audit.UserRoleLink("assign", actorID, userID.String(), req.RoleID.String(), map[string]any{"ip": r.RemoteAddr})
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -227,6 +237,11 @@ func (h *AuthzHandler) RemoveRole(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to remove role", err)
 		return
 	}
+	actorID := r.Header.Get("X-User-ID")
+	if actorID == "" {
+		actorID = userID.String()
+	}
+	audit.UserRoleLink("remove", actorID, userID.String(), roleID.String(), map[string]any{"ip": r.RemoteAddr})
 
 	w.WriteHeader(http.StatusNoContent)
 }

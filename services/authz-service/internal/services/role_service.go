@@ -1,11 +1,9 @@
 package services
 
 import (
+	"authz-service/internal/db"
 	"fmt"
 	"strings"
-
-	"authz-service/internal/db"
-	"authz-service/internal/utils"
 
 	"github.com/google/uuid"
 )
@@ -65,10 +63,6 @@ func (s *RoleService) GetRoles() ([]db.RoleWithPermissions, error) {
 		})
 	}
 
-	utils.LogEvent("roles.retrieved", map[string]interface{}{
-		"count": len(result),
-	})
-
 	return result, nil
 }
 
@@ -91,11 +85,6 @@ func (s *RoleService) GetRole(roleID uuid.UUID) (*db.RoleWithPermissions, error)
 		Role:        *role,
 		Permissions: permissions,
 	}
-
-	utils.LogEvent("role.retrieved", map[string]interface{}{
-		"role_id": roleID.String(),
-		"name":    role.Name,
-	})
 
 	return result, nil
 }
@@ -154,12 +143,6 @@ func (s *RoleService) CreateRole(req CreateRoleRequest) (*db.RoleWithPermissions
 		Role:        *role,
 		Permissions: permissions,
 	}
-
-	utils.LogEvent("role.created", map[string]interface{}{
-		"role_id":     role.ID.String(),
-		"name":        role.Name,
-		"permissions": len(permissions),
-	})
 
 	return result, nil
 }
@@ -224,12 +207,6 @@ func (s *RoleService) UpdateRole(roleID uuid.UUID, req UpdateRoleRequest) (*db.R
 		Permissions: permissions,
 	}
 
-	utils.LogEvent("role.updated", map[string]interface{}{
-		"role_id":     role.ID.String(),
-		"name":        role.Name,
-		"permissions": len(permissions),
-	})
-
 	return result, nil
 }
 
@@ -248,11 +225,6 @@ func (s *RoleService) DeleteRole(roleID uuid.UUID) error {
 	if err := s.roleRepo.Delete(roleID); err != nil {
 		return fmt.Errorf("failed to delete role: %w", err)
 	}
-
-	utils.LogEvent("role.deleted", map[string]interface{}{
-		"role_id": roleID.String(),
-		"name":    role.Name,
-	})
 
 	return nil
 }
