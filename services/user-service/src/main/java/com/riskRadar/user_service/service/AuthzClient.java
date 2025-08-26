@@ -25,7 +25,7 @@ public class AuthzClient {
 
     public AuthzClient(WebClient.Builder builder) {
         this.webClient = builder
-                .baseUrl("http://localhost:8081")
+                .baseUrl("http://authz-service:8080")
                 .build();
     }
 

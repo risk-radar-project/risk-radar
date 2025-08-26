@@ -1,7 +1,7 @@
 services:
     user-service:
         build:
-            context: ./services/user-service/user-service
+            context: ./services/user-service
             dockerfile: Dockerfile
         container_name: user-service
         depends_on:
