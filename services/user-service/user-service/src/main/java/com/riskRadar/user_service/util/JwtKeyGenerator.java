@@ -1,4 +1,4 @@
-package com.riskRadar.user_service.service;
+package com.riskRadar.user_service.util;
 
 import java.security.SecureRandom;
 import java.util.Base64;

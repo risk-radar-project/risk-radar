@@ -6,52 +6,48 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 public class JwtService {
 
-    private final UserDetailsService userDetailsService;
-    private Key signingKey;
+    private Key accessKey;
+    private Key refreshKey;
 
-    // Access token valid for 15 minutes
-    private static final long ACCESS_TOKEN_EXPIRATION_MS = 1000 * 60 * 15;
-    // Refresh token valid for 7 days
-    private static final long REFRESH_TOKEN_EXPIRATION_MS = 1000 * 60 * 60 * 24 * 7;
+    @Value("${jwt.access-secret}")
+    private String accessSecretEncoded;
 
-    public JwtService(@Lazy UserDetailsService userDetailsService) {
-        this.userDetailsService = userDetailsService;
-    }
+    @Value("${jwt.refresh-secret}")
+    private String refreshSecretEncoded;
+
+    private static final long ACCESS_TOKEN_EXPIRATION_MS = 1000 * 60 * 15; // 15 minut
+    private static final long REFRESH_TOKEN_EXPIRATION_MS = 1000 * 60 * 60 * 24 * 7; // 7 dni
 
     @PostConstruct
     public void init() {
-        // Hardcoded secret key for development - should be in config/env vars
-        byte[] keyBytes = Base64.getDecoder().decode("aSV68OrraQ8m+mRxcmEZFcqjRoA4Hfk4fHVhtmKDeC9lhm2m95h9tRcietLUZs0vL19vX4nJZdflh/ju+Py+Kw==");
-        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+        byte[] accessKeyBytes = Base64.getDecoder().decode(accessSecretEncoded);
+        this.accessKey = Keys.hmacShaKeyFor(accessKeyBytes);
+
+        byte[] refreshKeyBytes = Base64.getDecoder().decode(refreshSecretEncoded);
+        this.refreshKey = Keys.hmacShaKeyFor(refreshKeyBytes);
     }
 
-    public String generateAccessToken(String username) {
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-        var roles = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.toSet());
+    // ========================= GENERATE =========================
+    public String generateAccessToken(String username, Map<String, Object> claims) {
         return Jwts.builder()
                 .setHeaderParam("typ", "JWT")
                 .setSubject(username)
-                .claim("roles", roles)
+                .addClaims(claims)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION_MS))
-                .signWith(signingKey, SignatureAlgorithm.HS256)
+                .signWith(accessKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
@@ -61,44 +57,63 @@ public class JwtService {
                 .setSubject(username)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION_MS))
-                .signWith(signingKey, SignatureAlgorithm.HS256)
+                .signWith(refreshKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public boolean isTokenValid(String token) {
+    // ========================= VALIDATE =========================
+    public boolean isAccessTokenValid(String token) {
+        return isTokenValid(token, accessKey);
+    }
+
+    public boolean isRefreshTokenValid(String token) {
+        return isTokenValid(token, refreshKey);
+    }
+
+    private boolean isTokenValid(String token, Key key) {
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(signingKey) // secret key
-                    .build()
-                    .parseClaimsJws(token);
-            return !isTokenExpired(token);
+            extractAllClaims(token, key);
+            return !isTokenExpired(token, key);
         } catch (JwtException e) {
             return false;
         }
     }
 
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+    // ========================= EXTRACT =========================
+    // Access token helpers
+    public Claims extractAllAccessClaims(String token) {
+        return extractAllClaims(token, accessKey);
     }
 
-    public Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
+    public String extractAccessUsername(String token) {
+        return extractClaim(token, Claims::getSubject, accessKey);
     }
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
+    public Date extractAccessExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration, accessKey);
+    }
+
+
+    public String extractRefreshUsername(String token) {
+        return extractClaim(token, Claims::getSubject, refreshKey);
+    }
+
+
+    // Generic extraction
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver, Key key) {
+        final Claims claims = extractAllClaims(token, key);
         return claimsResolver.apply(claims);
     }
 
-    public Claims extractAllClaims(String token) {
+    public Claims extractAllClaims(String token, Key key) {
         return Jwts.parserBuilder()
-                .setSigningKey(signingKey)
+                .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
 
-    public boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
+    public boolean isTokenExpired(String token, Key key) {
+        return extractClaim(token, Claims::getExpiration, key).before(new Date());
     }
 }

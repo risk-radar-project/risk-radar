@@ -10,18 +10,22 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class RedisService {
     private final RedisTemplate<String, String> redisTemplate;
+    private static final long PERMANENT_BAN_TTL = 999999;
+    private final JwtService jwtService;
 
-    public RedisService(RedisTemplate<String, String> redisTemplate) {
+    public RedisService(RedisTemplate<String, String> redisTemplate, JwtService jwtService) {
         this.redisTemplate = redisTemplate;
+        this.jwtService = jwtService;
     }
 
     public void saveTokenToBlacklist(String token) {
-        redisTemplate.opsForValue().set("accessToken:" + token, "blacklisted", Duration.ofMinutes(15));
+        long ttl = jwtService.extractAccessExpiration(token).getTime() - System.currentTimeMillis();
+        redisTemplate.opsForValue().set("accessToken:" + token, "blacklisted", Duration.ofMillis(ttl));
     }
 
     public void banUser(String username, String reason) {
         revokeRefreshToken(username);
-        redisTemplate.opsForValue().set("bannedUser:" + username, reason, Duration.ofHours(999999));
+        redisTemplate.opsForValue().set("bannedUser:" + username, reason, Duration.ofHours(PERMANENT_BAN_TTL));
     }
 
     public void storeRefreshToken(String username, String refreshToken) {

@@ -7,16 +7,16 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users")
 @Getter @Setter
 public class User {
     @Id
-    @GeneratedValue
-    private long id;
+    @GeneratedValue(generator = "UUID")
+    @Column(columnDefinition = "uuid", updatable = false, nullable = false)
+    private UUID id;
 
     @NotBlank(message = "Email must not be blank")
     @Column(unique = true, nullable = false)
@@ -31,11 +31,6 @@ public class User {
     private String password;
 
     private boolean isBanned;
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_roles")
-    @Enumerated(EnumType.STRING)
-    private Set<Role> roles = new HashSet<>();
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

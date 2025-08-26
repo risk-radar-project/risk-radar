@@ -1,6 +1,5 @@
-package com.riskRadar.user_service;
+package com.riskRadar.user_service.service;
 
-import com.riskRadar.user_service.service.RedisService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -8,6 +7,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Duration;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,6 +21,9 @@ class RedisServiceTest {
     @Mock
     private ValueOperations<String, String> valueOperations;
 
+    @Mock
+    private JwtService jwtService;
+
     @InjectMocks
     private RedisService redisService;
 
@@ -33,8 +36,14 @@ class RedisServiceTest {
     @Test
     void testSaveTokenToBlacklist() {
         String token = "sampleToken";
+        Date expiration = new Date(System.currentTimeMillis() + 60000);
+        when(jwtService.extractAccessExpiration(token)).thenReturn(expiration);
         redisService.saveTokenToBlacklist(token);
-        verify(valueOperations).set(eq("accessToken:" + token), eq("blacklisted"), eq(Duration.ofMinutes(15)));
+        verify(valueOperations).set(
+                eq("accessToken:" + token),
+                eq("blacklisted"),
+                argThat(duration -> Math.abs(duration.toMillis() - 60000) < 300)
+        );
     }
 
     @Test
@@ -95,7 +104,7 @@ class RedisServiceTest {
         String reason = "spamming";
         redisService.banUser(username, reason);
         verify(redisTemplate).delete("refreshToken:" + username);
-        verify(valueOperations).set(eq("user:" + username), eq(reason), eq(Duration.ofHours(999999)));
+        verify(valueOperations).set(eq("bannedUser:" + username), eq(reason), eq(Duration.ofHours(999999)));
     }
 
     @Test

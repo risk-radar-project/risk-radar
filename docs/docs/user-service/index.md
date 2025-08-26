@@ -10,11 +10,9 @@ This is the **User Authentication Service** for RiskRadar. It handles user regis
 
 ## API Endpoints
 
-All endpoints are prefixed with `/auth`.
-
 ### 1. **User Registration**
 
-**POST** `/auth/register`
+**POST** `/register`
 
 Registers a new user.
 
@@ -38,7 +36,7 @@ Registers a new user.
 
 ### 2. **User Login**
 
-**POST** `/auth/login`
+**POST** `/login`
 
 Authenticates a user and issues JWT access and refresh tokens.
 
@@ -68,7 +66,7 @@ Authenticates a user and issues JWT access and refresh tokens.
 
 ### 3. **Logout**
 
-**POST** `/auth/logout`
+**POST** `/logout`
 
 Invalidates the current token and refresh token.
 
@@ -85,7 +83,7 @@ Invalidates the current token and refresh token.
 
 ### 4. **Refresh Token**
 
-**POST** `/auth/refresh`
+**POST** `/refresh`
 
 Generates new access and refresh tokens using a valid refresh token.
 
@@ -106,7 +104,7 @@ Generates new access and refresh tokens using a valid refresh token.
 
 ### 5. **Ban User** (Admin only)
 
-**POST** `/auth/banUser`
+**POST** `/banUser`
 
 Bans a user and revokes their refresh tokens.
 
