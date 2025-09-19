@@ -122,25 +122,6 @@ services:
         volumes:
             - ./docs:/app
 
-    ai-categorization-service:
-        build:
-            context: ./services/ai-categorization-service
-            dockerfile: Dockerfile
-        container_name: ai-categorization-service
-        environment:
-            - PORT=8080
-        ports:
-            - "8083:8080"
-        networks:
-            - backend
-        healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-            interval: 30s
-            timeout: 10s
-            retries: 3
-            start_period: 40s  
-
-
 volumes:
     redis_data:
     postgres_data:
