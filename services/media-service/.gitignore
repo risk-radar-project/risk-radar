@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.log
+.env.local
+.env.production
+coverage/
+.nyc_output/
+.DS_Store
+Thumbs.db
+.env
+style_guide.md
+zalozenia.md
+data/
+logs/

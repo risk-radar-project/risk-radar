@@ -4,7 +4,7 @@
 
 ---
  
-# Authorization Service (RBAC)
+# Authorization Service
 
 The **Authorization Service** is a Role-Based Access Control (RBAC) microservice for RiskRadar. It manages roles, permissions, and user authorization across the entire platform. This service provides fine-grained access control for all RiskRadar microservices.
 
