@@ -14,7 +14,7 @@ This document provides an overview of the microservices, their owners, key featu
 | Service Name                           | Owner             |
 |--------------------------------------|-------------------|
 | User Service                         | @Filip Sanecki    |
-| Authz Service (RBAC)                 | @Sergiusz Sanetra |
+| Authz Service                        | @Sergiusz Sanetra |
 | Notification Service                 | @Sergiusz Sanetra |
 | Report Service                      | @Filip Sanecki    |
 | Map Service                        | @Filip Sanecki    |

@@ -38,7 +38,7 @@ nav:
 
   - Microservices:
       - User Service: user-service/index.md
-      - Authz Service (RBAC): authz-service/index.md
+      - Authz Service: authz-service/index.md
       - Notification Service: notification-service/index.md
       - Report Service: report-service/index.md
       - Map Service: map-service/index.md

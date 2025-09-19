@@ -1,3 +1,16 @@
+x-global-env: &global-env
+    HOSTNAME: localhost
+    USER_SERVICE_PORT: 8080
+    AUTHZ_SERVICE_PORT: 8081
+    AUDIT_LOG_SERVICE_PORT: 8082
+    AI_CATEGORIZATION_SERVICE_PORT: 8083
+    MEDIA_SERVICE_PORT: 8084
+    DOCS_SERVICE_PORT: 8000
+    POSTGRES_PORT: 5432
+    REDIS_PORT: 6379
+    DATABASE_URL: postgres://risk-radar-admin:passwd@postgres:5432/risk-radar?sslmode=disable
+    NODE_ENV: development
+
 services:
     user-service:
         build:
@@ -20,7 +33,7 @@ services:
         depends_on:
             - postgres
         environment:
-            DATABASE_URL: postgres://risk-radar-admin:passwd@postgres:5432/risk-radar?sslmode=disable
+            <<: *global-env
             HTTP_PORT: 8080
         networks:
             - backend
@@ -35,9 +48,8 @@ services:
         depends_on:
             - postgres
         environment:
-            DATABASE_URL: postgres://risk-radar-admin:passwd@postgres:5432/risk-radar?sslmode=disable
+            <<: *global-env
             PORT: 8080
-            NODE_ENV: production
             LOG_LEVEL: info
             WEBSOCKET_ENABLED: "true"
             LOG_RETENTION_DAYS: 90
@@ -45,6 +57,34 @@ services:
             - backend
         ports:
             - "8082:8080"
+
+    ai-categorization-service:
+        build:
+            context: ./services/ai-categorization-service
+            dockerfile: Dockerfile
+        container_name: ai-categorization-service
+        environment:
+            <<: *global-env
+            PORT: 8080
+        ports:
+            - "8083:8080"
+        networks:
+            - backend
+
+    media-service:
+        build:
+            context: ./services/media-service
+            dockerfile: Dockerfile
+        container_name: media-service
+        depends_on:
+            - postgres
+        environment:
+            <<: *global-env
+            HTTP_PORT: 8080
+        networks:
+            - backend
+        ports:
+            - "8084:8080"
 
     redis:
         image: redis:latest
@@ -69,6 +109,7 @@ services:
             - postgres_data:/var/lib/postgresql/data
         networks:
             - backend
+
     docs-service:
         build:
             context: ./docs
