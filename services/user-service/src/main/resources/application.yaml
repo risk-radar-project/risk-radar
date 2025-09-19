@@ -1,0 +1,24 @@
+server:
+  port: 8080
+spring:
+  data:
+    redis:
+      host: redis
+      port: 6379
+  application:
+    name: user-service
+  datasource:
+    url: jdbc:postgresql://postgres:5432/risk-radar
+    username: risk-radar-admin
+    password: passwd
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+jwt:
+  access-secret: aSV68OrraQ8m+mRxcmEZFcqjRoA4Hfk4fHVhtmKDeC9lhm2m95h9tRcietLUZs0vL19vX4nJZdflh/ju+Py+Kw==
+  refresh-secret: bNa5h++JFlleDXl3wm0pSDSlSD2rDrigCRPJTt0F00vRonkabew2JsKKHMUTwvaOXH8u0oQ8ZXnphXh/gl0F5g==
