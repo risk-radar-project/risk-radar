@@ -117,6 +117,13 @@ INSERT INTO permissions (name, description, resource, action) VALUES
 -- Audit permissions
 ('audit:view', 'View audit logs', 'audit', 'view'),
 
+-- Media permissions
+('media:read-all', 'Read access to all media items', 'media', 'read-all'),
+('media:moderate', 'Moderate media content', 'media', 'moderate'),
+('media:censor', 'Censor or blur sensitive media', 'media', 'censor'),
+('media:delete', 'Delete media content', 'media', 'delete'),
+('media:update', 'Update media metadata or status', 'media', 'update'),
+
 -- Role permissions  
 ('roles:assign', 'Assign roles to users', 'roles', 'assign'),
 ('roles:edit', 'Modify roles and permissions', 'roles', 'edit'),
@@ -128,6 +135,7 @@ INSERT INTO permissions (name, description, resource, action) VALUES
 ('reports:*', 'Full access to all report operations', 'reports', '*'),
 ('users:*', 'Full access to all user operations', 'users', '*'),
 ('stats:*', 'Full access to all statistics operations', 'stats', '*'),
+('media:*', 'Full access to all media operations', 'media', '*'),
 ('audit:*', 'Full access to all audit operations', 'audit', '*'),
 ('*:*', 'Full access to everything (super admin)', '*', '*')
 
@@ -165,7 +173,9 @@ BEGIN
         'reports:cancel-any', 'reports:validate',
         -- Moderator specific permissions
         'reports:edit', 'reports:delete', 'users:ban', 'users:unban', 'users:view',
-        'stats:view', 'audit:view'
+        'stats:view', 'audit:view',
+        -- Media permissions
+        'media:read-all', 'media:moderate', 'media:censor', 'media:delete', 'media:update'
     )
     ON CONFLICT (role_id, permission_id) DO NOTHING;
 
