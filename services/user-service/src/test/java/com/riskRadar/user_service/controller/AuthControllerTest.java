@@ -33,6 +33,7 @@ class AuthControllerTest {
     private RedisService redisService;
     private AuthzClient authzClient;
     private AuthenticationManager authenticationManager;
+    private AuditLogClient auditLogClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private User testUser;
@@ -45,6 +46,9 @@ class AuthControllerTest {
         redisService = mock(RedisService.class);
         authzClient = mock(AuthzClient.class);
         authenticationManager = mock(AuthenticationManager.class);
+        auditLogClient = mock(AuditLogClient.class);
+
+
 
         AuthController controller = new AuthController(
                 userDetailsService,
@@ -52,7 +56,8 @@ class AuthControllerTest {
                 jwtService,
                 authenticationManager,
                 redisService,
-                authzClient
+                authzClient,
+                auditLogClient
         );
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
