@@ -8,6 +8,10 @@ x-global-env: &global-env
     DOCS_SERVICE_PORT: 8000
     POSTGRES_PORT: 5432
     REDIS_PORT: 6379
+    KAFKA_PORT: 9092
+    ZOOKEEPER_PORT: 2181
+    JWT_ACCESS_SECRET: aSV68OrraQ8m+mRxcmEZFcqjRoA4Hfk4fHVhtmKDeC9lhm2m95h9tRcietLUZs0vL19vX4nJZdflh/ju+Py+Kw==
+    JWT_REFRESH_SECRET: bNa5h++JFlleDXl3wm0pSDSlSD2rDrigCRPJTt0F00vRonkabew2JsKKHMUTwvaOXH8u0oQ8ZXnphXh/gl0F5g==
     DATABASE_URL: postgres://risk-radar-admin:passwd@postgres:5432/risk-radar?sslmode=disable
     NODE_ENV: development
 
@@ -20,6 +24,8 @@ services:
         depends_on:
             - postgres
             - redis
+        environment:
+            <<: *global-env
         networks:
             - backend
         ports:
@@ -47,6 +53,7 @@ services:
         container_name: audit-log-service
         depends_on:
             - postgres
+            - kafka
         environment:
             <<: *global-env
             PORT: 8080
@@ -121,6 +128,35 @@ services:
             - backend
         volumes:
             - ./docs:/app
+    zookeeper:
+        image: confluentinc/cp-zookeeper:7.5.0
+        container_name: zookeeper
+        environment:
+            ZOOKEEPER_CLIENT_PORT: 2181
+            ZOOKEEPER_TICK_TIME: 2000
+        ports:
+            - "2181:2181"
+        networks:
+            - backend
+
+    kafka:
+        image: confluentinc/cp-kafka:7.5.0
+        container_name: kafka
+        depends_on:
+            - zookeeper
+        ports:
+            - "9092:9092"
+            - "9093:9093"
+        environment:
+            <<: *global-env
+            KAFKA_BROKER_ID: 1
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+            KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        networks:
+            - backend
 
 volumes:
     redis_data:
