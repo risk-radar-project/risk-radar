@@ -1,8 +1,9 @@
 FROM node:18-alpine AS build
 WORKDIR /app
 
-COPY package*.json ./
-RUN if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
 COPY tsconfig.json ./
 COPY src ./src
@@ -14,7 +15,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production PORT=8080
 
-COPY package*.json ./
+COPY package.json package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 
