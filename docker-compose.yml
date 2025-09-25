@@ -8,7 +8,6 @@ x-global-env: &global-env
     DOCS_SERVICE_PORT: 8000
     POSTGRES_PORT: 5432
     REDIS_PORT: 6379
-    KAFKA_PORT: 9092
     ZOOKEEPER_PORT: 2181
     JWT_ACCESS_SECRET: aSV68OrraQ8m+mRxcmEZFcqjRoA4Hfk4fHVhtmKDeC9lhm2m95h9tRcietLUZs0vL19vX4nJZdflh/ju+Py+Kw==
     JWT_REFRESH_SECRET: bNa5h++JFlleDXl3wm0pSDSlSD2rDrigCRPJTt0F00vRonkabew2JsKKHMUTwvaOXH8u0oQ8ZXnphXh/gl0F5g==
@@ -148,7 +147,6 @@ services:
             - "9092:9092"
             - "9093:9093"
         environment:
-            <<: *global-env
             KAFKA_BROKER_ID: 1
             KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
             KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
