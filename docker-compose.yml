@@ -91,7 +91,21 @@ services:
             - backend
         ports:
             - "8084:8080"
-
+    report-service:
+        build:
+            context: ./services/report-service
+            dockerfile: Dockerfile
+        depends_on:
+            - postgres
+            - kafka
+            - redis
+        environment:
+            <<: *global-env
+            HTTP_PORT: 8080
+        networks:
+            - backend
+        ports:
+            - "8085:8080"
     redis:
         image: redis:latest
         container_name: redis
