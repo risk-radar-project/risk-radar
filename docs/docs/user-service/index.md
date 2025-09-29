@@ -1,4 +1,4 @@
-# User Service
+# user service
 
 **Owner:** @Filip Sanecki
 
