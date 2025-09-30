@@ -23,7 +23,7 @@ public class SecurityConfig {
 
     private final JwtTokenFilter jwtTokenFilter;
     private static final String[] PUBLIC_ENDPOINTS = {
-            "/login", "/register", "/refresh","/status","/password-reset/confirm", "/password-reset/request"
+            "/login", "/register", "/refresh", "/status", "/password-reset/confirm", "/password-reset/request"
     };
 
     @Bean
@@ -32,6 +32,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .formLogin(AbstractHttpConfigurer::disable)
