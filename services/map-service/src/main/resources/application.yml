@@ -21,5 +21,9 @@ spring:
     bootstrap-servers: kafka:9092
     admin:
       auto-create: true
+app:
+  services:
+    report-service-url: ${REPORT_SERVICE_URL:http://report-service:8080}
+
 
 # kafka group id: reports

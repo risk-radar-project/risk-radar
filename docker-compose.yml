@@ -103,12 +103,25 @@ services:
             - redis
         environment:
             <<: *global-env
-            HTTP_PORT: 8080
         networks:
             - backend
         ports:
             - "8085:8080"
     map-service:
+        build:
+            context: ./services/map-service
+            dockerfile: Dockerfile
+        container_name: map-service
+        depends_on:
+            - postgres
+            - kafka
+            - report-service
+        environment:
+            <<: *global-env
+        networks:
+            - backend
+        ports:
+            - "8086:8080"
 
     redis:
         image: redis:latest

@@ -11,6 +11,7 @@ import report_service.repository.ReportRepository;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -128,8 +129,11 @@ public class ReportService {
                 Report report = reportOpt.get();
                 ReportStatus oldStatus = report.getStatus();
                 report.setStatus(status);
-                reportRepository.save(report);
+                Report updatedReport = reportRepository.save(report);
 
+                if (status == ReportStatus.VERIFIED){
+                    kafkaTemplate.send("reports-verified", updatedReport);
+                }
                 // === Audit log: status update success ===
                 auditLogClient.logAction(
                         Map.of(
@@ -198,6 +202,9 @@ public class ReportService {
     public Report getReportById(UUID id) {
         return reportRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Report not found"));
+    }
+    public List<Report> getVerifiedReports() {
+        return reportRepository.findByStatus(ReportStatus.VERIFIED);
     }
 
 }
