@@ -10,6 +10,7 @@ import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import auditRoutes from './routes/audit-routes';
 import healthRoutes from './routes/health-routes';
 import { requestLogger } from './middleware/request-logger';
+import { startKafkaConsumer, stopKafkaConsumer } from './messaging/kafka-consumer';
 
 class AuditLogServer {
     private app: express.Application;
@@ -62,6 +63,8 @@ class AuditLogServer {
             retentionScheduler.start();
             logger.info('Retention scheduler started');
 
+            await startKafkaConsumer();
+
             // Start listening
             await new Promise<void>((resolve, reject) => {
                 this.server.listen(config.port, (error?: Error) => {
@@ -86,6 +89,8 @@ class AuditLogServer {
 
     async stop(): Promise<void> {
         logger.info('Stopping Audit Log Service...');
+
+        await stopKafkaConsumer();
 
         // Stop retention scheduler
         retentionScheduler.stop();

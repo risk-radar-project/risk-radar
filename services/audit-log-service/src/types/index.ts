@@ -1,6 +1,6 @@
 export interface AuditLogEntry {
     id?: string;
-    timestamp: string;
+    timestamp?: string;
     service: string;
     action: string;
     actor: {
@@ -17,7 +17,7 @@ export interface AuditLogEntry {
     log_type: 'ACTION' | 'SECURITY' | 'SYSTEM' | 'ERROR' | 'INFO';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     metadata?: Record<string, any>;
-    is_anonymized: boolean;
+    is_anonymized?: boolean;
 }
 
 export interface PaginationQuery {
