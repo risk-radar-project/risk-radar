@@ -29,7 +29,6 @@ public class AuthzClient {
                 .build();
     }
 
-    // dla metod zwracających wartość
     private <T> T getWithRetry(Mono<T> mono, T fallback, String logContext) {
         try {
             return mono
@@ -45,7 +44,6 @@ public class AuthzClient {
         }
     }
 
-    // dla metod void
     private void executeWithRetry(Mono<Void> mono, String logContext) {
         try {
             mono.timeout(RESPONSE_TIMEOUT)

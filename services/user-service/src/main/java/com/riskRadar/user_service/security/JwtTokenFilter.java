@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -84,17 +85,23 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // Extract roles and permissions directly from JWT
             Claims claims = jwtService.extractAllAccessClaims(token);
             List<String> roles = claims.get("roles", List.class);
             List<String> permissions = claims.get("permissions", List.class);
 
+            List<String> safeRoles = roles != null ? roles : Collections.emptyList();
+            List<String> safePermissions = permissions != null ? permissions : Collections.emptyList();
+
             Set<GrantedAuthority> authorities = Stream.concat(
-                    roles.stream().map(r -> new SimpleGrantedAuthority("ROLE_" + r.toUpperCase())),
-                    permissions.stream().map(p -> new SimpleGrantedAuthority("PERM_" + p.toUpperCase()))
+                    safeRoles.stream().map(r -> {
+                        String roleString = r.startsWith("ROLE_") ? r : "ROLE_" + r.toUpperCase();
+                        return new SimpleGrantedAuthority(roleString);
+                    }),
+                    safePermissions.stream().map(p -> new SimpleGrantedAuthority("PERM_" + p.toUpperCase()))
             ).collect(Collectors.toSet());
 
-            // Set Authentication without loading UserDetails
+            logger.debug("Authorities for user {}: {}", username, authorities);
+
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(username, null, authorities);
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -112,6 +119,4 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         response.getWriter().write(json);
         response.getWriter().flush();
     }
-
-
 }

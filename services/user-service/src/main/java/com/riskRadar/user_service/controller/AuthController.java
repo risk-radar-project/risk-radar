@@ -374,17 +374,67 @@ public class AuthController {
         }
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+
+    // Usuń @PreAuthorize("hasRole('ADMIN')") i zastąp realtime sprawdzaniem
     @PostMapping("/banUser")
     public ResponseEntity<?> banUser(@Valid @RequestBody BanUserRequest request, HttpServletRequest httpRequest) {
         String clientIp = Optional.ofNullable(httpRequest.getHeader("X-Forwarded-For"))
                 .orElse(httpRequest.getRemoteAddr());
         String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
 
+        // REALTIME PERMISSION CHECK - używa istniejących endpointów authz-service
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Authentication required"));
+        }
+
+        String currentUsername = authentication.getName();
+        UUID currentUserId;
+
+        try {
+            User currentUser = userService.getUserByUsernameOrEmail(currentUsername);
+            currentUserId = currentUser.getId();
+        } catch (Exception e) {
+            log.error("Failed to get current user for permission check: {}", currentUsername, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Permission verification failed"));
+        }
+
+        // Sprawdź uprawnienia w czasie rzeczywistym używając istniejącego API
+        boolean hasAdminRole = checkAdminRoleRealtime(currentUserId);
+
+        if (!hasAdminRole) {
+            log.warn("Access denied for user {} - no ADMIN role in authz-service", currentUsername);
+            auditLogClient.logAction(Map.of(
+                    "service", "user-service",
+                    "action", "banUser",
+                    "actor", Map.of(
+                            "id", currentUsername,
+                            "type", "user",
+                            "ip", clientIp
+                    ),
+                    "status", "failure",
+                    "log_type", "SECURITY",
+                    "metadata", Map.of(
+                            "description", "Access denied - insufficient permissions (realtime check failed)",
+                            "user_agent", userAgent
+                    ),
+                    "target", Map.of(
+                            "id", request.username(),
+                            "reason", request.reason()
+                    )
+            ));
+
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Insufficient permissions"));
+        }
+
         if (redisService.isUserBanned(request.username()) || userDetailsService.isUserBanned(request.username())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "User is already banned"));
         }
+
         try {
             userDetailsService.loadUserByUsername(request.username());
         } catch (UsernameNotFoundException e) {
@@ -399,14 +449,14 @@ public class AuthController {
                 "service", "user-service",
                 "action", "banUser",
                 "actor", Map.of(
-                        "id", request.username(),
+                        "id", currentUsername,
                         "type", "user",
                         "ip", clientIp
                 ),
                 "status", "success",
                 "log_type", "ACTION",
                 "metadata", Map.of(
-                        "description", "User banned successfully",
+                        "description", "User banned successfully with realtime permission verification",
                         "user_agent", userAgent
                 ),
                 "target", Map.of(
@@ -416,6 +466,31 @@ public class AuthController {
         ));
 
         return ResponseEntity.ok(Map.of("message", "User banned successfully"));
+    }
+
+    /**
+     * Sprawdza czy użytkownik ma rolę ADMIN w czasie rzeczywistym używając istniejącego API
+     */
+    private boolean checkAdminRoleRealtime(UUID userId) {
+        try {
+            Role[] userRoles = authzClient.getRolesByUserId(userId);
+
+            if (userRoles == null) {
+                log.warn("No roles returned from authz-service for user: {}", userId);
+                return false;
+            }
+
+            boolean hasAdmin = Arrays.stream(userRoles)
+                    .anyMatch(role -> "ADMIN".equalsIgnoreCase(role.name()));
+
+            log.debug("User {} has ADMIN role: {}", userId, hasAdmin);
+            return hasAdmin;
+
+        } catch (Exception e) {
+            log.error("Error checking ADMIN role for user {} in authz-service", userId, e);
+            // Fail-secure: w przypadku błędu komunikacji z authz-service odrzucamy dostęp
+            return false;
+        }
     }
 
 

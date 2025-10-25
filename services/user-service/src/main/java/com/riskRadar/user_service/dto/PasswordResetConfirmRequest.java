@@ -1,4 +1,6 @@
 package com.riskRadar.user_service.dto;
 
-public record PasswordResetConfirmRequest(String token, String newPassword) {
+import jakarta.validation.constraints.NotBlank;
+
+public record PasswordResetConfirmRequest(@NotBlank String token,@NotBlank String newPassword) {
 }
