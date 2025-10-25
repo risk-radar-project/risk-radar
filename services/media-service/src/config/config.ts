@@ -79,7 +79,7 @@ export const config: ServiceConfig = {
         bootstrapMaxWaitMs: toInt(process.env.DB_BOOTSTRAP_MAX_WAIT_MS, 300000),
     },
     authz: {
-        baseUrl: normalizeBaseUrl(undefined, serviceBaseUrl(process.env.AUTHZ_SERVICE_PORT, 8081)),
+        baseUrl: normalizeBaseUrl(process.env.AUTHZ_BASE_URL, serviceBaseUrl(process.env.AUTHZ_SERVICE_PORT, 8081)),
         timeoutMs: toInt(process.env.AUTHZ_TIMEOUT_MS, 1500),
         retries: toInt(process.env.AUTHZ_RETRIES, 2),
         breaker: {
