@@ -11,6 +11,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 import time
 from typing import Optional, Dict, Any
 import numpy as np
+from audit_client import get_audit_client
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,42 +32,43 @@ class EnhancedTextPreprocessor(BaseEstimator, TransformerMixin):
         if pd.isna(text):
             return ""
         
-        # Basic text cleaning
         text = str(text).lower()
-        text = re.sub(r'\d+', ' NUMBER ', text)  # Replace numbers with token
-        text = re.sub(r'[^\w\s]', ' ', text)    # Remove special chars
-        text = re.sub(r'\s+', ' ', text).strip() # Normalize whitespace
+        text = re.sub(r'\d+', ' NUMBER ', text)
+        text = re.sub(r'[^\w\s]', ' ', text)
+        text = re.sub(r'\s+', ' ', text).strip()
         
-        # SpaCy processing
         doc = self.nlp(text)
         
-        # Enhanced token filtering
         tokens = []
         for token in doc:
             if (not token.is_stop and 
                 not token.is_punct and 
                 token.is_alpha and 
-                len(token.text) > 2 and  # Filter very short words
-                token.pos_ in ['NOUN', 'ADJ', 'VERB', 'ADV']):  # Keep meaningful POS tags
+                len(token.text) > 2 and
+                token.pos_ in ['NOUN', 'ADJ', 'VERB', 'ADV']):
                 tokens.append(token.lemma_)
         
         return ' '.join(tokens)
 
-# Global variables for model components
+# Global variables
 model = None
 word_vectorizer = None
 char_vectorizer = None
 preprocessor = None
 numerical_features = None
 model_info = {}
+audit_client = None
 
 async def load_model():
     """Load model components on startup"""
-    global model, word_vectorizer, char_vectorizer, preprocessor, numerical_features, model_info
+    global model, word_vectorizer, char_vectorizer, preprocessor, numerical_features, model_info, audit_client
+    
+    load_start = time.time()
     
     try:
-        # Try both clean and original model files
-        model_paths = ["incident_classifier_clean.pkl", "incident_classifier_clean.pkl"]
+        audit_client = get_audit_client()
+        
+        model_paths = ["incident_classifier_clean.pkl"]
         bundle = None
         loaded_path = None
         
@@ -85,68 +87,82 @@ async def load_model():
                 continue
         
         if bundle is None:
-            raise RuntimeError("Could not load any model file from: " + str(model_paths))
+            error_msg = "Could not load any model file"
+            await audit_client.log_model_load(
+                model_file="incident_classifier_clean.pkl",
+                model_type="unknown",
+                success=False,
+                error=error_msg
+            )
+            raise RuntimeError(error_msg)
             
-        # Log available keys for debugging
         logger.info(f"Available keys in model bundle: {list(bundle.keys())}")
         
-        # Check for required keys
         required_keys = ["model", "word_vectorizer", "char_vectorizer", "numerical_features"]
         missing_keys = [key for key in required_keys if key not in bundle]
         
         if missing_keys:
-            raise RuntimeError(f"Missing required keys in model bundle: {missing_keys}")
+            error_msg = f"Missing required keys: {missing_keys}"
+            await audit_client.log_model_load(
+                model_file=loaded_path,
+                model_type="unknown",
+                success=False,
+                error=error_msg
+            )
+            raise RuntimeError(error_msg)
         
-        # Load components
         model = bundle["model"]
         word_vectorizer = bundle["word_vectorizer"]  
         char_vectorizer = bundle["char_vectorizer"]
         numerical_features = bundle["numerical_features"]
         
-        # Store model information
         model_info = {
             "model_type": type(model).__name__,
             "model_file": loaded_path,
             "numerical_features": numerical_features,
-            "word_vectorizer_features": getattr(word_vectorizer, 'vocabulary_', {}) and len(word_vectorizer.vocabulary_),
-            "char_vectorizer_features": getattr(char_vectorizer, 'vocabulary_', {}) and len(char_vectorizer.vocabulary_),
+            "word_vectorizer_features": len(word_vectorizer.vocabulary_) if hasattr(word_vectorizer, 'vocabulary_') else 0,
+            "char_vectorizer_features": len(char_vectorizer.vocabulary_) if hasattr(char_vectorizer, 'vocabulary_') else 0,
             "model_accuracy": bundle.get("accuracy", "Not available"),
             "training_date": bundle.get("training_date", "Not available"),
             "model_version": bundle.get("version", "1.0.0"),
-            "categories": list(getattr(model, 'classes_', [])) if hasattr(model, 'classes_') else "Not available"
+            "categories": list(model.classes_) if hasattr(model, 'classes_') else []
         }
         
-        # Always create a fresh preprocessor instance
         logger.info("Creating new preprocessor instance...")
         preprocessor = EnhancedTextPreprocessor()
         
+        load_time = (time.time() - load_start) * 1000
+        
+        # Log successful model load
+        await audit_client.log_model_load(
+            model_file=loaded_path,
+            model_type=model_info["model_type"],
+            success=True,
+            load_time_ms=load_time
+        )
+        
         logger.info("🎯 Model loading completed successfully!")
         logger.info(f"   Model type: {type(model).__name__}")
-        logger.info(f"   Numerical features: {numerical_features}")
         logger.info(f"   Loaded from: {loaded_path}")
-        logger.info(f"   Model accuracy: {model_info.get('model_accuracy', 'N/A')}")
+        logger.info(f"   Load time: {load_time:.2f}ms")
         
     except Exception as e:
         logger.error(f"💥 Failed to load model: {str(e)}")
-        if bundle is not None:
-            logger.error(f"Available bundle keys were: {list(bundle.keys())}")
         import traceback
         logger.error(traceback.format_exc())
         raise RuntimeError(f"Cannot load model: {str(e)}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     logger.info("🚀 Starting AI Categorization Service...")
     await load_model()
     logger.info("Service startup completed!")
     yield
-    # Shutdown
     logger.info("Service shutting down...")
 
 app = FastAPI(
     title="AI Categorization Service",
-    description="Microservice for AI-powered incident categorization",
+    description="Microservice for AI-powered incident categorization with audit logging",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -154,6 +170,8 @@ app = FastAPI(
 # Request/Response models
 class IncidentRequest(BaseModel):
     title: str
+    actor_id: Optional[str] = "system"
+    actor_type: Optional[str] = "system"
 
 class ModelMetrics(BaseModel):
     prediction_confidence: Optional[float] = None
@@ -175,16 +193,15 @@ class IncidentResponse(BaseModel):
     title: str
     metrics: ModelMetrics
     model_info: ModelInfo
+    audit_logged: bool = False
 
 def create_enhanced_features(df):
     """Create additional features from text"""
     df_features = df.copy()
     
-    # Text length features
     df_features['text_length'] = df_features['Opis'].str.len()
     df_features['word_count'] = df_features['Opis'].str.split().str.len()
     
-    # Keyword presence features
     keywords = {
         'traffic': ['ruch', 'droga', 'ulica', 'auto', 'samochód', 'pojazd', 'kierowca'],
         'accident': ['wypadek', 'potrącenie', 'kolizja', 'karambol', 'uderzenie'],
@@ -204,14 +221,12 @@ def predict_category(title: str) -> tuple:
     try:
         start_time = time.time()
         
-        # Timing for preprocessing
         preprocess_start = time.time()
         df_input = pd.DataFrame({"Opis": [title]})
         df_input = create_enhanced_features(df_input)
         df_input["Opis_cleaned"] = preprocessor.transform(df_input["Opis"])
         preprocess_time = (time.time() - preprocess_start) * 1000
         
-        # Timing for vectorization
         vectorize_start = time.time()
         word_feats = word_vectorizer.transform(df_input["Opis_cleaned"])
         char_feats = char_vectorizer.transform(df_input["Opis_cleaned"])
@@ -219,11 +234,9 @@ def predict_category(title: str) -> tuple:
         X_final = hstack([X_text, csr_matrix(df_input[numerical_features].values)])
         vectorize_time = (time.time() - vectorize_start) * 1000
         
-        # Timing for inference
         inference_start = time.time()
         prediction = model.predict(X_final)[0]
         
-        # Get prediction confidence if available
         confidence = None
         if hasattr(model, 'predict_proba'):
             try:
@@ -248,14 +261,26 @@ async def health_check():
 
 @app.post("/categorize", response_model=IncidentResponse)
 async def categorize_incident(request: IncidentRequest):
-    """Categorize incident based on title/description with detailed metrics"""
+    """Categorize incident based on title/description with audit logging"""
     if not request.title or not request.title.strip():
         raise HTTPException(status_code=400, detail="Title cannot be empty")
+    
+    audit_logged = False
     
     try:
         prediction, confidence, preprocess_time, vectorize_time, inference_time, total_time = predict_category(request.title)
         
-        # Create metrics object
+        # Log to audit service
+        audit_logged = await audit_client.log_prediction(
+            title=request.title,
+            predicted_category=prediction,
+            confidence=confidence,
+            processing_time_ms=total_time,
+            actor_id=request.actor_id,
+            actor_type=request.actor_type,
+            success=True
+        )
+        
         metrics = ModelMetrics(
             prediction_confidence=confidence,
             response_time_ms=round(total_time, 2),
@@ -265,7 +290,6 @@ async def categorize_incident(request: IncidentRequest):
             inference_time_ms=round(inference_time, 2)
         )
         
-        # Create model info object
         model_info_obj = ModelInfo(
             model_type=model_info.get("model_type", "Unknown"),
             model_version=model_info.get("model_version", "1.0.0"),
@@ -285,12 +309,27 @@ async def categorize_incident(request: IncidentRequest):
             category=prediction,
             title=request.title,
             metrics=metrics,
-            model_info=model_info_obj
+            model_info=model_info_obj,
+            audit_logged=audit_logged
         )
         
     except HTTPException:
+        # Log error to audit
+        await audit_client.log_error(
+            action="categorize_incident",
+            error_message="Categorization failed",
+            error_details={"title": request.title},
+            actor_id=request.actor_id
+        )
         raise
     except Exception as e:
+        # Log error to audit
+        await audit_client.log_error(
+            action="categorize_incident",
+            error_message=str(e),
+            error_details={"title": request.title},
+            actor_id=request.actor_id
+        )
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -310,81 +349,19 @@ async def get_categories():
         "model_type": model_info.get("model_type", "Unknown")
     }
 
-@app.get("/categories/{category}")
-async def get_category_info(category: str):
-    """Get information about a specific category"""
-    if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-    
-    categories = model_info.get("categories", [])
-    if not categories and hasattr(model, 'classes_'):
-        categories = list(model.classes_)
-    
-    if category not in categories:
-        raise HTTPException(
-            status_code=404, 
-            detail=f"Category '{category}' not found. Available categories: {categories}"
-        )
-    
-    # Define category descriptions and keywords
-    category_descriptions = {
-        "traffic": {
-            "description": "Traffic-related incidents including accidents, collisions, and traffic flow problems",
-            "keywords": ["ruch", "droga", "ulica", "auto", "samochód", "pojazd", "kierowca"],
-            "examples": ["Kolizja dwóch pojazdów", "Korek na głównej ulicy", "Awaria pojazdu na drodze"]
-        },
-        "accident": {
-            "description": "Accidents including collisions, crashes, and pedestrian incidents",
-            "keywords": ["wypadek", "potrącenie", "kolizja", "karambol", "uderzenie"],
-            "examples": ["Wypadek drogowy", "Potrącenie pieszego", "Karambol na autostradzie"]
-        },
-        "infrastructure": {
-            "description": "Infrastructure problems including roads, lighting, and signaling issues",
-            "keywords": ["chodnik", "droga", "oświetlenie", "sygnalizacja", "znak"],
-            "examples": ["Uszkodzone oświetlenie", "Awaria sygnalizacji", "Dziura w chodniku"]
-        },
-        "damage": {
-            "description": "Property damage and destruction incidents",
-            "keywords": ["zniszczenie", "uszkodzenie", "awaria", "zniszczony", "uszkodzony"],
-            "examples": ["Uszkodzony znak drogowy", "Zniszczona barierka", "Awaria ogrodzenia"]
-        },
-        "pedestrian": {
-            "description": "Pedestrian-related incidents and sidewalk issues",
-            "keywords": ["pieszy", "piesi", "przejście", "pasy", "chodnik"],
-            "examples": ["Problem z przejściem dla pieszych", "Zablokowany chodnik", "Niebezpieczne przejście"]
-        },
-        "danger": {
-            "description": "Dangerous situations and safety hazards",
-            "keywords": ["niebezpieczny", "zagrożenie", "ryzyko", "groźny", "niebezpieczeństwo"],
-            "examples": ["Niebezpieczna dziura", "Zagrożenie dla pieszych", "Ryzykowne skrzyżowanie"]
-        }
-    }
-    
-    category_info = category_descriptions.get(category, {
-        "description": f"Category: {category}",
-        "keywords": [],
-        "examples": []
-    })
-    
-    return {
-        "category": category,
-        "description": category_info["description"],
-        "keywords": category_info["keywords"],
-        "examples": category_info["examples"],
-        "total_categories": len(categories)
-    }
-
 @app.post("/batch-categorize")
 async def batch_categorize_incidents(requests: list[IncidentRequest]):
-    """Categorize multiple incidents at once"""
+    """Categorize multiple incidents at once with audit logging"""
     if not requests:
         raise HTTPException(status_code=400, detail="Request list cannot be empty")
     
-    if len(requests) > 100:  # Limit batch size
+    if len(requests) > 100:
         raise HTTPException(status_code=400, detail="Batch size cannot exceed 100 items")
     
     results = []
     total_start_time = time.time()
+    successful = 0
+    failed = 0
     
     for i, request in enumerate(requests):
         if not request.title or not request.title.strip():
@@ -393,6 +370,7 @@ async def batch_categorize_incidents(requests: list[IncidentRequest]):
                 "error": "Title cannot be empty",
                 "title": request.title
             })
+            failed += 1
             continue
         
         try:
@@ -405,21 +383,33 @@ async def batch_categorize_incidents(requests: list[IncidentRequest]):
                 "confidence": confidence,
                 "processing_time_ms": round(total_time, 2)
             })
+            successful += 1
         except Exception as e:
             results.append({
                 "index": i,
                 "error": str(e),
                 "title": request.title
             })
+            failed += 1
     
     batch_total_time = (time.time() - total_start_time) * 1000
+    
+    # Log batch operation to audit
+    await audit_client.log_batch_prediction(
+        total_items=len(requests),
+        successful=successful,
+        failed=failed,
+        total_time_ms=batch_total_time,
+        actor_id=requests[0].actor_id if requests else "system",
+        actor_type=requests[0].actor_type if requests else "system"
+    )
     
     return {
         "results": results,
         "batch_stats": {
             "total_items": len(requests),
-            "successful": len([r for r in results if "category" in r]),
-            "failed": len([r for r in results if "error" in r]),
+            "successful": successful,
+            "failed": failed,
             "total_processing_time_ms": round(batch_total_time, 2),
             "average_time_per_item_ms": round(batch_total_time / len(requests), 2) if requests else 0
         }
@@ -435,7 +425,6 @@ async def get_statistics():
     if not categories and hasattr(model, 'classes_'):
         categories = list(model.classes_)
     
-    # Basic statistics
     stats = {
         "model_stats": {
             "model_type": model_info.get("model_type", "Unknown"),
@@ -458,65 +447,24 @@ async def get_statistics():
         "service_info": {
             "service_name": "AI Categorization Service",
             "version": "1.0.0",
-            "status": "operational"
+            "status": "operational",
+            "audit_logging_enabled": audit_client.enabled if audit_client else False
         }
     }
     
     return stats
-
-@app.post("/validate")
-async def validate_input(request: IncidentRequest):
-    """Validate input text and provide preprocessing preview"""
-    if not request.title or not request.title.strip():
-        raise HTTPException(status_code=400, detail="Title cannot be empty")
-    
-    try:
-        # Apply preprocessing
-        df_input = pd.DataFrame({"Opis": [request.title]})
-        df_input = create_enhanced_features(df_input)
-        cleaned_text = preprocessor.transform(df_input["Opis"])[0]
-        
-        # Extract features
-        features = {}
-        for col in df_input.columns:
-            if col.startswith('has_') or col in ['text_length', 'word_count']:
-                features[col] = df_input[col].iloc[0]
-        
-        return {
-            "original_text": request.title,
-            "cleaned_text": cleaned_text,
-            "text_length": len(request.title),
-            "cleaned_length": len(cleaned_text),
-            "word_count": len(request.title.split()) if request.title else 0,
-            "cleaned_word_count": len(cleaned_text.split()) if cleaned_text else 0,
-            "detected_features": features,
-            "is_valid": bool(cleaned_text.strip())
-        }
-    except Exception as e:
-        logger.error(f"Error during validation: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Validation error: {str(e)}")
-
-@app.get("/model-info")
-async def get_model_info():
-    """Get detailed model information"""
-    return {
-        "model_info": model_info,
-        "status": "loaded" if model is not None else "not_loaded"
-    }
 
 @app.get("/")
 async def root():
     return {
         "service": "AI Categorization Service",
         "version": "1.0.0",
+        "audit_logging": audit_client.enabled if audit_client else False,
         "endpoints": {
             "categorize": "POST /categorize - Categorize single incident",
             "batch_categorize": "POST /batch-categorize - Categorize multiple incidents",
             "categories": "GET /categories - List all available categories",
-            "category_info": "GET /categories/{category} - Get info about specific category",
             "statistics": "GET /statistics - Get model and service statistics",
-            "validate": "POST /validate - Validate and preview text preprocessing",
-            "model_info": "GET /model-info - Get detailed model information",
             "health": "GET /health - Health check"
         }
     }
