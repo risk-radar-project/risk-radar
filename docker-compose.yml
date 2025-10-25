@@ -91,6 +91,7 @@ services:
         environment:
             <<: *global-env
             HTTP_PORT: 8080
+            AUTHZ_BASE_URL: http://authz-service:8080
         networks:
             - backend
         ports:
