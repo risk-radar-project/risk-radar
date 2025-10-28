@@ -9,7 +9,9 @@
         "start": "node dist/server.js",
         "dev": "tsx watch src/server.ts",
         "migrate": "node dist/db/migrate.js",
-        "test": "jest --runInBand"
+        "test": "jest --runInBand",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
     },
     "dependencies": {
         "axios": "^1.7.7",
@@ -36,7 +38,8 @@
         "@types/supertest": "^2.0.16",
         "ts-jest": "^29.2.5",
         "tsx": "^4.7.0",
-        "typescript": "^5.4.5"
+        "typescript": "^5.4.5",
+        "prettier": "^3.6.2"
     },
     "engines": {
         "node": ">=18"
