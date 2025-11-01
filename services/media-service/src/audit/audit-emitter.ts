@@ -50,8 +50,7 @@ async function sendViaHttp(event: AuditEvent, breaker: CircuitBreaker, url: stri
     await breaker.exec(async () => {
         for (let attempt = 0; attempt <= config.audit.retries; attempt++) {
             try {
-                console.log("TRYING TO SEND AUDIT VIA HTTP...", body)
-                // await axios.post(url, body, { timeout: config.audit.timeoutMs })
+                await axios.post(url, body, { timeout: config.audit.timeoutMs })
                 return
             } catch (err: unknown) {
                 if (attempt === config.audit.retries) throw err
