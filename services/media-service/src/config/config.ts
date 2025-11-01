@@ -29,6 +29,18 @@ export type ServiceConfig = {
         timeoutMs: number
         retries: number
         breaker: { failureThreshold: number; halfOpenAfterMs: number }
+        kafka: {
+            enabled: boolean
+            brokers: string[]
+            topic: string
+            clientId: string
+            acks: -1 | 0 | 1
+            connectionTimeoutMs: number
+            requestTimeoutMs: number
+            sendTimeoutMs: number
+            retries: number
+            idempotent: boolean
+        }
     }
     storageThresholds: { warnPercent: number; criticalPercent: number }
     gc: { enabled: boolean; intervalMs: number; deleteAfterDays: number; batchLimit: number }
@@ -39,6 +51,18 @@ export type ServiceConfig = {
 
 const toInt = (v: string | undefined, d: number) => (v ? parseInt(v, 10) : d)
 const toBool = (v: string | undefined, d: boolean) => (v === undefined ? d : /^(1|true|yes)$/i.test(v))
+const toList = (v: string | undefined) =>
+    v ?
+        v
+            .split(",")
+            .map(s => s.trim())
+            .filter(Boolean)
+    :   []
+const toAcks = (v: string | undefined): -1 | 0 | 1 => {
+    if (v === "0") return 0
+    if (v === "1") return 1
+    return -1
+}
 
 // Build service base URL from hostname + service port (always used now)
 const serviceBaseUrl = (servicePortEnv: string | undefined, defaultPort: number) => {
@@ -56,6 +80,17 @@ const normalizeBaseUrl = (v: string | undefined, fallback?: string) => {
     out = out.replace(/\/logs$/i, "")
     return out
 }
+
+const auditKafkaBrokers = toList(process.env.AUDIT_KAFKA_BROKERS || process.env.KAFKA_BROKERS)
+const auditKafkaEnabled = toBool(process.env.AUDIT_KAFKA_ENABLED, auditKafkaBrokers.length > 0)
+const auditKafkaTopic = process.env.AUDIT_KAFKA_TOPIC || process.env.KAFKA_TOPIC || "audit_logs"
+const auditKafkaClientId = process.env.AUDIT_KAFKA_CLIENT_ID || "media-service"
+const auditKafkaAcks = toAcks(process.env.AUDIT_KAFKA_ACKS)
+const auditKafkaConnectionTimeoutMs = toInt(process.env.AUDIT_KAFKA_CONNECTION_TIMEOUT_MS, 3000)
+const auditKafkaRequestTimeoutMs = toInt(process.env.AUDIT_KAFKA_REQUEST_TIMEOUT_MS, 5000)
+const auditKafkaSendTimeoutMs = toInt(process.env.AUDIT_KAFKA_SEND_TIMEOUT_MS, 5000)
+const auditKafkaRetries = toInt(process.env.AUDIT_KAFKA_RETRIES, 3)
+const auditKafkaIdempotent = toBool(process.env.AUDIT_KAFKA_IDEMPOTENT, true)
 
 export const config: ServiceConfig = {
     nodeEnv: process.env.NODE_ENV || "development",
@@ -112,6 +147,18 @@ export const config: ServiceConfig = {
         breaker: {
             failureThreshold: toInt(process.env.AUDIT_BREAKER_FAILURES, 5),
             halfOpenAfterMs: toInt(process.env.AUDIT_BREAKER_HALF_OPEN_MS, 10_000)
+        },
+        kafka: {
+            enabled: auditKafkaEnabled,
+            brokers: auditKafkaBrokers,
+            topic: auditKafkaTopic,
+            clientId: auditKafkaClientId,
+            acks: auditKafkaAcks,
+            connectionTimeoutMs: auditKafkaConnectionTimeoutMs,
+            requestTimeoutMs: auditKafkaRequestTimeoutMs,
+            sendTimeoutMs: auditKafkaSendTimeoutMs,
+            retries: auditKafkaRetries,
+            idempotent: auditKafkaIdempotent
         }
     },
     storageThresholds: {
