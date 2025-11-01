@@ -908,6 +908,15 @@ All error responses include:
 |----------|-------------|---------|----------|
 | `DATABASE_URL` | PostgreSQL connection string | - | ✅ |
 | `HTTP_PORT` | HTTP server port | `8080` | ❌ |
+| `AUDIT_LOG_URL` | HTTP fallback endpoint for audit logs | `http://audit-log-service:8080/logs` | ❌ |
+| `AUDIT_KAFKA_ENABLED` | Enable Kafka audit publishing | auto (`true` when brokers set) | ❌ |
+| `AUDIT_KAFKA_BROKERS` | Comma-separated Kafka brokers | - | ❌ |
+| `AUDIT_KAFKA_TOPIC` | Kafka topic for audit events | `audit_logs` | ❌ |
+| `AUDIT_KAFKA_CLIENT_ID` | Kafka client identifier | `authz-service` | ❌ |
+| `AUDIT_KAFKA_ACKS` | Required acknowledgements (`-1`,`0`,`1`) | `-1` | ❌ |
+| `AUDIT_KAFKA_CONNECTION_TIMEOUT_MS` | Kafka dial timeout in ms | `3000` | ❌ |
+| `AUDIT_KAFKA_SEND_TIMEOUT_MS` | Kafka publish timeout in ms | `5000` | ❌ |
+| `AUDIT_KAFKA_RETRIES` | Kafka publish attempts before fallback | `3` | ❌ |
 
 ### Docker Deployment
 
@@ -939,7 +948,7 @@ The service automatically runs migrations on startup. Initial data includes:
 ## 📊 Monitoring & Logging
 
 ### Audit Logging (Short Overview)
-The service sends structured audit events asynchronously to `audit-log-service` using a non‑blocking in‑memory queue.
+The service sends structured audit events asynchronously via an in‑memory dispatcher. Delivery attempts Kafka first (`audit_logs` topic); if Kafka is disabled or a publish fails, it transparently falls back to the HTTP `/logs` endpoint.
 
 Key actions:
 - Access: `access_granted`, `access_denied`
@@ -948,9 +957,9 @@ Key actions:
 - User ↔ Role: `user_role_assign`, `user_role_remove`
 - Errors / Infra: `http_error`, `db_error`
 
-Reliability: network / 5xx retries with exponential backoff (100ms → 1600ms, max 5 attempts, jitter). 4xx are not retried.
+Reliability: Kafka publishes include built-in retries (configurable via `AUDIT_KAFKA_RETRIES`). HTTP fallback retains exponential backoff (100ms → 1600ms, max 5 attempts, jitter). 4xx responses are not retried.
 
-Config: optional `AUDIT_LOG_URL` (default `http://audit-log-service:8080/logs`).
+Config: `AUDIT_KAFKA_*` knobs control the Kafka producer. `AUDIT_LOG_URL` remains as the HTTP fallback base (default `http://audit-log-service:8080/logs`).
 
 Counters (in‑memory): `sent`, `failed`, `dropped`, `retries`.
 

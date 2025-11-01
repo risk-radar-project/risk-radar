@@ -2,6 +2,7 @@ package audit
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -108,5 +109,53 @@ func TestAccessDecisionIncludesIP(t *testing.T) {
 	after, _, _, _ := Counters()
 	if after <= before {
 		t.Fatalf("expected sent counter to increase for access decision")
+	}
+}
+
+func TestKafkaSuccessShortCircuitsHTTP(t *testing.T) {
+	Init()
+	defer func() {
+		publishToKafka = publishKafka
+		kafkaActive = kafkaIsEnabled
+	}()
+
+	publishToKafka = func(*AuditLog, []byte) error {
+		return nil
+	}
+	kafkaActive = func() bool { return true }
+
+	before, _, _, _ := Counters()
+	LogAction(&AuditLog{Action: "kafka_success", Status: "success", LogType: "INFO"})
+	time.Sleep(20 * time.Millisecond)
+	after, _, _, _ := Counters()
+	if after <= before {
+		t.Fatalf("expected sent counter to increase when kafka succeeds")
+	}
+}
+
+func TestKafkaFailureFallsBackToHTTP(t *testing.T) {
+	Init()
+	closeFn := startTestServer(t, 201)
+	defer closeFn()
+
+	defer func() {
+		publishToKafka = publishKafka
+		kafkaActive = kafkaIsEnabled
+	}()
+
+	publishToKafka = func(*AuditLog, []byte) error {
+		return errors.New("broker down")
+	}
+	kafkaActive = func() bool { return true }
+
+	beforeSent, beforeFailed, _, _ := Counters()
+	LogAction(&AuditLog{Action: "kafka_fallback", Status: "success", LogType: "INFO"})
+	time.Sleep(100 * time.Millisecond)
+	afterSent, afterFailed, _, _ := Counters()
+	if afterSent <= beforeSent {
+		t.Fatalf("expected sent counter to increase via HTTP fallback")
+	}
+	if afterFailed != beforeFailed {
+		t.Fatalf("fallback should not mark as failed when HTTP succeeds")
 	}
 }
