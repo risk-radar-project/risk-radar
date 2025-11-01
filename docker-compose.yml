@@ -92,6 +92,10 @@ services:
             <<: *global-env
             HTTP_PORT: 8080
             AUTHZ_BASE_URL: http://authz-service:8080
+            AUDIT_KAFKA_ENABLED: "true"
+            AUDIT_KAFKA_BROKERS: kafka:9092
+            AUDIT_KAFKA_TOPIC: audit_logs
+            AUDIT_KAFKA_CLIENT_ID: media-service
         networks:
             - backend
         ports:

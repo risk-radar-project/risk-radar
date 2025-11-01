@@ -99,7 +99,7 @@ The requester identity is passed via `X-User-ID` header.
 
 ## 🔄 Audit Logging
 
-All sensitive operations emit audit events to Audit Log Service (`/logs`) with resilient delivery:
+All sensitive operations emit audit events to the Audit Log Service. The emitter first publishes to Kafka (`audit_logs` topic) and automatically falls back to the REST `/logs` endpoint whenever Kafka is unavailable:
 
 - `media_uploaded` (temporary flag in metadata)
 - `moderation_changed` (from → to)
@@ -341,6 +341,15 @@ On storage threshold exceeding configured levels, the service emits audit events
 Environment variables (`.env.example`).
 
 Defaults and parsing live in `src/config/config.ts`.
+
+### Audit Delivery
+
+- `AUDIT_KAFKA_ENABLED` — enables Kafka publishing (auto-enabled when brokers are provided)
+- `AUDIT_KAFKA_BROKERS` — comma-separated broker list, e.g. `kafka:9092`
+- `AUDIT_KAFKA_TOPIC` — Kafka topic for audit events (default `audit_logs`)
+- `AUDIT_KAFKA_CLIENT_ID` — Kafka client identifier (default `media-service`)
+- `AUDIT_KAFKA_ACKS` — producer acknowledgements (`-1` all replicas, default)
+- `AUDIT_TIMEOUT_MS` / `AUDIT_RETRIES` — HTTP fallback timeout + retry budget
 
 ---
 
