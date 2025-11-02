@@ -4,6 +4,7 @@ import com.riskRadar.user_service.dto.*;
 import com.riskRadar.user_service.entity.CustomUserDetails;
 import com.riskRadar.user_service.entity.User;
 import com.riskRadar.user_service.exception.UserAlreadyExistsException;
+import com.riskRadar.user_service.exception.UserOperationException;
 import com.riskRadar.user_service.service.*;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,17 +14,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
 import java.util.*;
 
 @RestController
@@ -117,97 +117,137 @@ public class AuthController {
         String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
 
         try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.username(), request.password())
-            );
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            if (userDetailsService.isUserBanned(request.username())) {
+                auditLogClient.logAction(Map.of(
+                        "service", "user-service",
+                        "action", "login",
+                        "actor", Map.of(
+                                "id", request.username(),
+                                "type", "user",
+                                "ip", clientIp
+                        ),
+                        "status", "failure",
+                        "log_type", "SECURITY",
+                        "metadata", Map.of(
+                                "description", "Account is locked",
+                                "user_agent", userAgent
+                        )
+                ));
+                throw new UserOperationException("Account is locked",
+                    UserOperationException.ErrorType.USER_BANNED);
+            }
 
+            Authentication authentication;
+            try {
+                authentication = authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(request.username(), request.password())
+                );
+            } catch (org.springframework.security.authentication.LockedException e) {
+                System.out.println("Account is locked for user: " + request.username());
+                auditLogClient.logAction(Map.of(
+                        "service", "user-service",
+                        "action", "login",
+                        "actor", Map.of(
+                                "id", request.username(),
+                                "type", "user",
+                                "ip", clientIp
+                        ),
+                        "status", "failure",
+                        "log_type", "SECURITY",
+                        "metadata", Map.of(
+                                "description", "Account is locked",
+                                "user_agent", userAgent
+                        )
+                ));
+                throw new UserOperationException("Account is locked",
+                    UserOperationException.ErrorType.USER_BANNED);
+            } catch (BadCredentialsException e) {
+                auditLogClient.logAction(Map.of(
+                        "service", "user-service",
+                        "action", "login",
+                        "actor", Map.of(
+                                "id", request.username(),
+                                "type", "user",
+                                "ip", clientIp
+                        ),
+                        "status", "failure",
+                        "log_type", "SECURITY",
+                        "metadata", Map.of(
+                                "description", "Invalid credentials",
+                                "user_agent", userAgent
+                        )
+                ));
+                throw new UserOperationException("Invalid username or password",
+                    UserOperationException.ErrorType.INVALID_CREDENTIALS);
+            }
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             User user = userDetails.getUser();
 
             if (redisService.isUserBanned(user.getUsername())) {
-                auditLogClient.logAction(
-                        Map.of(
-                                "service", "user-service",
-                                "action", "login",
-                                "actor", Map.of(
-                                        "id", request.username(),
-                                        "type", "user",
-                                        "ip", clientIp
-                                ),
-                                "status", "failure",
-                                "log_type", "SECURITY",
-                                "metadata", Map.of(
-                                        "description", "User is banned",
-                                        "user_agent", userAgent
-                                )
+                auditLogClient.logAction(Map.of(
+                        "service", "user-service",
+                        "action", "login",
+                        "actor", Map.of(
+                                "id", request.username(),
+                                "type", "user",
+                                "ip", clientIp
+                        ),
+                        "status", "failure",
+                        "log_type", "SECURITY",
+                        "metadata", Map.of(
+                                "description", "User is banned",
+                                "user_agent", userAgent
                         )
-                );
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User is banned"));
+                ));
+                throw new UserOperationException("User is banned",
+                    UserOperationException.ErrorType.USER_BANNED);
             }
 
             Map<String, Object> claims = extractClaims(user);
             String oldToken = extractTokenFromCookies(httpRequest);
             JwtResponse jwtResponse = generateTokens(user, claims, oldToken);
 
-            auditLogClient.logAction(
-                    Map.of(
-                            "service", "user-service",
-                            "action", "login",
-                            "actor", Map.of(
-                                    "id", request.username(),
-                                    "type", "user",
-                                    "ip", clientIp
-                            ),
-                            "status", "success",
-                            "log_type", "ACTION",
-                            "metadata", Map.of(
-                                    "description", "User logged in successfully",
-                                    "user_agent", userAgent
-                            )
+            auditLogClient.logAction(Map.of(
+                    "service", "user-service",
+                    "action", "login",
+                    "actor", Map.of(
+                            "id", request.username(),
+                            "type", "user",
+                            "ip", clientIp
+                    ),
+                    "status", "success",
+                    "log_type", "ACTION",
+                    "metadata", Map.of(
+                            "description", "User logged in successfully",
+                            "user_agent", userAgent
                     )
-            );
+            ));
+
             return ResponseEntity.ok(jwtResponse);
 
-        } catch (BadCredentialsException ex) {
-            auditLogClient.logAction(
-                    Map.of(
-                            "service", "user-service",
-                            "action", "login",
-                            "actor", Map.of(
-                                    "id", request.username(),
-                                    "type", "user",
-                                    "ip", clientIp
-                            ),
-                            "status", "failure",
-                            "log_type", "SECURITY",
-                            "metadata", Map.of(
-                                    "description", "Invalid username or password",
-                                    "user_agent", userAgent
-                            )
+        } catch (UserOperationException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Login failed", e);
+            auditLogClient.logAction(Map.of(
+                    "service", "user-service",
+                    "action", "login",
+                    "actor", Map.of(
+                            "id", request.username(),
+                            "type", "user",
+                            "ip", clientIp
+                    ),
+                    "status", "failure",
+                    "log_type", "ERROR",
+                    "metadata", Map.of(
+                            "description", "Login failed due to unexpected error",
+                            "user_agent", userAgent
                     )
-            );
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid username or password"));
-        } catch (Exception ex) {
-            log.error("Login failed", ex);
-            auditLogClient.logAction(
-                    Map.of(
-                            "service", "user-service",
-                            "action", "login",
-                            "actor", Map.of(
-                                    "id", request.username(),
-                                    "type", "user",
-                                    "ip", clientIp
-                            ),
-                            "status", "failure",
-                            "log_type", "ERROR",
-                            "metadata", Map.of(
-                                    "description", "Login failed due to unexpected error",
-                                    "user_agent", userAgent
-                            )
-                    )
-            );
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Login failed"));
+            ));
+            throw new UserOperationException("Login failed",
+                UserOperationException.ErrorType.OPERATION_FAILED, e);
         }
     }
 
@@ -225,56 +265,95 @@ public class AuthController {
         }
 
         String token = authHeader.substring(7);
-        String username = null;
+        String username;
+
         try {
+            // Sprawdzenie tokena i wydobycie username w bezpieczny sposób
             if (!jwtService.isAccessTokenValid(token)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Invalid token, please login again"));
+                auditLogClient.logAction(Map.of(
+                        "service", "user-service",
+                        "action", "logout",
+                        "actor", Map.of(
+                                "id", "unknown",
+                                "type", "user",
+                                "ip", clientIp
+                        ),
+                        "status", "failure",
+                        "log_type", "SECURITY",
+                        "metadata", Map.of(
+                                "description", "Invalid or expired token",
+                                "user_agent", userAgent
+                        )
+                ));
+                throw new UserOperationException("Invalid or expired token",
+                    UserOperationException.ErrorType.INVALID_CREDENTIALS);
             }
-            username = jwtService.extractAccessUsername(token);
+
+            try {
+                username = jwtService.extractAccessUsername(token);
+            } catch (Exception e) {
+                log.error("Failed to extract username from token", e);
+                auditLogClient.logAction(Map.of(
+                        "service", "user-service",
+                        "action", "logout",
+                        "actor", Map.of(
+                                "id", "unknown",
+                                "type", "user",
+                                "ip", clientIp
+                        ),
+                        "status", "failure",
+                        "log_type", "SECURITY",
+                        "metadata", Map.of(
+                                "description", "Malformed token",
+                                "user_agent", userAgent
+                        )
+                ));
+                throw new UserOperationException("Invalid token format",
+                    UserOperationException.ErrorType.INVALID_CREDENTIALS);
+            }
+
             redisService.saveTokenToBlacklist(token);
             redisService.revokeRefreshToken(username);
 
-            auditLogClient.logAction(
-                    Map.of(
-                            "service", "user-service",
-                            "action", "logout",
-                            "actor", Map.of(
-                                    "id", username,
-                                    "type", "user",
-                                    "ip", clientIp
-                            ),
-                            "status", "success",
-                            "log_type", "ACTION",
-                            "metadata", Map.of(
-                                    "description", "User logged out successfully",
-                                    "user_agent", userAgent
-                            )
+            auditLogClient.logAction(Map.of(
+                    "service", "user-service",
+                    "action", "logout",
+                    "actor", Map.of(
+                            "id", username,
+                            "type", "user",
+                            "ip", clientIp
+                    ),
+                    "status", "success",
+                    "log_type", "ACTION",
+                    "metadata", Map.of(
+                            "description", "User logged out successfully",
+                            "user_agent", userAgent
                     )
-            );
+            ));
 
             return ResponseEntity.ok(Map.of("message", "Logout successful"));
+
+        } catch (UserOperationException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Logout failed", e);
-            auditLogClient.logAction(
-                    Map.of(
-                            "service", "user-service",
-                            "action", "logout",
-                            "actor", Map.of(
-                                    "id", username != null ? username : "unknown",
-                                    "type", "user",
-                                    "ip", clientIp
-                            ),
-                            "status", "failure",
-                            "log_type", "ERROR",
-                            "metadata", Map.of(
-                                    "description", "Logout failed due to unexpected error",
-                                    "user_agent", userAgent
-                            )
+            auditLogClient.logAction(Map.of(
+                    "service", "user-service",
+                    "action", "logout",
+                    "actor", Map.of(
+                            "id", "unknown",
+                            "type", "user",
+                            "ip", clientIp
+                    ),
+                    "status", "failure",
+                    "log_type", "ERROR",
+                    "metadata", Map.of(
+                            "description", "Logout failed due to unexpected error",
+                            "user_agent", userAgent
                     )
-            );
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Logout failed"));
+            ));
+            throw new UserOperationException("Logout failed",
+                UserOperationException.ErrorType.OPERATION_FAILED, e);
         }
     }
 
@@ -284,59 +363,101 @@ public class AuthController {
                 .orElse(httpRequest.getRemoteAddr());
         String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
         String refreshToken = request.refreshToken();
-        String username = null;
-        try {
-            username = jwtService.extractRefreshUsername(refreshToken);
 
+        try {
+            // Najpierw sprawdź czy token jest w ogóle poprawny składniowo i czy nie wygasł
             if (!jwtService.isRefreshTokenValid(refreshToken)) {
                 auditLogClient.logAction(Map.of(
                         "service", "user-service",
                         "action", "refresh",
-                        "actor", Map.of("id", username, "type", "user", "ip", clientIp),
+                        "actor", Map.of(
+                            "id", "unknown",
+                            "type", "user",
+                            "ip", clientIp
+                        ),
                         "status", "failure",
                         "log_type", "SECURITY",
                         "metadata", Map.of(
-                                "description", "Invalid refresh token",
+                                "description", "Invalid or expired refresh token",
                                 "user_agent", userAgent
                         )
                 ));
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Invalid token, please login again"));
+                throw new UserOperationException("Invalid or expired token, please login again",
+                    UserOperationException.ErrorType.INVALID_CREDENTIALS);
             }
+
+            // Jeśli token jest poprawny, możemy bezpiecznie wyciągnąć username
+            String username;
+            try {
+                username = jwtService.extractRefreshUsername(refreshToken);
+            } catch (Exception e) {
+                log.error("Failed to extract username from valid refresh token", e);
+                auditLogClient.logAction(Map.of(
+                        "service", "user-service",
+                        "action", "refresh",
+                        "actor", Map.of(
+                            "id", "unknown",
+                            "type", "user",
+                            "ip", clientIp
+                        ),
+                        "status", "failure",
+                        "log_type", "SECURITY",
+                        "metadata", Map.of(
+                                "description", "Malformed refresh token",
+                                "user_agent", userAgent
+                        )
+                ));
+                throw new UserOperationException("Invalid token format, please login again",
+                    UserOperationException.ErrorType.INVALID_CREDENTIALS);
+            }
+
             if (!redisService.isRefreshTokenValid(username, refreshToken)) {
                 auditLogClient.logAction(Map.of(
                         "service", "user-service",
                         "action", "refresh",
-                        "actor", Map.of("id", username, "type", "user", "ip", clientIp),
+                        "actor", Map.of(
+                            "id", username,
+                            "type", "user",
+                            "ip", clientIp
+                        ),
                         "status", "failure",
                         "log_type", "SECURITY",
                         "metadata", Map.of(
-                                "description", "Refresh token expired",
+                                "description", "Refresh token not found in Redis or expired",
                                 "user_agent", userAgent
                         )
                 ));
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Token has expired, please login again"));
+                throw new UserOperationException("Token has expired or been revoked, please login again",
+                    UserOperationException.ErrorType.INVALID_CREDENTIALS);
             }
+
             if (redisService.isUserBanned(username)) {
                 auditLogClient.logAction(Map.of(
                         "service", "user-service",
                         "action", "refresh",
-                        "actor", Map.of("id", username, "type", "user", "ip", clientIp),
+                        "actor", Map.of(
+                            "id", username,
+                            "type", "user",
+                            "ip", clientIp
+                        ),
                         "status", "failure",
                         "log_type", "SECURITY",
                         "metadata", Map.of(
-                                "description", "User owning this refresh token is banned",
+                                "description", "User is banned",
                                 "user_agent", userAgent
                         )
                 ));
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "User owning this refresh token is banned, please login again"));
+                throw new UserOperationException("User is banned, please contact support",
+                    UserOperationException.ErrorType.USER_BANNED);
             }
 
             User user = userService.getUserByUsernameOrEmail(username);
-            Map<String, Object> claims = extractClaims(user);
+            if (user == null) {
+                throw new UserOperationException("User not found",
+                    UserOperationException.ErrorType.USER_NOT_FOUND);
+            }
 
+            Map<String, Object> claims = extractClaims(user);
             String newAccessToken = jwtService.generateAccessToken(username, claims);
             String newRefreshToken = jwtService.generateRefreshToken(username);
 
@@ -346,7 +467,11 @@ public class AuthController {
             auditLogClient.logAction(Map.of(
                     "service", "user-service",
                     "action", "refresh",
-                    "actor", Map.of("id", username, "type", "user", "ip", clientIp),
+                    "actor", Map.of(
+                        "id", username,
+                        "type", "user",
+                        "ip", clientIp
+                    ),
                     "status", "success",
                     "log_type", "ACTION",
                     "metadata", Map.of(
@@ -357,190 +482,127 @@ public class AuthController {
 
             return ResponseEntity.ok(new JwtResponse(newAccessToken, newRefreshToken));
 
+        } catch (UserOperationException e) {
+            throw e;
         } catch (Exception e) {
+            log.error("Token refresh failed", e);
             auditLogClient.logAction(Map.of(
                     "service", "user-service",
                     "action", "refresh",
-                    "actor", Map.of("id", username != null ? username : "unknown", "type", "user", "ip", clientIp),
+                    "actor", Map.of(
+                        "id", "unknown",
+                        "type", "user",
+                        "ip", clientIp
+                    ),
                     "status", "failure",
                     "log_type", "ERROR",
                     "metadata", Map.of(
-                            "description", "Malformed refresh token",
+                            "description", "Token refresh failed due to unexpected error",
                             "user_agent", userAgent
                     )
             ));
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Malformed token, please re-login"));
+            throw new UserOperationException("Token refresh failed",
+                UserOperationException.ErrorType.OPERATION_FAILED, e);
         }
     }
-
-
-    // Usuń @PreAuthorize("hasRole('ADMIN')") i zastąp realtime sprawdzaniem
-    @PostMapping("/banUser")
-    public ResponseEntity<?> banUser(@Valid @RequestBody BanUserRequest request, HttpServletRequest httpRequest) {
-        String clientIp = Optional.ofNullable(httpRequest.getHeader("X-Forwarded-For"))
-                .orElse(httpRequest.getRemoteAddr());
-        String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
-
-        // REALTIME PERMISSION CHECK - używa istniejących endpointów authz-service
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Authentication required"));
-        }
-
-        String currentUsername = authentication.getName();
-        UUID currentUserId;
-
-        try {
-            User currentUser = userService.getUserByUsernameOrEmail(currentUsername);
-            currentUserId = currentUser.getId();
-        } catch (Exception e) {
-            log.error("Failed to get current user for permission check: {}", currentUsername, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Permission verification failed"));
-        }
-
-        // Sprawdź uprawnienia w czasie rzeczywistym używając istniejącego API
-        boolean hasAdminRole = checkAdminRoleRealtime(currentUserId);
-
-        if (!hasAdminRole) {
-            log.warn("Access denied for user {} - no ADMIN role in authz-service", currentUsername);
-            auditLogClient.logAction(Map.of(
-                    "service", "user-service",
-                    "action", "banUser",
-                    "actor", Map.of(
-                            "id", currentUsername,
-                            "type", "user",
-                            "ip", clientIp
-                    ),
-                    "status", "failure",
-                    "log_type", "SECURITY",
-                    "metadata", Map.of(
-                            "description", "Access denied - insufficient permissions (realtime check failed)",
-                            "user_agent", userAgent
-                    ),
-                    "target", Map.of(
-                            "id", request.username(),
-                            "reason", request.reason()
-                    )
-            ));
-
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Insufficient permissions"));
-        }
-
-        if (redisService.isUserBanned(request.username()) || userDetailsService.isUserBanned(request.username())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "User is already banned"));
-        }
-
-        try {
-            userDetailsService.loadUserByUsername(request.username());
-        } catch (UsernameNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "User not found"));
-        }
-
-        redisService.banUser(request.username(), request.reason());
-        userDetailsService.banUser(request.username());
-
-        auditLogClient.logAction(Map.of(
-                "service", "user-service",
-                "action", "banUser",
-                "actor", Map.of(
-                        "id", currentUsername,
-                        "type", "user",
-                        "ip", clientIp
-                ),
-                "status", "success",
-                "log_type", "ACTION",
-                "metadata", Map.of(
-                        "description", "User banned successfully with realtime permission verification",
-                        "user_agent", userAgent
-                ),
-                "target", Map.of(
-                        "id", request.username(),
-                        "reason", request.reason()
-                )
-        ));
-
-        return ResponseEntity.ok(Map.of("message", "User banned successfully"));
-    }
-
-    /**
-     * Sprawdza czy użytkownik ma rolę ADMIN w czasie rzeczywistym używając istniejącego API
-     */
-    private boolean checkAdminRoleRealtime(UUID userId) {
-        try {
-            Role[] userRoles = authzClient.getRolesByUserId(userId);
-
-            if (userRoles == null) {
-                log.warn("No roles returned from authz-service for user: {}", userId);
-                return false;
-            }
-
-            boolean hasAdmin = Arrays.stream(userRoles)
-                    .anyMatch(role -> "ADMIN".equalsIgnoreCase(role.name()));
-
-            log.debug("User {} has ADMIN role: {}", userId, hasAdmin);
-            return hasAdmin;
-
-        } catch (Exception e) {
-            log.error("Error checking ADMIN role for user {} in authz-service", userId, e);
-            // Fail-secure: w przypadku błędu komunikacji z authz-service odrzucamy dostęp
-            return false;
-        }
-    }
-
 
     private String extractTokenFromCookies(HttpServletRequest request) {
-        if (request.getCookies() == null) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
             return null;
         }
-        for (Cookie cookie : request.getCookies()) {
-            if ("auth_token".equals(cookie.getName())) {
-                return cookie.getValue();
-            }
-        }
-        return null;
+
+        return Arrays.stream(cookies)
+                .filter(cookie -> "auth_token".equals(cookie.getName()))
+                .findFirst()
+                .map(Cookie::getValue)
+                .orElse(null);
     }
 
     private Map<String, Object> extractClaims(User user) {
+        try {
+            if (user == null || user.getId() == null) {
+                throw new IllegalArgumentException("User or user ID is null");
+            }
 
-        Role[] rolesResponse = authzClient.getRolesByUserId(user.getId());
-        Permission[] permissionsResponse = authzClient.getPermissionsByUserId(user.getId());
+            Role[] rolesResponse = authzClient.getRolesByUserId(user.getId());
+            Permission[] permissionsResponse = authzClient.getPermissionsByUserId(user.getId());
 
-        List<String> roles = rolesResponse != null
-                ? Arrays.stream(rolesResponse)
-                .map(Role::name)
-                .map(r -> "ROLE_" + r.toUpperCase())
-                .toList()
-                : List.of();
+            if (rolesResponse == null) {
+                log.warn("No roles returned from authz-service for user: {}", user.getId());
+            }
+            if (permissionsResponse == null) {
+                log.warn("No permissions returned from authz-service for user: {}", user.getId());
+            }
 
-        List<String> permissions = permissionsResponse != null
-                ? Arrays.stream(permissionsResponse)
-                .map(Permission::name)
-                .map(p -> "PERM_" + p.toUpperCase())
-                .toList()
-                : List.of();
+            List<String> roles = rolesResponse != null
+                    ? Arrays.stream(rolesResponse)
+                    .filter(Objects::nonNull)
+                    .map(Role::name)
+                    .filter(name -> name != null && !name.isEmpty())
+                    .map(r -> "ROLE_" + r.toUpperCase())
+                    .distinct()
+                    .toList()
+                    : List.of();
 
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("roles", roles);
-        claims.put("permissions", permissions);
-        return claims;
+            List<String> permissions = permissionsResponse != null
+                    ? Arrays.stream(permissionsResponse)
+                    .filter(Objects::nonNull)
+                    .map(Permission::name)
+                    .filter(name -> name != null && !name.isEmpty())
+                    .map(p -> "PERM_" + p.toUpperCase())
+                    .distinct()
+                    .toList()
+                    : List.of();
+
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("roles", roles);
+            claims.put("permissions", permissions);
+            claims.put("userId", user.getId().toString());
+            return claims;
+
+        } catch (Exception e) {
+            log.error("Error extracting claims for user: {}", user.getId(), e);
+            // Zwracamy minimalne claims w przypadku błędu
+            return Map.of(
+                "roles", List.of(),
+                "permissions", List.of(),
+                "userId", user.getId().toString()
+            );
+        }
     }
 
     private JwtResponse generateTokens(User user, Map<String, Object> claims, String oldToken) {
+        try {
+            if (user == null) {
+                throw new UserOperationException("User cannot be null",
+                    UserOperationException.ErrorType.OPERATION_FAILED);
+            }
 
-        claims.put("userId", user.getId().toString());
+            Map<String, Object> enrichedClaims = new HashMap<>(claims);
+            enrichedClaims.put("userId", user.getId().toString());
+            enrichedClaims.put("username", user.getUsername());
+            enrichedClaims.put("email", user.getEmail());
+            enrichedClaims.put("created_at", Instant.now().toString());
 
-        String newAccessToken = jwtService.generateAccessToken(user.getUsername(), claims);
-        String newRefreshToken = jwtService.generateRefreshToken(user.getUsername());
+            String newAccessToken = jwtService.generateAccessToken(user.getUsername(), enrichedClaims);
+            String newRefreshToken = jwtService.generateRefreshToken(user.getUsername());
 
-        redisService.revokeRefreshToken(user.getUsername());
-        redisService.storeRefreshToken(user.getUsername(), newRefreshToken);
+            redisService.revokeRefreshToken(user.getUsername());
 
-        return new JwtResponse(newAccessToken, newRefreshToken);
+            if (oldToken != null && !oldToken.isEmpty()) {
+                redisService.saveTokenToBlacklist(oldToken);
+            }
+
+            redisService.storeRefreshToken(user.getUsername(), newRefreshToken);
+
+            log.debug("Generated new tokens for user: {}", user.getUsername());
+            return new JwtResponse(newAccessToken, newRefreshToken);
+        } catch (Exception e) {
+            assert user != null;
+            log.error("Failed to generate tokens for user: {}", user.getUsername(), e);
+            throw new UserOperationException("Token generation failed",
+                UserOperationException.ErrorType.OPERATION_FAILED, e);
+        }
     }
 }

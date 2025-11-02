@@ -86,7 +86,11 @@ public class JwtService {
     }
 
     public String extractAccessUsername(String token) {
-        return extractClaim(token, Claims::getSubject, accessKey);
+        try {
+            return extractClaim(token, Claims::getSubject, accessKey);
+        } catch (Exception e) {
+            throw new JwtException("Failed to extract username from access token", e);
+        }
     }
 
     public Date extractAccessExpiration(String token) {
@@ -95,7 +99,11 @@ public class JwtService {
 
 
     public String extractRefreshUsername(String token) {
-        return extractClaim(token, Claims::getSubject, refreshKey);
+        try {
+            return extractClaim(token, Claims::getSubject, refreshKey);
+        } catch (Exception e) {
+            throw new JwtException("Failed to extract username from refresh token", e);
+        }
     }
 
 
