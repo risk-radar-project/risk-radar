@@ -1,5 +1,6 @@
 package report_service.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -10,9 +11,12 @@ import org.springframework.web.bind.annotation.*;
 import report_service.dto.ReportRequest;
 import report_service.entity.Report;
 import report_service.entity.ReportStatus;
+import report_service.service.AuditLogClient;
 import report_service.service.ReportService;
 
+import java.security.Principal;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -20,13 +24,29 @@ import java.util.UUID;
 public class ReportController {
 
     private final ReportService reportService;
+    private final AuditLogClient auditLogClient;
 
     // ----------------- Tworzenie nowego raportu -----------------
 
     @PostMapping("/createReport")
-    public ResponseEntity<?> createReport(@RequestBody ReportRequest request) {
+    public ResponseEntity<?> createReport(@RequestBody ReportRequest request,
+                                          HttpServletRequest httpRequest, Principal principal) {
+        String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
+
         try {
             reportService.createReport(request);
+
+            auditLogClient.logAction(Map.of(
+                    "service", "report-service",
+                    "action", "create_report",
+                    "actor", getActor(principal, httpRequest),
+                    "status", "success",
+                    "log_type", "ACTION",
+                    "metadata", Map.of(
+                            "description", "Report created successfully",
+                            "user_agent", userAgent
+                    )
+            ));
 
             return ResponseEntity.status(HttpStatus.CREATED).body(
                     Map.of(
@@ -36,6 +56,19 @@ public class ReportController {
             );
 
         } catch (Exception e) {
+            auditLogClient.logAction(Map.of(
+                    "service", "report-service",
+                    "action", "create_report",
+                    "actor", getActor(principal, httpRequest),
+                    "status", "failure",
+                    "log_type", "ERROR",
+                    "metadata", Map.of(
+                            "description", "Failed to create report",
+                            "error", e.getMessage(),
+                            "user_agent", httpRequest.getHeader("User-Agent")
+                    )
+            ));
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     Map.of(
                             "message", "Failed to create report",
@@ -50,14 +83,42 @@ public class ReportController {
     @PatchMapping("/report/{id}/status")
     public ResponseEntity<?> updateReportStatus(
             @PathVariable UUID id,
-            @RequestParam ReportStatus status) {
+            @RequestParam ReportStatus status,
+            HttpServletRequest httpRequest, Principal principal) {
         try {
             reportService.updateReportStatus(id, status);
+
+            auditLogClient.logAction(Map.of(
+                    "service", "report-service",
+                    "action", "update_report_status",
+                    "actor", getActor(principal, httpRequest),
+                    "status", "success",
+                    "log_type", "ACTION",
+                    "metadata", Map.of(
+                            "description", "Report status updated for id: " + id,
+                            "new_status", status.toString(),
+                            "user_agent", httpRequest.getHeader("User-Agent")
+                    )
+            ));
+
             return ResponseEntity.ok(Map.of(
                     "message", "Report status updated",
                     "status", "success"
             ));
         } catch (Exception e) {
+            auditLogClient.logAction(Map.of(
+                    "service", "report-service",
+                    "action", "update_report_status",
+                    "actor", getActor(principal, httpRequest),
+                    "status", "failure",
+                    "log_type", "ERROR",
+                    "metadata", Map.of(
+                            "description", "Failed to update report status for id: " + id,
+                            "error", e.getMessage(),
+                            "user_agent", httpRequest.getHeader("User-Agent")
+                    )
+            ));
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     Map.of(
                             "message", "Failed to update report status",
@@ -90,11 +151,14 @@ public class ReportController {
             );
         }
     }
+
     @GetMapping("/report/{id}")
-    public ResponseEntity<?> getReportById(@PathVariable UUID id) {
+    public ResponseEntity<?> getReportById(
+            @PathVariable UUID id) {
         try {
             Report report = reportService.getReportById(id);
             return ResponseEntity.ok(report);
+
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                     Map.of(
@@ -114,7 +178,23 @@ public class ReportController {
         }
     }
 
+
+
+    private Map<String, Object> getActor(Principal principal, HttpServletRequest request) {
+        String actorId = (principal != null) ? principal.getName() : "anonymous";
+        String actorType = (principal != null) ? "user" : "system";
+        return Map.of(
+                "id", actorId,
+                "type", actorType,
+                "ip", getClientIp(request)
+        );
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xfHeader = request.getHeader("X-Forwarded-For");
+        if (xfHeader == null || xfHeader.isEmpty() || "unknown".equalsIgnoreCase(xfHeader)) {
+            return request.getRemoteAddr();
+        }
+        return xfHeader.split(",")[0];
+    }
 }
-
-
-
