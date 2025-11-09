@@ -5,6 +5,7 @@ x-global-env: &global-env
     AUDIT_LOG_SERVICE_PORT: 8082
     AI_CATEGORIZATION_SERVICE_PORT: 8083
     MEDIA_SERVICE_PORT: 8084
+    REPORT_SERVICE_PORT: 8085
     DOCS_SERVICE_PORT: 8000
     POSTGRES_PORT: 5432
     REDIS_PORT: 6379
@@ -108,7 +109,7 @@ services:
             - redis
         environment:
             <<: *global-env
-            HTTP_PORT: 8080
+            KAFKA_BROKERS: kafka:9092
         networks:
             - backend
         ports:
