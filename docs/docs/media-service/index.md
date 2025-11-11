@@ -161,6 +161,7 @@ Responses:
 
 Notes:
 
+- `X-User-ID` header is required; missing or blank identities result in `401 Unauthorized`.
 - Antivirus (if enabled) runs on original buffer; moderation runs on normalized content.
 - Derivatives `thumb` and `preview` are generated on upload.
 
@@ -241,16 +242,28 @@ Body (at least one field):
 - `alt`: string (owner or `media:update`)
 - `action`: `approve|reject|flag` (requires `media:moderate`)
 - `censor`: `{ strength: number }` full-image pixelation (requires `media:censor`)
+- `uncensor`: `true` restores the original master/variants (requires `media:censor`)
 
 Responses:
 
 - 200 OK: updated `MediaEntity`
 - 403 Forbidden: insufficient permissions
 - 404 Not Found
+Permissions:
+- Owners can keep their own temporary assets.
+- Non-owners must hold `media:update`.
+
 
 ---
 
 ### Delete
+
+Errors:
+- 400 on validation.
+- 401 when `X-User-ID` is missing.
+- 403 when caller lacks `media:update` for non-owned assets.
+
+- Emits `temporary_kept` audit event for every successful change.
 
 DELETE `/media/{id}`
 
@@ -261,12 +274,21 @@ Responses:
 - 204 No Content
 - 403 Forbidden (requires `media:delete`)
 - 404 Not Found
+Permissions:
+- Owners can reject (delete) their own temporary assets.
+- Non-owners must hold `media:delete`.
+
 
 ---
 
 ### Temporary Lifecycle
 
-POST `/media/temporary/keep`
+Errors:
+- 400 on validation.
+- 401 when `X-User-ID` is missing.
+- 403 when caller lacks `media:delete` for non-owned assets.
+
+- Emits `temporary_rejected` audit event when deletions occur.
 
 Body:
 ```json

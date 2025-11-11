@@ -28,4 +28,12 @@ describe("config", () => {
         expect(config.gc.enabled).toBe(false)
         expect(config.limits.maxBytes).toBe(123)
     })
+
+    it("prefers AUDIT_BASE_URL when provided", async () => {
+        process.env.HOSTNAME = "fallback-host"
+        process.env.AUDIT_LOG_SERVICE_PORT = "9999"
+        process.env.AUDIT_BASE_URL = "http://audit-log-service:8080"
+        const { config } = await import("../../../src/config/config.js")
+        expect(config.audit.baseUrl).toBe("http://audit-log-service:8080")
+    })
 })

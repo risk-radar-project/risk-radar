@@ -35,117 +35,10 @@ export const mediaController = {
     upload: [
         upload.single("file"),
         async (req: Request, res: Response) => {
-            const file = (req as any).file as Express.Multer.File | undefined
-            if (!file || !file.buffer) throw errors.validation(["Body: file is required"])
-
-            if (file.size > config.limits.maxBytes) throw errors.tooLarge("File exceeds size limit")
-
-            const { mime } = await detectMime(file.buffer)
-            if (!isAllowedMime(mime)) throw errors.unsupported("Only JPEG and PNG are allowed")
-
-            // Normalize to JPEG, keep dimensions (after rotate), strip metadata
-            const norm = await normalizeToJpeg(file.buffer, { jpegQuality: config.sizes.jpegQuality })
-
-            // Optional pixel limit
-            const pixels = (norm.info.width || 0) * (norm.info.height || 0)
-            if (pixels > config.limits.maxPixels) throw errors.tooLarge("Image dimensions too large")
-
-            // Hash on normalized bytes for stable dedup/cache
-            const contentHash = crypto.createHash("sha256").update(norm.bytes).digest("hex")
-
-            // Optional antivirus scan (stub). If enabled and detection occurs, reject with 422.
-            if (config.antivirus.enabled) {
-                const av = await scanBuffer(file.buffer)
-                if (av.detected) {
-                    throw errors.unprocessable("Antivirus detected a threat", {
-                        code: "AV_DETECTED",
-                        engine: av.engine
-                    })
-                }
-            }
-
-            // Moderation screening (OpenAI) if enabled
-            let status: ModerationStatus = "approved"
-            let moderationFlagged: boolean | null = null
-            let moderationDecisionTimeMs: number | null = null
-            if (config.moderation.enabled) {
-                const r = await moderateImage(norm.bytes)
-                moderationFlagged = r.flagged
-                moderationDecisionTimeMs = r.elapsedMs
-                if (r.flagged) status = "flagged"
-            }
-
-            const id = uuidv4()
-            const masterPath = await writeFileBuffered(config.mediaRoot, id, "master", norm.bytes)
-
-            // Variants
-            const thumb = await makeVariant(norm.bytes, {
-                maxSide: config.sizes.thumbMax,
-                jpegQuality: config.sizes.jpegQuality
-            })
-            const preview = await makeVariant(norm.bytes, {
-                maxSide: config.sizes.previewMax,
-                jpegQuality: config.sizes.jpegQuality
-            })
-            await writeFileBuffered(config.mediaRoot, id, "thumb", thumb)
-            await writeFileBuffered(config.mediaRoot, id, "preview", preview)
-
-            const ownerId = (req as any).userId as string | undefined
-
-            // Validate textual form fields (multer already parsed body strings)
-            const { error: bodyErr, value: bodyVal } = uploadBodySchema.validate(req.body, {
-                abortEarly: false,
-                convert: true,
-                stripUnknown: false
-            })
-            if (bodyErr) throw errors.validation(bodyErr.details.map(d => `Body: ${d.message}`))
-            const { error: queryErr, value: queryVal } = uploadQuerySchema.validate(req.query, {
-                abortEarly: false,
-                convert: true
-            })
-            if (queryErr) throw errors.validation(queryErr.details.map(d => `Query: ${d.message}`))
-
-            const visibility: Visibility = bodyVal.visibility || "owner"
-            const alt = sanitizeString(bodyVal.alt, config.limits.altMaxLen)
-            const originalName = file.originalname || null
-
-            // Temporary handling (from query or body)
-            const tempFlagRaw = queryVal.temporary ?? bodyVal.temporary
-            const isTemporary = parseBooleanFlexible(tempFlagRaw) || false
-            const expiresAt = isTemporary ? new Date(Date.now() + config.tempMediaTtlHours * 3600_000) : null
-
-            // Persist
-            const inserted = await db.query<MediaEntity>(
-                `INSERT INTO media_assets (
-                    id, owner_id, visibility, status, deleted, content_type, size_bytes, width, height, content_hash,
-                    original_filename, alt, tags, collection, moderation_flagged, moderation_decision_time_ms,
-                    is_temporary, expires_at, is_censored, censor_strength, censored_at
-                ) VALUES (
-                    $1,$2,$3,$4,false,$5,$6,$7,$8,$9,$10,$11,$12,NULL,$13,$14,$15,$16,false,NULL,NULL
-                ) RETURNING *`,
-                [
-                    id,
-                    ownerId,
-                    visibility,
-                    status,
-                    "image/jpeg",
-                    norm.bytes.length,
-                    norm.info.width,
-                    norm.info.height,
-                    contentHash,
-                    originalName,
-                    alt,
-                    null,
-                    moderationFlagged,
-                    moderationDecisionTimeMs,
-                    isTemporary,
-                    expiresAt
-                ]
-            )
-
+            const context = await prepareUploadContext(req)
+            const entity = await persistUpload(context)
             counters.uploads += 1
-            const entity = inserted.rows[0]
-            await emitAudit(auditEvents.mediaUploaded(ownerId, id, isTemporary))
+            await emitAudit(auditEvents.mediaUploaded(context.ownerId, context.id, context.isTemporary))
             return res.status(201).json(entity)
         }
     ],
@@ -319,7 +212,11 @@ export const mediaController = {
         let visibilityChangedTo: string | null = null
         if (typeof req.body?.visibility === "string") {
             const newVis = req.body.visibility as Visibility
-            if (!isOwner && !(await canUpdateOthers(userId))) throw errors.forbidden("Insufficient permissions")
+            if (!isOwner && !(await canUpdateOthers(userId)))
+                throw errors.forbidden("Insufficient permissions", {
+                    permission: "media:update",
+                    issue: "actor_not_owner"
+                })
             if (newVis !== m.visibility) {
                 visibilityChangedFrom = m.visibility
                 visibilityChangedTo = newVis
@@ -329,7 +226,11 @@ export const mediaController = {
         }
         if (typeof req.body?.alt === "string") {
             const altSan = sanitizeString(req.body.alt, config.limits.altMaxLen)
-            if (!isOwner && !(await canUpdateOthers(userId))) throw errors.forbidden("Insufficient permissions")
+            if (!isOwner && !(await canUpdateOthers(userId)))
+                throw errors.forbidden("Insufficient permissions", {
+                    permission: "media:update",
+                    issue: "actor_not_owner"
+                })
             if (altSan !== m.alt) {
                 updates.push(`alt=$${p++}`)
                 params.push(altSan)
@@ -338,7 +239,11 @@ export const mediaController = {
 
         // Moderation action
         if (typeof req.body?.action === "string") {
-            if (!(await canModerate(userId))) throw errors.forbidden("Insufficient permissions")
+            if (!(await canModerate(userId)))
+                throw errors.forbidden("Insufficient permissions", {
+                    permission: "media:moderate",
+                    issue: "missing_permission"
+                })
             const action = req.body.action as "approve" | "reject" | "flag"
             const from = m.status
             let to: ModerationStatus = m.status
@@ -354,7 +259,11 @@ export const mediaController = {
 
         // Manual censor: always full-image
         if (req.body?.censor) {
-            if (!(await canCensor(userId))) throw errors.forbidden("Insufficient permissions")
+            if (!(await canCensor(userId)))
+                throw errors.forbidden("Insufficient permissions", {
+                    permission: "media:censor",
+                    issue: "missing_permission"
+                })
             let strength = Number(req.body?.censor?.strength) || config.censor.defaultStrength
             if (strength < config.censor.minStrength) strength = config.censor.minStrength
             if (strength > config.censor.maxStrength) strength = config.censor.maxStrength
@@ -387,7 +296,11 @@ export const mediaController = {
 
         // Uncensor: revert to original master and rebuild variants
         if (req.body?.uncensor === true) {
-            if (!(await canCensor(userId))) throw errors.forbidden("Insufficient permissions")
+            if (!(await canCensor(userId)))
+                throw errors.forbidden("Insufficient permissions", {
+                    permission: "media:censor",
+                    issue: "missing_permission"
+                })
             const master = await readFile(config.mediaRoot, id, "master")
             if (!master) throw errors.notFound("Media content missing")
             try {
@@ -438,7 +351,11 @@ export const mediaController = {
         const m = q.rows[0]
         if (!m) throw errors.notFound("Media not found")
         const userId = (req as any).userId as string | undefined
-        if (!(await canDelete(userId))) throw errors.forbidden("Insufficient permissions")
+        if (!(await canDelete(userId)))
+            throw errors.forbidden("Insufficient permissions", {
+                permission: "media:delete",
+                issue: "missing_permission"
+            })
 
         await deleteFiles(config.mediaRoot, id)
         await db.query("UPDATE media_assets SET deleted=true, deleted_at=now(), updated_at=now() WHERE id=$1", [id])
@@ -452,11 +369,28 @@ export const mediaController = {
         const { error: bulkErr, value: bulkVal } = bulkIdsSchema.validate(req.body, { abortEarly: false })
         if (bulkErr) throw errors.validation(bulkErr.details.map(d => `Body: ${d.message}`))
         const ids: string[] = bulkVal.ids
+        const userId = requireUserId(req)
+        const canUpdateAll = await canUpdateOthers(userId)
         const placeholders = ids.map((_, i) => `$${i + 1}`).join(",")
-        const sql = `UPDATE media_assets SET is_temporary=false, expires_at=NULL, updated_at=now() WHERE is_temporary=true AND deleted=false AND id IN (${placeholders}) RETURNING id`
-        const r = await db.query<{ id: string }>(sql, ids)
+        const existing = await db.query<Pick<MediaEntity, "id" | "owner_id">>(
+            `SELECT id, owner_id FROM media_assets WHERE deleted=false AND id IN (${placeholders})`,
+            ids
+        )
+        if (!existing.rows.length) return res.status(200).json({ kept: [], requested: ids })
+        const unauthorized = existing.rows.filter(row => row.owner_id !== userId && !canUpdateAll)
+        if (unauthorized.length) {
+            throw errors.forbidden("Insufficient permissions", {
+                permission: "media:update",
+                issue: "owner_mismatch",
+                ids: unauthorized.map(r => r.id)
+            })
+        }
+        const allowedIds = existing.rows.map(r => r.id)
+        const updPlaceholders = allowedIds.map((_, i) => `$${i + 1}`).join(",")
+        const sql = `UPDATE media_assets SET is_temporary=false, expires_at=NULL, updated_at=now() WHERE is_temporary=true AND deleted=false AND id IN (${updPlaceholders}) RETURNING id`
+        const r = await db.query<{ id: string }>(sql, allowedIds)
         const kept = r.rows.map(r => r.id)
-        if (kept.length) await emitAudit(auditEvents.temporaryKept((req as any).userId, kept))
+        if (kept.length) await emitAudit(auditEvents.temporaryKept(userId, kept))
         return res.status(200).json({ kept, requested: ids })
     },
 
@@ -464,23 +398,36 @@ export const mediaController = {
         const { error: bulkErr2, value: bulkVal2 } = bulkIdsSchema.validate(req.body, { abortEarly: false })
         if (bulkErr2) throw errors.validation(bulkErr2.details.map(d => `Body: ${d.message}`))
         const ids: string[] = bulkVal2.ids
+        const userId = requireUserId(req)
+        const canDeleteAll = await canDelete(userId)
         const placeholders = ids.map((_, i) => `$${i + 1}`).join(",")
-        const existing = await db.query<MediaEntity>(
-            `SELECT * FROM media_assets WHERE id IN (${placeholders}) AND deleted=false`,
+        const existing = await db.query<Pick<MediaEntity, "id" | "owner_id" | "deleted">>(
+            `SELECT id, owner_id, deleted FROM media_assets WHERE id IN (${placeholders})`,
             ids
         )
         if (!existing.rows.length) return res.status(200).json({ rejected: [], requested: ids })
+        const unauthorized = existing.rows.filter(row => !row.deleted && row.owner_id !== userId && !canDeleteAll)
+        if (unauthorized.length) {
+            throw errors.forbidden("Insufficient permissions", {
+                permission: "media:delete",
+                issue: "owner_mismatch",
+                ids: unauthorized.map(r => r.id)
+            })
+        }
+        const targetIds = existing.rows.filter(row => !row.deleted).map(row => row.id)
+        if (!targetIds.length) return res.status(200).json({ rejected: [], requested: ids })
+        const updPlaceholders = targetIds.map((_, i) => `$${i + 1}`).join(",")
         const upd = await db.query(
-            `UPDATE media_assets SET deleted=true, deleted_at=now(), updated_at=now() WHERE id IN (${placeholders}) RETURNING id`,
-            ids
+            `UPDATE media_assets SET deleted=true, deleted_at=now(), updated_at=now() WHERE id IN (${updPlaceholders}) RETURNING id`,
+            targetIds
         )
-        for (const row of existing.rows) {
+        for (const row of existing.rows.filter(r => targetIds.includes(r.id))) {
             try {
                 await deleteFiles(config.mediaRoot, row.id)
-            } catch {}
+            } catch { }
         }
         const rejected = upd.rows.map((r: any) => r.id)
-        if (rejected.length) await emitAudit(auditEvents.temporaryRejected((req as any).userId, rejected))
+        if (rejected.length) await emitAudit(auditEvents.temporaryRejected(userId, rejected))
         return res.status(200).json({ rejected, requested: ids })
     }
 }
@@ -577,6 +524,179 @@ function makeEtag(bytes: Buffer): string {
     return 'W/"' + h + '"'
 }
 
+function requireUserId(req: Request): string {
+    const userId = (req as any).userId as string | undefined
+    if (!userId) {
+        throw errors.unauthorized("Missing user identity", { header: "X-User-ID", issue: "missing" })
+    }
+    if (userId.length > 128) {
+        throw errors.unauthorized("Invalid user identity", { header: "X-User-ID", issue: "too_long" })
+    }
+    return userId
+}
+
+type UploadContext = {
+    ownerId: string
+    file: Express.Multer.File
+    visibility: Visibility
+    alt: string | null
+    isTemporary: boolean
+    expiresAt: Date | null
+    normalized: {
+        bytes: Buffer
+        width: number | null
+        height: number | null
+        contentHash: string
+    }
+    moderation: {
+        status: ModerationStatus
+        flagged: boolean | null
+        decisionTimeMs: number | null
+    }
+    originalName: string | null
+    id: string
+}
+
+async function prepareUploadContext(req: Request): Promise<UploadContext> {
+    const ownerId = requireUserId(req)
+    const file = (req as any).file as Express.Multer.File | undefined
+    if (!file || !file.buffer) throw errors.validation(["Body: file is required"])
+    if (file.size > config.limits.maxBytes) throw errors.tooLarge("File exceeds size limit")
+
+    const { error: bodyErr, value: bodyVal } = uploadBodySchema.validate(req.body, {
+        abortEarly: false,
+        convert: true,
+        stripUnknown: false
+    })
+    if (bodyErr) throw errors.validation(bodyErr.details.map(d => `Body: ${d.message}`))
+    const { error: queryErr, value: queryVal } = uploadQuerySchema.validate(req.query, {
+        abortEarly: false,
+        convert: true
+    })
+    if (queryErr) throw errors.validation(queryErr.details.map(d => `Query: ${d.message}`))
+
+    const visibility: Visibility = bodyVal.visibility || "owner"
+    const alt = sanitizeString(bodyVal.alt, config.limits.altMaxLen)
+
+    const tempFlagRaw = queryVal.temporary ?? bodyVal.temporary
+    const isTemporary = parseBooleanFlexible(tempFlagRaw) || false
+    const expiresAt = isTemporary ? new Date(Date.now() + config.tempMediaTtlHours * 3600_000) : null
+
+    const { mime } = await detectMime(file.buffer)
+    if (!isAllowedMime(mime)) throw errors.unsupported("Only JPEG and PNG are allowed")
+
+    const norm = await normalizeToJpeg(file.buffer, { jpegQuality: config.sizes.jpegQuality })
+    const pixels = (norm.info.width || 0) * (norm.info.height || 0)
+    if (pixels > config.limits.maxPixels) throw errors.tooLarge("Image dimensions too large")
+    const contentHash = crypto.createHash("sha256").update(norm.bytes).digest("hex")
+
+    if (config.antivirus.enabled) {
+        const av = await scanBuffer(file.buffer)
+        if (av.detected) {
+            throw errors.unprocessable("Antivirus detected a threat", {
+                code: "AV_DETECTED",
+                engine: av.engine
+            })
+        }
+    }
+
+    let status: ModerationStatus = "approved"
+    let moderationFlagged: boolean | null = null
+    let moderationDecisionTimeMs: number | null = null
+    if (config.moderation.enabled) {
+        const r = await moderateImage(norm.bytes)
+        moderationFlagged = r.flagged
+        moderationDecisionTimeMs = r.elapsedMs
+        if (r.flagged) status = "flagged"
+    }
+
+    const id = uuidv4()
+
+    return {
+        ownerId,
+        file,
+        visibility,
+        alt,
+        isTemporary,
+        expiresAt,
+        normalized: {
+            bytes: norm.bytes,
+            width: norm.info.width ?? null,
+            height: norm.info.height ?? null,
+            contentHash
+        },
+        moderation: {
+            status,
+            flagged: moderationFlagged,
+            decisionTimeMs: moderationDecisionTimeMs
+        },
+        originalName: file.originalname || null,
+        id
+    }
+}
+
+async function persistUpload(context: UploadContext): Promise<MediaEntity> {
+    const { id, ownerId, visibility, normalized, moderation, isTemporary, expiresAt, originalName, alt } = context
+    let staged = false
+    try {
+        const thumb = await makeVariant(normalized.bytes, {
+            maxSide: config.sizes.thumbMax,
+            jpegQuality: config.sizes.jpegQuality
+        })
+        const preview = await makeVariant(normalized.bytes, {
+            maxSide: config.sizes.previewMax,
+            jpegQuality: config.sizes.jpegQuality
+        })
+        await writeFileBuffered(config.mediaRoot, id, "master", normalized.bytes)
+        staged = true
+        await writeFileBuffered(config.mediaRoot, id, "thumb", thumb)
+        await writeFileBuffered(config.mediaRoot, id, "preview", preview)
+
+        const inserted = await db.query<MediaEntity>(
+            `INSERT INTO media_assets (
+                id, owner_id, visibility, status, deleted, content_type, size_bytes, width, height, content_hash,
+                original_filename, alt, tags, collection, moderation_flagged, moderation_decision_time_ms,
+                is_temporary, expires_at, is_censored, censor_strength, censored_at
+            ) VALUES (
+                $1,$2,$3,$4,false,$5,$6,$7,$8,$9,$10,$11,$12,NULL,$13,$14,$15,$16,false,NULL,NULL
+            ) RETURNING *`,
+            [
+                id,
+                ownerId,
+                visibility,
+                moderation.status,
+                "image/jpeg",
+                normalized.bytes.length,
+                normalized.width,
+                normalized.height,
+                normalized.contentHash,
+                originalName,
+                alt,
+                null,
+                moderation.flagged,
+                moderation.decisionTimeMs,
+                isTemporary,
+                expiresAt
+            ]
+        )
+        return inserted.rows[0]
+    } catch (err) {
+        if (staged) {
+            await cleanupStagedFiles(id)
+        }
+        throw err
+    }
+}
+
+async function cleanupStagedFiles(id: string): Promise<void> {
+    try {
+        await deleteFiles(config.mediaRoot, id)
+    } catch (cleanupErr) {
+        const cleanupMessage = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)
+        logger.warn("upload_cleanup_failed", { mediaId: id, error: cleanupMessage })
+    }
+}
+
 /** Check elevated permission to view all assets (delegated to authz service). */
 async function canViewAll(userId: string): Promise<boolean> {
     // efficient path for variant serving
@@ -601,7 +721,7 @@ async function servePlaceholder(res: Response, kind: "flagged" | "deleted" | "fo
             res.setHeader("Content-Type", "image/jpeg")
             setNoStoreHeaders(res)
             return res.status(200).end(bytes)
-        } catch {}
+        } catch { }
     }
     const base64 =
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAANSURBVBhXY/j///9/AAn7A/0FQ0XKAAAAAElFTkSuQmCC"
