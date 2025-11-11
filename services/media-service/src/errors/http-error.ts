@@ -12,11 +12,17 @@ export class HttpError extends Error {
     }
 }
 
+const shapeDetails = (reason: string, meta?: Record<string, unknown>) => (meta ? { reason, ...meta } : reason)
+
 /** Convenience creators for common HTTP error shapes. */
 export const errors = {
     validation: (details: string[] | string) => new HttpError(400, "Validation failed", "VALIDATION_ERROR", details),
-    notFound: (message = "Not found") => new HttpError(404, "Not found", "NOT_FOUND", message),
-    forbidden: (message = "Forbidden") => new HttpError(403, "Forbidden", "FORBIDDEN", message),
+    unauthorized: (reason = "Authentication required", meta?: Record<string, unknown>) =>
+        new HttpError(401, "Unauthorized", "UNAUTHORIZED", shapeDetails(reason, meta)),
+    notFound: (reason = "Not found", meta?: Record<string, unknown>) =>
+        new HttpError(404, "Not found", "NOT_FOUND", shapeDetails(reason, meta)),
+    forbidden: (reason = "Forbidden", meta?: Record<string, unknown>) =>
+        new HttpError(403, "Forbidden", "FORBIDDEN", shapeDetails(reason, meta)),
     unsupported: (message = "Unsupported media type") => new HttpError(415, message, "UNSUPPORTED_MEDIA_TYPE"),
     tooLarge: (message = "Payload too large") => new HttpError(413, message, "PAYLOAD_TOO_LARGE"),
     unprocessable: (message = "Unprocessable entity", details?: unknown) =>

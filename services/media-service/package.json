@@ -3,12 +3,12 @@
     "version": "0.1.0",
     "private": true,
     "type": "module",
-    "main": "dist/server.js",
+    "main": "dist/src/server.js",
     "scripts": {
         "build": "tsc -p tsconfig.json",
-        "start": "node dist/server.js",
+        "start": "node dist/src/server.js",
         "dev": "tsx watch src/server.ts",
-        "migrate": "node dist/db/migrate.js",
+        "migrate": "node dist/src/db/migrate.js",
         "test": "jest --runInBand",
         "format": "prettier --write .",
         "format:check": "prettier --check ."

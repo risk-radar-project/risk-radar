@@ -118,6 +118,7 @@ describe("Media extended integration", () => {
     it("rejects invalid visibility enum on upload", async () => {
         const bad = await request(app)
             .post("/media")
+            .set("X-User-ID", "user-1")
             .attach("file", png(), { filename: "v.png", contentType: "image/png" })
             .field("visibility", "INVALID_ENUM")
         expect(bad.status).toBe(400)
@@ -177,6 +178,7 @@ describe("Media extended integration", () => {
         // Upload approved media
         const up = await request(app)
             .post("/media")
+            .set("X-User-ID", "owner-censor")
             .attach("file", png(), { filename: "c.png", contentType: "image/png" })
             .field("visibility", "public")
         expect(up.status).toBe(201)
@@ -216,6 +218,7 @@ describe("Media extended integration", () => {
         // Upload public media
         const up2 = await request(app)
             .post("/media")
+            .set("X-User-ID", "owner-uncensor")
             .attach("file", png(), { filename: "uc.png", contentType: "image/png" })
             .field("visibility", "public")
         expect(up2.status).toBe(201)

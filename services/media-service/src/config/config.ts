@@ -57,7 +57,7 @@ const toList = (v: string | undefined) =>
             .split(",")
             .map(s => s.trim())
             .filter(Boolean)
-    :   []
+        : []
 const toAcks = (v: string | undefined): -1 | 0 | 1 => {
     if (v === "0") return 0
     if (v === "1") return 1
@@ -141,7 +141,7 @@ export const config: ServiceConfig = {
         }
     },
     audit: {
-        baseUrl: normalizeBaseUrl(undefined, serviceBaseUrl(process.env.AUDIT_LOG_SERVICE_PORT, 8082)),
+        baseUrl: normalizeBaseUrl(process.env.AUDIT_BASE_URL, serviceBaseUrl(process.env.AUDIT_LOG_SERVICE_PORT, 8082)),
         timeoutMs: toInt(process.env.AUDIT_TIMEOUT_MS, 1500),
         retries: toInt(process.env.AUDIT_RETRIES, 2),
         breaker: {
