@@ -63,9 +63,9 @@ func main() {
 	permissionService := services.NewPermissionService(permissionRepo)
 
 	// Initialize handlers
-	roleHandler := apphandlers.NewRoleHandler(roleService)
+	roleHandler := apphandlers.NewRoleHandler(roleService, authzService)
 	authzHandler := apphandlers.NewAuthzHandler(authzService)
-	permissionHandler := apphandlers.NewPermissionHandler(permissionService)
+	permissionHandler := apphandlers.NewPermissionHandler(permissionService, authzService)
 	healthHandler := apphandlers.NewHealthHandler(database.DB)
 
 	// Setup router

@@ -2,6 +2,7 @@ package services
 
 import (
 	"authz-service/internal/db"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -32,6 +33,30 @@ type UpdateRoleRequest struct {
 type Permission struct {
 	Action   string `json:"action"`
 	Resource string `json:"resource"`
+}
+
+// ErrPermissionNotFound indicates that a referenced permission does not exist in the catalog.
+var ErrPermissionNotFound = errors.New("permission not found")
+
+// PermissionNotFoundError provides context about a missing permission reference.
+type PermissionNotFoundError struct {
+	Resource string
+	Action   string
+}
+
+// Error implements the error interface.
+func (e *PermissionNotFoundError) Error() string {
+	return fmt.Sprintf("permission not found: %s:%s", e.Resource, e.Action)
+}
+
+// Is enables errors.Is comparisons against ErrPermissionNotFound.
+func (e *PermissionNotFoundError) Is(target error) bool {
+	return target == ErrPermissionNotFound
+}
+
+// Key returns the canonical permission identifier.
+func (e *PermissionNotFoundError) Key() string {
+	return fmt.Sprintf("%s:%s", e.Resource, e.Action)
 }
 
 // NewRoleService creates a new role service
@@ -96,6 +121,11 @@ func (s *RoleService) CreateRole(req CreateRoleRequest) (*db.RoleWithPermissions
 		return nil, err
 	}
 
+	resolvedPermissions, err := s.resolvePermissions(req.Permissions)
+	if err != nil {
+		return nil, err
+	}
+
 	// Check if role already exists
 	existingRole, err := s.roleRepo.GetByName(req.Name)
 	if err != nil {
@@ -112,31 +142,12 @@ func (s *RoleService) CreateRole(req CreateRoleRequest) (*db.RoleWithPermissions
 	}
 
 	// Create permissions - assign existing permissions to the role
-	var permissions []db.Permission
-	for _, perm := range req.Permissions {
-		// Find the permission by action and resource
-		allPermissions, err := s.permissionRepo.GetAll()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get permissions: %w", err)
-		}
-
-		var permissionID *uuid.UUID
-		for _, p := range allPermissions {
-			if p.Action == perm.Action && p.Resource == perm.Resource {
-				permissionID = &p.ID
-				permissions = append(permissions, p)
-				break
-			}
-		}
-
-		if permissionID == nil {
-			return nil, fmt.Errorf("permission not found: %s:%s", perm.Action, perm.Resource)
-		}
-
-		// Assign permission to role
-		if err := s.permissionRepo.AssignToRole(role.ID, *permissionID); err != nil {
+	permissions := make([]db.Permission, 0, len(resolvedPermissions))
+	for _, perm := range resolvedPermissions {
+		if err := s.permissionRepo.AssignToRole(role.ID, perm.ID); err != nil {
 			return nil, fmt.Errorf("failed to assign permission to role: %w", err)
 		}
+		permissions = append(permissions, perm)
 	}
 
 	result := &db.RoleWithPermissions{
@@ -151,6 +162,11 @@ func (s *RoleService) CreateRole(req CreateRoleRequest) (*db.RoleWithPermissions
 func (s *RoleService) UpdateRole(roleID uuid.UUID, req UpdateRoleRequest) (*db.RoleWithPermissions, error) {
 	// Validate input
 	if err := s.validateRoleRequest(req.Name, req.Permissions); err != nil {
+		return nil, err
+	}
+
+	resolvedPermissions, err := s.resolvePermissions(req.Permissions)
+	if err != nil {
 		return nil, err
 	}
 
@@ -175,31 +191,12 @@ func (s *RoleService) UpdateRole(roleID uuid.UUID, req UpdateRoleRequest) (*db.R
 	}
 
 	// Assign new permissions - assign existing permissions to the role
-	var permissions []db.Permission
-	for _, perm := range req.Permissions {
-		// Find the permission by action and resource
-		allPermissions, err := s.permissionRepo.GetAll()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get permissions: %w", err)
-		}
-
-		var permissionID *uuid.UUID
-		for _, p := range allPermissions {
-			if p.Action == perm.Action && p.Resource == perm.Resource {
-				permissionID = &p.ID
-				permissions = append(permissions, p)
-				break
-			}
-		}
-
-		if permissionID == nil {
-			return nil, fmt.Errorf("permission not found: %s:%s", perm.Action, perm.Resource)
-		}
-
-		// Assign permission to role
-		if err := s.permissionRepo.AssignToRole(role.ID, *permissionID); err != nil {
+	permissions := make([]db.Permission, 0, len(resolvedPermissions))
+	for _, perm := range resolvedPermissions {
+		if err := s.permissionRepo.AssignToRole(role.ID, perm.ID); err != nil {
 			return nil, fmt.Errorf("failed to assign permission to role: %w", err)
 		}
+		permissions = append(permissions, perm)
 	}
 
 	result := &db.RoleWithPermissions{
@@ -245,4 +242,44 @@ func (s *RoleService) validateRoleRequest(name string, permissions []Permission)
 	}
 
 	return nil
+}
+
+func (s *RoleService) resolvePermissions(requested []Permission) ([]db.Permission, error) {
+	if len(requested) == 0 {
+		return make([]db.Permission, 0), nil
+	}
+
+	allPermissions, err := s.permissionRepo.GetAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get permissions: %w", err)
+	}
+
+	catalog := make(map[string]db.Permission, len(allPermissions))
+	for _, perm := range allPermissions {
+		key := strings.ToLower(fmt.Sprintf("%s:%s", strings.TrimSpace(perm.Resource), strings.TrimSpace(perm.Action)))
+		catalog[key] = perm
+	}
+
+	resolved := make([]db.Permission, 0, len(requested))
+	seen := make(map[uuid.UUID]struct{}, len(requested))
+
+	for _, reqPerm := range requested {
+		resource := strings.TrimSpace(reqPerm.Resource)
+		action := strings.TrimSpace(reqPerm.Action)
+		key := strings.ToLower(fmt.Sprintf("%s:%s", resource, action))
+
+		perm, ok := catalog[key]
+		if !ok {
+			return nil, &PermissionNotFoundError{Resource: resource, Action: action}
+		}
+
+		if _, exists := seen[perm.ID]; exists {
+			continue
+		}
+
+		resolved = append(resolved, perm)
+		seen[perm.ID] = struct{}{}
+	}
+
+	return resolved, nil
 }

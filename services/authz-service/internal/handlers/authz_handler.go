@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"authz-service/internal/audit"
 	"authz-service/internal/services"
@@ -30,10 +31,13 @@ func NewAuthzHandler(authzService services.AuthzServiceInterface) *AuthzHandler 
 
 // HasPermission handles GET /has-permission
 func (h *AuthzHandler) HasPermission(w http.ResponseWriter, r *http.Request) {
-	// Get userId from X-User-ID header (set by api-gateway)
-	userIDStr := r.Header.Get("X-User-ID")
+	userIDStr := strings.TrimSpace(r.Header.Get("X-User-ID"))
 	if userIDStr == "" {
-		utils.WriteError(w, http.StatusBadRequest, "X-User-ID header is required", nil)
+		userIDStr = strings.TrimSpace(r.URL.Query().Get("userId"))
+	}
+
+	if userIDStr == "" {
+		utils.WriteError(w, http.StatusBadRequest, "userId query parameter or X-User-ID header is required", nil)
 		return
 	}
 
@@ -49,14 +53,25 @@ func (h *AuthzHandler) HasPermission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get permission from query parameter
-	permission := r.URL.Query().Get("permission")
+	query := r.URL.Query()
+	resourceParam := strings.TrimSpace(query.Get("resource"))
+	actionParam := strings.TrimSpace(query.Get("action"))
+	permission := strings.TrimSpace(query.Get("permission"))
+
+	switch {
+	case permission != "":
+		// use as-is
+	case resourceParam != "" && actionParam != "":
+		permission = resourceParam + ":" + actionParam
+	case actionParam != "":
+		permission = actionParam
+	}
+
 	if permission == "" {
-		utils.WriteError(w, http.StatusBadRequest, "permission query parameter is required", nil)
+		utils.WriteError(w, http.StatusBadRequest, "permission query parameter or action parameter is required", nil)
 		return
 	}
 
-	// Validate permission format and length
 	if len(permission) > 200 {
 		utils.WriteError(w, http.StatusBadRequest, "permission parameter too long", nil)
 		return
@@ -145,6 +160,11 @@ func (h *AuthzHandler) AssignRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	actorID, ok := authorizeMutation(r, w, h.authzService, permissionRolesAssign)
+	if !ok {
+		return
+	}
+
 	var rawReq map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&rawReq); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid request body", err)
@@ -190,11 +210,7 @@ func (h *AuthzHandler) AssignRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	actorID := r.Header.Get("X-User-ID")
-	if actorID == "" {
-		actorID = userID.String()
-	}
-	audit.UserRoleLink("assign", actorID, userID.String(), req.RoleID.String(), map[string]any{"ip": r.RemoteAddr})
+	audit.UserRoleLink("assign", actorID.String(), userID.String(), req.RoleID.String(), map[string]any{"ip": r.RemoteAddr})
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -229,6 +245,11 @@ func (h *AuthzHandler) RemoveRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	actorID, ok := authorizeMutation(r, w, h.authzService, permissionRolesAssign)
+	if !ok {
+		return
+	}
+
 	if err := h.authzService.RemoveRole(userID, roleID); err != nil {
 		if err.Error() == "user role assignment not found" {
 			utils.WriteError(w, http.StatusNotFound, "User role assignment not found", err)
@@ -237,11 +258,7 @@ func (h *AuthzHandler) RemoveRole(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to remove role", err)
 		return
 	}
-	actorID := r.Header.Get("X-User-ID")
-	if actorID == "" {
-		actorID = userID.String()
-	}
-	audit.UserRoleLink("remove", actorID, userID.String(), roleID.String(), map[string]any{"ip": r.RemoteAddr})
+	audit.UserRoleLink("remove", actorID.String(), userID.String(), roleID.String(), map[string]any{"ip": r.RemoteAddr})
 
 	w.WriteHeader(http.StatusNoContent)
 }

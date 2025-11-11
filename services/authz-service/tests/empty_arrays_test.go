@@ -110,7 +110,7 @@ func TestEmptyArraysNotNull(t *testing.T) {
 		roleRepo := NewMockRoleRepository()
 		permissionRepo := NewMockPermissionRepository()
 		roleService := services.NewRoleService(roleRepo, permissionRepo)
-		handler := apphandlers.NewRoleHandler(roleService)
+		handler := apphandlers.NewRoleHandler(roleService, NewMockAuthorizationService())
 
 		// Act
 		req := httptest.NewRequest("GET", "/roles", nil)
