@@ -202,6 +202,15 @@ The Authorization Service provides a RESTful API for managing roles, permissions
 | `POST` | `/users/{userId}/roles` | Assign role to user |
 | `DELETE` | `/users/{userId}/roles/{roleId}` | Remove role from user |
 
+> **Security enforcement:** Every mutating endpoint (POST/PUT/DELETE) requires the `X-User-ID` header and enforces RBAC centrally.
+> - `roles:edit` is required for role creation, updates, and deletion.
+> - `permissions:manage` is required for permission catalog mutations.
+> - `roles:assign` is required for assigning or removing user roles.
+> Requests without the required grant receive `403 Forbidden`.
+
+> **Error payloads:** The `error` field now exposes sanitized codes (e.g. `invalid_request`, `forbidden`, `conflict`, `internal_server_error`).
+> Detailed stack traces remain in structured audit logs only.
+
 ---
 
 ### Health Check
@@ -725,10 +734,15 @@ No response body. The permission and all its role assignments have been successf
 Checks if a user has a specific permission.
 
 **Headers:**
-- `X-User-ID` (required): UUID of the user
+- `X-User-ID` (optional): UUID of the actor; required when `userId` query parameter is omitted
 
 **Query Parameters:**
-- `permission` (required): Permission in format "resource:action" (e.g., "reports:read", "ai:chat")
+- `userId` (required*): UUID of the user being evaluated (*canonical contract; header fallback allowed for gateway-injected identity)
+- `action` (required*): Permission identifier (e.g., `reports:read`); when combined with `resource`, forms `resource:action`
+- `resource` (optional): Resource segment; combine with `action` to form `resource:action`
+- `permission` (optional): Backward-compatible alias for supplying `resource:action` directly
+
+> **Integration note:** The shared platform contract relies on query parameters `userId` and `action`. `X-User-ID` remains supported for gateway-proxied calls but should not replace the canonical query-string integration.
 
 **Response 200 OK:**
 ```json
@@ -737,28 +751,28 @@ Checks if a user has a specific permission.
 }
 ```
 
-**Response 400 Bad Request (missing header):**
+**Response 400 Bad Request (missing actor):**
 ```json
 {
-  "error": "",
+  "error": "invalid_request",
   "code": 400,
-  "message": "X-User-ID header is required"
+  "message": "userId query parameter or X-User-ID header is required"
 }
 ```
 
 **Response 400 Bad Request (missing permission):**
 ```json
 {
-  "error": "",
+  "error": "invalid_request",
   "code": 400,
-  "message": "permission query parameter is required"
+  "message": "permission query parameter or action parameter is required"
 }
 ```
 
 **Response 400 Bad Request (invalid UUID):**
 ```json
 {
-  "error": "validation error in field 'uuid': UUID must be exactly 36 characters long",
+  "error": "invalid_request",
   "code": 400,
   "message": "Invalid user ID format"
 }
@@ -835,6 +849,9 @@ Assigns a role to a user.
 **Parameters:**
 - `userId` (path, required): UUID of the user
 
+**Headers:**
+- `X-User-ID` (required): Acting user UUID; must hold `roles:assign`
+
 **Request Body:**
 ```json
 {
@@ -848,9 +865,18 @@ No response body.
 **Response 400 Bad Request:**
 ```json
 {
-  "error": "role_id is required",
+  "error": "invalid_request",
   "code": 400,
   "message": "role_id is required"
+}
+```
+
+**Response 403 Forbidden:**
+```json
+{
+  "error": "forbidden",
+  "code": 403,
+  "message": "Insufficient permissions"
 }
 ```
 
@@ -864,13 +890,16 @@ Removes a role assignment from a user.
 - `userId` (path, required): UUID of the user
 - `roleId` (path, required): UUID of the role to remove
 
+**Headers:**
+- `X-User-ID` (required): Acting user UUID; must hold `roles:assign`
+
 **Response 204 No Content:**
 No response body.
 
 **Response 404 Not Found:**
 ```json
 {
-  "error": "user role assignment not found",
+  "error": "not_found",
   "code": 404,
   "message": "User role assignment not found"
 }
@@ -891,11 +920,16 @@ The API returns consistent error responses:
 
 All error responses include:
 
-- `error`: Detailed error message
+- `error`: Sanitized error code (`invalid_request`, `forbidden`, `conflict`, etc.)
 
 - `code`: HTTP status code
 
 - `message`: User-friendly error description
+
+
+### Change Log
+
+- **2025-11-11:** Aligned `/has-permission` documentation with the shared specification (query parameters as the canonical contract, header accepted for gateway compatibility). Added RBAC error sanitization details and clarified permission validation behaviour for role mutations.
 
 
 ---

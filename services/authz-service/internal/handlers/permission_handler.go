@@ -1,13 +1,14 @@
 package handlers
 
 import (
+	"encoding/json"
+	"net/http"
+	"strings"
+
 	"authz-service/internal/audit"
 	"authz-service/internal/services"
 	"authz-service/internal/utils"
 	"authz-service/internal/validation"
-	"encoding/json"
-	"net/http"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -16,12 +17,14 @@ import (
 // PermissionHandler handles HTTP requests for permission operations
 type PermissionHandler struct {
 	permissionService services.PermissionServiceInterface
+	authzService      services.AuthzServiceInterface
 }
 
 // NewPermissionHandler creates a new permission handler
-func NewPermissionHandler(permissionService services.PermissionServiceInterface) *PermissionHandler {
+func NewPermissionHandler(permissionService services.PermissionServiceInterface, authzService services.AuthzServiceInterface) *PermissionHandler {
 	return &PermissionHandler{
 		permissionService: permissionService,
+		authzService:      authzService,
 	}
 }
 
@@ -64,6 +67,11 @@ func (h *PermissionHandler) GetPermission(w http.ResponseWriter, r *http.Request
 
 // CreatePermission handles POST /permissions
 func (h *PermissionHandler) CreatePermission(w http.ResponseWriter, r *http.Request) {
+	actorID, ok := authorizeMutation(r, w, h.authzService, permissionPermissionsManage)
+	if !ok {
+		return
+	}
+
 	var req services.CreatePermissionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON format", err)
@@ -86,11 +94,7 @@ func (h *PermissionHandler) CreatePermission(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	actorID := r.Header.Get("X-User-ID")
-	if actorID == "" {
-		actorID = "unknown"
-	}
-	audit.PermissionChanged("create", actorID, permission.ID.String(), permission.Action, permission.Resource, permission.Description, nil)
+	audit.PermissionChanged("create", actorID.String(), permission.ID.String(), permission.Action, permission.Resource, permission.Description, nil)
 	utils.WriteJSON(w, http.StatusCreated, permission)
 }
 
@@ -118,6 +122,10 @@ func (h *PermissionHandler) UpdatePermission(w http.ResponseWriter, r *http.Requ
 	}
 
 	id, _ := uuid.Parse(permissionID)
+	actorID, ok := authorizeMutation(r, w, h.authzService, permissionPermissionsManage)
+	if !ok {
+		return
+	}
 	permission, err := h.permissionService.UpdatePermission(id, req)
 	if err != nil {
 		if isNotFoundError(err) {
@@ -132,11 +140,7 @@ func (h *PermissionHandler) UpdatePermission(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	actorID := r.Header.Get("X-User-ID")
-	if actorID == "" {
-		actorID = "unknown"
-	}
-	audit.PermissionChanged("update", actorID, permission.ID.String(), permission.Action, permission.Resource, permission.Description, nil)
+	audit.PermissionChanged("update", actorID.String(), permission.ID.String(), permission.Action, permission.Resource, permission.Description, nil)
 	utils.WriteJSON(w, http.StatusOK, permission)
 }
 
@@ -152,6 +156,10 @@ func (h *PermissionHandler) DeletePermission(w http.ResponseWriter, r *http.Requ
 	}
 
 	id, _ := uuid.Parse(permissionID)
+	actorID, ok := authorizeMutation(r, w, h.authzService, permissionPermissionsManage)
+	if !ok {
+		return
+	}
 	err := h.permissionService.DeletePermission(id)
 	if err != nil {
 		if isNotFoundError(err) {
@@ -162,11 +170,7 @@ func (h *PermissionHandler) DeletePermission(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	actorID := r.Header.Get("X-User-ID")
-	if actorID == "" {
-		actorID = "unknown"
-	}
-	audit.PermissionChanged("delete", actorID, id.String(), "", "", "", nil)
+	audit.PermissionChanged("delete", actorID.String(), id.String(), "", "", "", nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 

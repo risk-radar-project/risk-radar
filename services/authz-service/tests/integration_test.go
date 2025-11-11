@@ -24,7 +24,7 @@ func TestIntegrationEmptyArrays(t *testing.T) {
 		userRoles:       make(map[string][]db.Role),
 	}
 
-	roleHandler := apphandlers.NewRoleHandler(roleService)
+	roleHandler := apphandlers.NewRoleHandler(roleService, authzService)
 	authzHandler := apphandlers.NewAuthzHandler(authzService)
 
 	// Setup router

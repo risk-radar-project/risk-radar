@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -17,12 +18,13 @@ import (
 
 // RoleHandler handles role management endpoints
 type RoleHandler struct {
-	roleService services.RoleServiceInterface
+	roleService  services.RoleServiceInterface
+	authzService services.AuthzServiceInterface
 }
 
 // NewRoleHandler creates a new role handler
-func NewRoleHandler(roleService services.RoleServiceInterface) *RoleHandler {
-	return &RoleHandler{roleService: roleService}
+func NewRoleHandler(roleService services.RoleServiceInterface, authzService services.AuthzServiceInterface) *RoleHandler {
+	return &RoleHandler{roleService: roleService, authzService: authzService}
 }
 
 // GetRoles handles GET /roles
@@ -69,6 +71,11 @@ func (h *RoleHandler) GetRole(w http.ResponseWriter, r *http.Request) {
 
 // CreateRole handles POST /roles
 func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
+	actorID, ok := authorizeMutation(r, w, h.authzService, permissionRolesEdit)
+	if !ok {
+		return
+	}
+
 	var rawReq map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&rawReq); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid request body", err)
@@ -132,19 +139,25 @@ func (h *RoleHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 
 	role, err := h.roleService.CreateRole(req)
 	if err != nil {
-		if err.Error() == fmt.Sprintf("role with name '%s' already exists", req.Name) {
+		switch {
+		case err.Error() == fmt.Sprintf("role with name '%s' already exists", req.Name):
 			utils.WriteError(w, http.StatusConflict, err.Error(), err)
 			return
+		case errors.Is(err, services.ErrPermissionNotFound):
+			var permErr *services.PermissionNotFoundError
+			if errors.As(err, &permErr) {
+				utils.WriteError(w, http.StatusBadRequest, fmt.Sprintf("Permission not found: %s", permErr.Key()), err)
+			} else {
+				utils.WriteError(w, http.StatusBadRequest, "Permission not found", err)
+			}
+			return
+		default:
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to create role", err)
+			return
 		}
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to create role", err)
-		return
 	}
 
-	actorID := r.Header.Get("X-User-ID")
-	if actorID == "" {
-		actorID = "unknown"
-	}
-	audit.RoleChanged("create", actorID, role.Role.ID.String(), role.Role.Name, nil, map[string]any{"description": role.Role.Description, "permissions": len(role.Permissions)})
+	audit.RoleChanged("create", actorID.String(), role.Role.ID.String(), role.Role.Name, nil, map[string]any{"description": role.Role.Description, "permissions": len(role.Permissions)})
 	utils.WriteJSON(w, http.StatusCreated, role)
 }
 
@@ -226,9 +239,22 @@ func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		Permissions: permissions,
 	}
 
+	actorID, ok := authorizeMutation(r, w, h.authzService, permissionRolesEdit)
+	if !ok {
+		return
+	}
 	oldRole, _ := h.roleService.GetRole(roleID)
 	role, err := h.roleService.UpdateRole(roleID, req)
 	if err != nil {
+		if errors.Is(err, services.ErrPermissionNotFound) {
+			var permErr *services.PermissionNotFoundError
+			if errors.As(err, &permErr) {
+				utils.WriteError(w, http.StatusBadRequest, fmt.Sprintf("Permission not found: %s", permErr.Key()), err)
+			} else {
+				utils.WriteError(w, http.StatusBadRequest, "Permission not found", err)
+			}
+			return
+		}
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update role", err)
 		return
 	}
@@ -238,10 +264,6 @@ func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	actorID := r.Header.Get("X-User-ID")
-	if actorID == "" {
-		actorID = "unknown"
-	}
 	changed := []string{}
 	if oldRole != nil {
 		if oldRole.Role.Name != role.Role.Name {
@@ -254,7 +276,7 @@ func (h *RoleHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 			changed = append(changed, "permissions")
 		}
 	}
-	audit.RoleChanged("update", actorID, role.Role.ID.String(), role.Role.Name, changed, map[string]any{"description": role.Role.Description, "permissions": len(role.Permissions)})
+	audit.RoleChanged("update", actorID.String(), role.Role.ID.String(), role.Role.Name, changed, map[string]any{"description": role.Role.Description, "permissions": len(role.Permissions)})
 	utils.WriteJSON(w, http.StatusOK, role)
 }
 
@@ -275,6 +297,10 @@ func (h *RoleHandler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	actorID, ok := authorizeMutation(r, w, h.authzService, permissionRolesEdit)
+	if !ok {
+		return
+	}
 	roleBefore, _ := h.roleService.GetRole(roleID)
 	if err := h.roleService.DeleteRole(roleID); err != nil {
 		if strings.Contains(err.Error(), "role not found") {
@@ -286,11 +312,7 @@ func (h *RoleHandler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-	actorID := r.Header.Get("X-User-ID")
-	if actorID == "" {
-		actorID = "unknown"
-	}
 	if roleBefore != nil {
-		audit.RoleChanged("delete", actorID, roleID.String(), roleBefore.Role.Name, nil, map[string]any{"description": roleBefore.Role.Description})
+		audit.RoleChanged("delete", actorID.String(), roleID.String(), roleBefore.Role.Name, nil, map[string]any{"description": roleBefore.Role.Description})
 	}
 }
