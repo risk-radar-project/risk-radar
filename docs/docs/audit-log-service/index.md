@@ -573,7 +573,7 @@ Producers should reuse `operation_id` when idempotency is required; duplicates a
 
 ---
 
-## �🛡️ Data Management
+## 🛡️ Data Management
 
 ### Retention Policy
 
