@@ -552,6 +552,27 @@ Note:
 
 ---
 
+## ⏳ Kafka Integration
+
+The service consumes audit events from Kafka to support asynchronous ingestion.
+
+### Configuration
+- `KAFKA_BROKERS` (required to enable the consumer) — comma-separated broker list, e.g. `kafka:9092`
+- `KAFKA_CLIENT_ID` — defaults to `audit-log-service`
+- `KAFKA_GROUP_ID` — defaults to `audit-log-service-consumer`
+- `KAFKA_TOPIC` — defaults to `audit_logs`
+
+If `KAFKA_BROKERS` is unset the consumer stays disabled. No SSL or SASL configuration is required; cluster access is internal-only.
+
+### Message Format
+Messages must match the same schema as the REST `POST /logs` endpoint. Example payload:
+
+The consumer validates every message. Invalid or malformed entries are logged and skipped without stopping the service.
+
+Producers should reuse `operation_id` when idempotency is required; duplicates are deduplicated by the service.
+
+---
+
 ## 🛡️ Data Management
 
 ### Retention Policy

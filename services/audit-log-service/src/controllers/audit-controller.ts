@@ -1,11 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { writePaginated } from '../utils/http-utils';
 import { auditLogService } from '../services/audit-log-service';
 import { getWebSocketHandler } from '../websocket/websocket-handler';
 
 // Create Audit Log
-export async function createLog(req: Request, res: Response): Promise<void> {
+export async function createLog(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+): Promise<void> {
     try {
         const { created, log } = await auditLogService.createLog(req.body);
 
@@ -19,16 +23,17 @@ export async function createLog(req: Request, res: Response): Promise<void> {
             // Idempotent call, no content
             res.status(204).end();
         }
-    } catch (err: any) {
-        res.status(500).json({
-            error: err?.message || 'Unknown error',
-            message: 'Failed to create audit log',
-        });
+    } catch (err) {
+        next(err);
     }
 }
 
 // Get Audit Logs with filters and pagination
-export async function getLogs(req: Request, res: Response): Promise<void> {
+export async function getLogs(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+): Promise<void> {
     try {
         const filters = {
             ...(req.query.service ? { service: String(req.query.service) } : {}),
@@ -53,16 +58,17 @@ export async function getLogs(req: Request, res: Response): Promise<void> {
             result.pagination.limit,
             result.pagination.total,
         );
-    } catch (err: any) {
-        res.status(500).json({
-            error: err?.message || 'Unknown error',
-            message: 'Failed to get audit logs',
-        });
+    } catch (err) {
+        next(err);
     }
 }
 
 // Get a single Audit Log by ID
-export async function getLogById(req: Request, res: Response): Promise<void> {
+export async function getLogById(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+): Promise<void> {
     try {
         const id = String(req.params?.id || '');
         const log = await auditLogService.getLogById(id);
@@ -74,16 +80,17 @@ export async function getLogById(req: Request, res: Response): Promise<void> {
             return;
         }
         res.status(200).json(log);
-    } catch (err: any) {
-        res.status(500).json({
-            error: err?.message || 'Unknown error',
-            message: 'Failed to get audit log',
-        });
+    } catch (err) {
+        next(err);
     }
 }
 
 // Anonymize logs for a given actor
-export async function anonymizeLogs(req: Request, res: Response): Promise<void> {
+export async function anonymizeLogs(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+): Promise<void> {
     try {
         const actorId = String(req.body?.actor_id || '');
         const dryRun = String(req.query?.dry_run) === 'true';
@@ -104,10 +111,7 @@ export async function anonymizeLogs(req: Request, res: Response): Promise<void> 
             message: 'Logs anonymized successfully',
             affected_rows: affected,
         });
-    } catch (err: any) {
-        res.status(500).json({
-            error: err?.message || 'Unknown error',
-            message: 'Failed to anonymize logs',
-        });
+    } catch (err) {
+        next(err);
     }
 }

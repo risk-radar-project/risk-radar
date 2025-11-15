@@ -25,8 +25,10 @@ services:
         depends_on:
             - postgres
             - redis
+            - kafka
         environment:
             <<: *global-env
+            KAFKA_BROKERS: kafka:9092
         networks:
             - backend
         ports:
@@ -42,6 +44,10 @@ services:
         environment:
             <<: *global-env
             HTTP_PORT: 8080
+            AUDIT_KAFKA_ENABLED: "true"
+            AUDIT_KAFKA_BROKERS: kafka:9092
+            AUDIT_KAFKA_TOPIC: audit_logs
+            AUDIT_KAFKA_CLIENT_ID: authz-service
         networks:
             - backend
         ports:
@@ -61,6 +67,10 @@ services:
             LOG_LEVEL: info
             WEBSOCKET_ENABLED: "true"
             LOG_RETENTION_DAYS: 90
+            KAFKA_BROKERS: kafka:9092
+            KAFKA_CLIENT_ID: audit-log-service
+            KAFKA_GROUP_ID: audit-log-service-consumer
+            KAFKA_TOPIC: audit_logs
         networks:
             - backend
         ports:
@@ -89,6 +99,11 @@ services:
         environment:
             <<: *global-env
             HTTP_PORT: 8080
+            AUTHZ_BASE_URL: http://authz-service:8080
+            AUDIT_KAFKA_ENABLED: "true"
+            AUDIT_KAFKA_BROKERS: kafka:9092
+            AUDIT_KAFKA_TOPIC: audit_logs
+            AUDIT_KAFKA_CLIENT_ID: media-service
         networks:
             - backend
         ports:
@@ -103,6 +118,7 @@ services:
             - redis
         environment:
             <<: *global-env
+            HTTP_PORT: 8080
         networks:
             - backend
         ports:
@@ -134,7 +150,7 @@ services:
             - backend
 
     postgres:
-        image: postgres:latest
+        image: postgres:17
         container_name: postgres
         environment:
             POSTGRES_USER: risk-radar-admin
@@ -180,7 +196,7 @@ services:
         environment:
             KAFKA_BROKER_ID: 1
             KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://host.docker.internal:9093
             KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
             KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
             KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1

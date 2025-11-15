@@ -1,6 +1,4 @@
 spring:
-  application:
-    name: report-service
   data:
     redis:
       host: redis
@@ -24,4 +22,13 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-# kafka group id: reports
+      properties:
+        spring.json.add.type.headers: false
+      client-id: report-service
+      acks: all
+      retries: 3
+audit:
+  service:
+    url: http://audit-log-service:8080
+  kafka:
+    topic: audit_logs

@@ -99,7 +99,7 @@ The requester identity is passed via `X-User-ID` header.
 
 ## 🔄 Audit Logging
 
-All sensitive operations emit audit events to Audit Log Service (`/logs`) with resilient delivery:
+All sensitive operations emit audit events to the Audit Log Service. The emitter first publishes to Kafka (`audit_logs` topic) and automatically falls back to the REST `/logs` endpoint whenever Kafka is unavailable:
 
 - `media_uploaded` (temporary flag in metadata)
 - `moderation_changed` (from → to)
@@ -161,6 +161,7 @@ Responses:
 
 Notes:
 
+- `X-User-ID` header is required; missing or blank identities result in `401 Unauthorized`.
 - Antivirus (if enabled) runs on original buffer; moderation runs on normalized content.
 - Derivatives `thumb` and `preview` are generated on upload.
 
@@ -241,16 +242,28 @@ Body (at least one field):
 - `alt`: string (owner or `media:update`)
 - `action`: `approve|reject|flag` (requires `media:moderate`)
 - `censor`: `{ strength: number }` full-image pixelation (requires `media:censor`)
+- `uncensor`: `true` restores the original master/variants (requires `media:censor`)
 
 Responses:
 
 - 200 OK: updated `MediaEntity`
 - 403 Forbidden: insufficient permissions
 - 404 Not Found
+Permissions:
+- Owners can keep their own temporary assets.
+- Non-owners must hold `media:update`.
+
 
 ---
 
 ### Delete
+
+Errors:
+- 400 on validation.
+- 401 when `X-User-ID` is missing.
+- 403 when caller lacks `media:update` for non-owned assets.
+
+- Emits `temporary_kept` audit event for every successful change.
 
 DELETE `/media/{id}`
 
@@ -261,12 +274,21 @@ Responses:
 - 204 No Content
 - 403 Forbidden (requires `media:delete`)
 - 404 Not Found
+Permissions:
+- Owners can reject (delete) their own temporary assets.
+- Non-owners must hold `media:delete`.
+
 
 ---
 
 ### Temporary Lifecycle
 
-POST `/media/temporary/keep`
+Errors:
+- 400 on validation.
+- 401 when `X-User-ID` is missing.
+- 403 when caller lacks `media:delete` for non-owned assets.
+
+- Emits `temporary_rejected` audit event when deletions occur.
 
 Body:
 ```json
@@ -341,6 +363,15 @@ On storage threshold exceeding configured levels, the service emits audit events
 Environment variables (`.env.example`).
 
 Defaults and parsing live in `src/config/config.ts`.
+
+### Audit Delivery
+
+- `AUDIT_KAFKA_ENABLED` — enables Kafka publishing (auto-enabled when brokers are provided)
+- `AUDIT_KAFKA_BROKERS` — comma-separated broker list, e.g. `kafka:9092`
+- `AUDIT_KAFKA_TOPIC` — Kafka topic for audit events (default `audit_logs`)
+- `AUDIT_KAFKA_CLIENT_ID` — Kafka client identifier (default `media-service`)
+- `AUDIT_KAFKA_ACKS` — producer acknowledgements (`-1` all replicas, default)
+- `AUDIT_TIMEOUT_MS` / `AUDIT_RETRIES` — HTTP fallback timeout + retry budget
 
 ---
 

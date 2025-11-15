@@ -1,0 +1,14 @@
+# Build outputs
+.next
+out
+coverage
+
+# Dependencies
+node_modules
+
+# Assets
+public
+
+# DB files
+*.db
+*.db-journal

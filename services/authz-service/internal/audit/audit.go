@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -48,11 +49,17 @@ var (
 	retryCount   atomic.Uint64
 )
 
+var (
+	publishToKafka = publishKafka
+	kafkaActive    = kafkaIsEnabled
+)
+
 // Init initializes the audit dispatcher
 func Init() {
 	if started.Load() {
 		return
 	}
+	configureKafka()
 	raw := strings.TrimSpace(os.Getenv("AUDIT_LOG_URL"))
 	if raw == "" {
 		raw = "http://audit-log-service:8080"
@@ -83,6 +90,8 @@ func Shutdown(ctx context.Context) {
 	case <-ctx.Done():
 	case <-time.After(100 * time.Millisecond):
 	}
+
+	shutdownKafka()
 }
 
 // LogAction queues an audit log (non-blocking)
@@ -212,6 +221,15 @@ func sendWithRetry(al *AuditLog) {
 	if err != nil {
 		failedCount.Add(1)
 		return
+	}
+
+	if kafkaActive() {
+		if err := publishToKafka(al, body); err == nil {
+			sentCount.Add(1)
+			return
+		} else {
+			log.Printf("audit: kafka publish failed, falling back to HTTP: %v", err)
+		}
 	}
 	var attempt int
 	for {

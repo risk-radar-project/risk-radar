@@ -1,47 +1,40 @@
-import 'dotenv/config';
-import { createServer } from 'http';
-import app from './app.js';
-import { config } from './config/config.js';
-import { logger } from './logger/logger.js';
-import { runMigrations } from './db/migrate.js';
-import { gc } from './domain/gc.js';
-import { db } from './db/pool.js';
+import "dotenv/config"
+import { logger } from "./logger/logger.js"
+import MediaServer from "./media-server.js"
 
-const port = config.httpPort;
-const server = createServer(app);
+const mediaServer = new MediaServer()
 
-runMigrations()
-    .then(() => {
-        server.listen(port, () => {
-            logger.info('Media Service started', { port });
-            gc.start();
-        });
-    })
-    .catch((e) => {
-        const err = e as any;
-        logger.error('Migration failed', { error: err?.message ? String(err.message) : String(err), stack: err?.stack });
-        process.exit(1);
-    });
+const startPromise = mediaServer.start().catch(err => {
+    const error = err instanceof Error ? err.message : String(err)
+    logger.error("Media Service failed to start", { error })
+    process.exit(1)
+})
 
 const shutdown = (signal: string) => {
-    logger.warn('Shutdown signal received', { signal });
-    gc.stop();
-    server.close(async () => {
-        logger.info('HTTP server closed');
+    logger.warn("Shutdown signal received", { signal })
+    const finalize = async () => {
         try {
-            await db.close();
-            logger.info('DB pool closed');
-        } catch (e) {
-            const err = e as any;
-            logger.warn('DB close failed', { error: err?.message || String(err) });
+            await startPromise.catch(() => undefined)
+            await mediaServer.stop()
+            process.exit(0)
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err.message : String(err)
+            logger.error("Graceful shutdown failed", { error })
+            process.exit(1)
         }
-        process.exit(0);
-    });
-    // Force exit after timeout
-    setTimeout(() => process.exit(1), 10_000).unref();
-};
+    }
+    finalize().catch(e => {
+        const error = e instanceof Error ? e.message : String(e)
+        logger.error("Shutdown error", { error })
+        process.exit(1)
+    })
+    setTimeout(() => {
+        logger.error("Forced shutdown after timeout")
+        process.exit(1)
+    }, 10_000).unref()
+}
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+process.on("SIGTERM", () => shutdown("SIGTERM"))
+process.on("SIGINT", () => shutdown("SIGINT"))
 
-export default server;
+export default mediaServer

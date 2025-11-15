@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -315,6 +316,40 @@ func TestRoleService_CreateRoleSuccess(t *testing.T) {
 	}
 }
 
+func TestRoleService_CreateRolePermissionNotFound(t *testing.T) {
+	roleRepo := NewMockRoleRepository()
+	permRepo := NewMockPermissionRepository()
+	service := services.NewRoleService(roleRepo, permRepo)
+
+	req := services.CreateRoleRequest{
+		Name:        "new-role",
+		Description: "desc",
+		Permissions: []services.Permission{{Action: "read", Resource: "missing"}},
+	}
+
+	_, err := service.CreateRole(req)
+	if err == nil {
+		t.Fatal("expected error when permission does not exist")
+	}
+
+	if !errors.Is(err, services.ErrPermissionNotFound) {
+		t.Fatalf("expected ErrPermissionNotFound, got %v", err)
+	}
+
+	var permErr *services.PermissionNotFoundError
+	if !errors.As(err, &permErr) {
+		t.Fatalf("expected PermissionNotFoundError, got %T", err)
+	}
+
+	if permErr.Key() != "missing:read" {
+		t.Fatalf("unexpected permission key: %s", permErr.Key())
+	}
+
+	if len(roleRepo.roles) != 0 {
+		t.Fatalf("role should not be created when permissions are invalid")
+	}
+}
+
 // TestRoleService_CreateRoleDuplicateName tests error when creating role with existing name
 func TestRoleService_CreateRoleDuplicateName(t *testing.T) {
 	// Arrange
@@ -410,6 +445,34 @@ func TestRoleService_UpdateRoleSuccess(t *testing.T) {
 
 	if role.Role.Name != req.Name {
 		t.Errorf("Expected role name '%s', got '%s'", req.Name, role.Role.Name)
+	}
+}
+
+func TestRoleService_UpdateRolePermissionNotFound(t *testing.T) {
+	roleRepo := NewMockRoleRepository()
+	permRepo := NewMockPermissionRepository()
+	service := services.NewRoleService(roleRepo, permRepo)
+
+	roleID := uuid.New()
+	roleRepo.roles[roleID] = db.Role{
+		ID:          roleID,
+		Name:        "existing-role",
+		Description: "desc",
+	}
+
+	req := services.UpdateRoleRequest{
+		Name:        "existing-role",
+		Description: "desc",
+		Permissions: []services.Permission{{Action: "approve", Resource: "reports"}},
+	}
+
+	_, err := service.UpdateRole(roleID, req)
+	if err == nil {
+		t.Fatal("expected error when permission does not exist")
+	}
+
+	if !errors.Is(err, services.ErrPermissionNotFound) {
+		t.Fatalf("expected ErrPermissionNotFound, got %v", err)
 	}
 }
 

@@ -77,12 +77,6 @@
         </dependency>
 
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-jackson</artifactId> <!-- You can use jjwt-gson instead -->
 			<version>0.11.5</version>
@@ -139,6 +133,10 @@
 			<version>17.0.0</version>
 			<scope>compile</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -146,10 +144,6 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-				<!--
-                  ADD THIS CONFIGURATION BLOCK.
-                  It explicitly tells the plugin which class is the main entry point.
-                -->
 				<configuration>
 					<mainClass>com.riskRadar.user_service.UserServiceApplication</mainClass>
 				</configuration>

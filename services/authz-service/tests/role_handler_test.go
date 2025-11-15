@@ -18,26 +18,42 @@ import (
 
 // MockRoleServiceForHandler implements role service for handler tests
 type MockRoleServiceForHandler struct {
-	roles      map[uuid.UUID]db.RoleWithPermissions
-	shouldFail bool
-	errorMsg   string
+	roles     map[uuid.UUID]db.RoleWithPermissions
+	err       error
+	createErr error
+	updateErr error
+	deleteErr error
 }
 
 func NewMockRoleServiceForHandler() *MockRoleServiceForHandler {
 	return &MockRoleServiceForHandler{
-		roles:      make(map[uuid.UUID]db.RoleWithPermissions),
-		shouldFail: false,
+		roles: make(map[uuid.UUID]db.RoleWithPermissions),
 	}
 }
 
 func (m *MockRoleServiceForHandler) SetError(shouldFail bool, errorMsg string) {
-	m.shouldFail = shouldFail
-	m.errorMsg = errorMsg
+	if shouldFail {
+		m.err = fmt.Errorf(errorMsg)
+	} else {
+		m.err = nil
+	}
+}
+
+func (m *MockRoleServiceForHandler) SetCreateRoleError(err error) {
+	m.createErr = err
+}
+
+func (m *MockRoleServiceForHandler) SetUpdateRoleError(err error) {
+	m.updateErr = err
+}
+
+func (m *MockRoleServiceForHandler) SetDeleteRoleError(err error) {
+	m.deleteErr = err
 }
 
 func (m *MockRoleServiceForHandler) GetRoles() ([]db.RoleWithPermissions, error) {
-	if m.shouldFail {
-		return nil, fmt.Errorf(m.errorMsg)
+	if m.err != nil {
+		return nil, m.err
 	}
 
 	// Initialize as empty slice instead of nil to ensure JSON marshals as [] not null
@@ -49,8 +65,8 @@ func (m *MockRoleServiceForHandler) GetRoles() ([]db.RoleWithPermissions, error)
 }
 
 func (m *MockRoleServiceForHandler) GetRole(roleID uuid.UUID) (*db.RoleWithPermissions, error) {
-	if m.shouldFail {
-		return nil, fmt.Errorf(m.errorMsg)
+	if m.err != nil {
+		return nil, m.err
 	}
 
 	role, exists := m.roles[roleID]
@@ -61,8 +77,11 @@ func (m *MockRoleServiceForHandler) GetRole(roleID uuid.UUID) (*db.RoleWithPermi
 }
 
 func (m *MockRoleServiceForHandler) CreateRole(req services.CreateRoleRequest) (*db.RoleWithPermissions, error) {
-	if m.shouldFail {
-		return nil, fmt.Errorf(m.errorMsg)
+	if m.err != nil {
+		return nil, m.err
+	}
+	if m.createErr != nil {
+		return nil, m.createErr
 	}
 
 	role := db.RoleWithPermissions{
@@ -91,8 +110,11 @@ func (m *MockRoleServiceForHandler) CreateRole(req services.CreateRoleRequest) (
 }
 
 func (m *MockRoleServiceForHandler) UpdateRole(roleID uuid.UUID, req services.UpdateRoleRequest) (*db.RoleWithPermissions, error) {
-	if m.shouldFail {
-		return nil, fmt.Errorf(m.errorMsg)
+	if m.err != nil {
+		return nil, m.err
+	}
+	if m.updateErr != nil {
+		return nil, m.updateErr
 	}
 
 	role, exists := m.roles[roleID]
@@ -121,8 +143,11 @@ func (m *MockRoleServiceForHandler) UpdateRole(roleID uuid.UUID, req services.Up
 }
 
 func (m *MockRoleServiceForHandler) DeleteRole(roleID uuid.UUID) error {
-	if m.shouldFail {
-		return fmt.Errorf(m.errorMsg)
+	if m.err != nil {
+		return m.err
+	}
+	if m.deleteErr != nil {
+		return m.deleteErr
 	}
 
 	delete(m.roles, roleID)
@@ -133,7 +158,7 @@ func (m *MockRoleServiceForHandler) DeleteRole(roleID uuid.UUID) error {
 func TestRoleHandler_GetRoles(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
-	handler := apphandlers.NewRoleHandler(mockService)
+	handler := apphandlers.NewRoleHandler(mockService, NewMockAuthorizationService())
 
 	// Add test role
 	testRole := db.RoleWithPermissions{
@@ -176,7 +201,7 @@ func TestRoleHandler_GetRoles(t *testing.T) {
 func TestRoleHandler_GetRole(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
-	handler := apphandlers.NewRoleHandler(mockService)
+	handler := apphandlers.NewRoleHandler(mockService, NewMockAuthorizationService())
 
 	roleID := uuid.New()
 	testRole := db.RoleWithPermissions{
@@ -221,7 +246,7 @@ func TestRoleHandler_GetRole(t *testing.T) {
 func TestRoleHandler_GetRoleNotFound(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
-	handler := apphandlers.NewRoleHandler(mockService)
+	handler := apphandlers.NewRoleHandler(mockService, NewMockAuthorizationService())
 
 	roleID := uuid.New()
 
@@ -247,7 +272,9 @@ func TestRoleHandler_GetRoleNotFound(t *testing.T) {
 func TestRoleHandler_CreateRole(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
-	handler := apphandlers.NewRoleHandler(mockService)
+	mockAuthz := NewMockAuthorizationService()
+	mockAuthz.Allow("roles:edit")
+	handler := apphandlers.NewRoleHandler(mockService, mockAuthz)
 
 	reqBody := services.CreateRoleRequest{
 		Name:        "new-role",
@@ -267,6 +294,8 @@ func TestRoleHandler_CreateRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	actorID := uuid.New()
+	req.Header.Set("X-User-ID", actorID.String())
 
 	rr := httptest.NewRecorder()
 
@@ -289,17 +318,90 @@ func TestRoleHandler_CreateRole(t *testing.T) {
 	}
 }
 
+func TestRoleHandler_CreateRoleForbidden(t *testing.T) {
+	mockService := NewMockRoleServiceForHandler()
+	mockAuthz := NewMockAuthorizationService()
+	handler := apphandlers.NewRoleHandler(mockService, mockAuthz)
+
+	reqBody := services.CreateRoleRequest{
+		Name:        "new-role",
+		Description: "New role description",
+		Permissions: []services.Permission{
+			{Action: "read", Resource: "users"},
+		},
+	}
+
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("POST", "/roles", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-ID", uuid.New().String())
+
+	rr := httptest.NewRecorder()
+
+	handler.CreateRole(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d", http.StatusForbidden, rr.Code)
+	}
+}
+
+func TestRoleHandler_CreateRolePermissionNotFound(t *testing.T) {
+	mockService := NewMockRoleServiceForHandler()
+	mockAuthz := NewMockAuthorizationService()
+	mockAuthz.Allow("roles:edit")
+	mockService.SetCreateRoleError(&services.PermissionNotFoundError{Resource: "reports", Action: "edit"})
+	handler := apphandlers.NewRoleHandler(mockService, mockAuthz)
+
+	reqBody := services.CreateRoleRequest{
+		Name:        "new-role",
+		Description: "New role description",
+		Permissions: []services.Permission{
+			{Action: "edit", Resource: "reports"},
+		},
+	}
+
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("POST", "/roles", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-ID", uuid.New().String())
+
+	rr := httptest.NewRecorder()
+
+	handler.CreateRole(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rr.Code)
+	}
+}
+
 // TestRoleHandler_CreateRoleInvalidJSON tests POST /roles endpoint with invalid JSON
 func TestRoleHandler_CreateRoleInvalidJSON(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
-	handler := apphandlers.NewRoleHandler(mockService)
+	mockAuthz := NewMockAuthorizationService()
+	mockAuthz.Allow("roles:edit")
+	handler := apphandlers.NewRoleHandler(mockService, mockAuthz)
 
 	req, err := http.NewRequest("POST", "/roles", bytes.NewBuffer([]byte("invalid json")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-ID", uuid.New().String())
 
 	rr := httptest.NewRecorder()
 
@@ -316,7 +418,9 @@ func TestRoleHandler_CreateRoleInvalidJSON(t *testing.T) {
 func TestRoleHandler_UpdateRole(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
-	handler := apphandlers.NewRoleHandler(mockService)
+	mockAuthz := NewMockAuthorizationService()
+	mockAuthz.Allow("roles:edit")
+	handler := apphandlers.NewRoleHandler(mockService, mockAuthz)
 
 	roleID := uuid.New()
 	testRole := db.RoleWithPermissions{
@@ -347,6 +451,7 @@ func TestRoleHandler_UpdateRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-ID", uuid.New().String())
 
 	rr := httptest.NewRecorder()
 	router := mux.NewRouter()
@@ -371,11 +476,50 @@ func TestRoleHandler_UpdateRole(t *testing.T) {
 	}
 }
 
+func TestRoleHandler_UpdateRolePermissionNotFound(t *testing.T) {
+	mockService := NewMockRoleServiceForHandler()
+	mockAuthz := NewMockAuthorizationService()
+	mockAuthz.Allow("roles:edit")
+	mockService.SetUpdateRoleError(&services.PermissionNotFoundError{Resource: "reports", Action: "archive"})
+	handler := apphandlers.NewRoleHandler(mockService, mockAuthz)
+
+	roleID := uuid.New()
+	reqBody := services.UpdateRoleRequest{
+		Name:        "updated-role",
+		Description: "Updated description",
+		Permissions: []services.Permission{
+			{Action: "archive", Resource: "reports"},
+		},
+	}
+
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("PUT", "/roles/"+roleID.String(), bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-ID", uuid.New().String())
+	req = mux.SetURLVars(req, map[string]string{"roleId": roleID.String()})
+
+	rr := httptest.NewRecorder()
+	handler.UpdateRole(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rr.Code)
+	}
+}
+
 // TestRoleHandler_DeleteRole testuje endpoint DELETE /roles/{roleId}
 func TestRoleHandler_DeleteRole(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
-	handler := apphandlers.NewRoleHandler(mockService)
+	mockAuthz := NewMockAuthorizationService()
+	mockAuthz.Allow("roles:edit")
+	handler := apphandlers.NewRoleHandler(mockService, mockAuthz)
 
 	roleID := uuid.New()
 	testRole := db.RoleWithPermissions{
@@ -396,6 +540,7 @@ func TestRoleHandler_DeleteRole(t *testing.T) {
 	rr := httptest.NewRecorder()
 	router := mux.NewRouter()
 	router.HandleFunc("/roles/{roleId}", handler.DeleteRole).Methods("DELETE")
+	req.Header.Set("X-User-ID", uuid.New().String())
 
 	// Act
 	router.ServeHTTP(rr, req)
@@ -416,7 +561,7 @@ func TestRoleHandler_DeleteRole(t *testing.T) {
 func TestRoleHandler_InvalidUUID(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
-	handler := apphandlers.NewRoleHandler(mockService)
+	handler := apphandlers.NewRoleHandler(mockService, NewMockAuthorizationService())
 
 	req, err := http.NewRequest("GET", "/roles/invalid-uuid", nil)
 	if err != nil {
