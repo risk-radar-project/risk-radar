@@ -11,7 +11,6 @@ import report_service.repository.ReportRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,6 +29,7 @@ public class ReportService {
         report.setDescription(request.description());
         report.setUserId(request.userId());
         report.setImageIds(request.imageIds());
+        report.setCategory(request.reportCategory());
         report.setCreatedAt(LocalDateTime.now());
 
         Report savedReport = reportRepository.save(report);

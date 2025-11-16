@@ -62,7 +62,8 @@ class ReportServiceTest {
                 54.123,
                 18.456,
                 testUserId,
-                List.of(UUID.randomUUID(), UUID.randomUUID())
+                List.of(UUID.randomUUID(), UUID.randomUUID()),
+                null
         );
 
         savedReport = new Report();

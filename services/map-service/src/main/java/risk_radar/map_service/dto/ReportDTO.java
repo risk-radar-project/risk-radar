@@ -12,5 +12,6 @@ public record ReportDTO(UUID id,
                         UUID userID,
                         List<UUID> imagesIds,
                         String status,
+                        String category,
                         LocalDateTime createdAt
                         ) {}

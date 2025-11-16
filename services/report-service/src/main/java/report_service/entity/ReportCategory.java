@@ -6,12 +6,15 @@ package report_service.entity;
  */
 public enum ReportCategory {
 
-    INFRASTRUCTURE("Infrastruktura i awarie", "pothole"),
-    ROAD_SAFETY("Bezpieczeństwo i ruch drogowy", "traffic"),
-    CLEANLINESS("Porządek i czystość", "cleaning_services"),
-    VANDALISM("Wandalizm i zniszczenia", "format_paint"),
-    ENVIRONMENTAL_HAZARD("Zagrożenia środowiskowe", "biohazard"),
-    OTHER("Pozostałe / Inne", "help_outline");
+    VANDALISM("Wandalizm", "format_paint"),
+    INFRASTRUCTURE("Infrastruktura drogowa/chodników", "construction"),
+    DANGEROUS_SITUATION("Niebezpieczne sytuacje", "warning"),
+    TRAFFIC_ACCIDENT("Wypadki drogowe", "car_crash"),
+    PARTICIPANT_BEHAVIOR("Zachowania kierowców/pieszych", "person_alert"),
+    PARTICIPANT_HAZARD("Zagrożenia dla pieszych i rowerzystów i kierowców", "brightness_alert"),
+    WASTE_ILLEGAL_DUMPING("Śmieci/nielegalne zaśmiecanie/nielegalne wysypiska śmieci", "delete_sweep"),
+    BIOLOGICAL_HAZARD("Zagrożenia biologiczne", "bug_report"),
+    OTHER("Inne", "help_outline");
 
     private final String displayName;
     private final String iconName;
@@ -28,7 +31,7 @@ public enum ReportCategory {
 
     /**
      * Zwraca polską nazwę kategorii.
-     * @return String np. "Infrastruktura i awarie"
+     * @return String np. "Wandalizm"
      */
     public String getDisplayName() {
         return displayName;
@@ -36,7 +39,7 @@ public enum ReportCategory {
 
     /**
      * Zwraca nazwę ikony Google Material Symbols.
-     * @return String np. "pothole"
+     * @return String np. "format_paint"
      */
     public String getIconName() {
         return iconName;
