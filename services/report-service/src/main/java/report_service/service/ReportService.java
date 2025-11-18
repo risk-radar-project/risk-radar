@@ -10,6 +10,7 @@ import report_service.entity.ReportStatus;
 import report_service.repository.ReportRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,6 +29,7 @@ public class ReportService {
         report.setDescription(request.description());
         report.setUserId(request.userId());
         report.setImageIds(request.imageIds());
+        report.setCategory(request.reportCategory());
         report.setCreatedAt(LocalDateTime.now());
 
         Report savedReport = reportRepository.save(report);
@@ -43,7 +45,7 @@ public class ReportService {
         if (reportOpt.isPresent()) {
             Report report = reportOpt.get();
             report.setStatus(status);
-            reportRepository.save(report);
+            Report updatedReport = reportRepository.save(report);
 
         } else {
             throw new RuntimeException("Report not found");
@@ -57,6 +59,9 @@ public class ReportService {
     public Report getReportById(UUID id) {
         return reportRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Report not found"));
+    }
+    public List<Report> getVerifiedReports() {
+        return reportRepository.findByStatus(ReportStatus.VERIFIED);
     }
 
 }

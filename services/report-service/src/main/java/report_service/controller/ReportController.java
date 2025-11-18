@@ -15,6 +15,7 @@ import report_service.service.AuditLogClient;
 import report_service.service.ReportService;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -171,6 +172,21 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     Map.of(
                             "message", "Failed to fetch report",
+                            "status", "failure",
+                            "error", e.getMessage()
+                    )
+            );
+        }
+    }
+    @GetMapping("/reports/verified")
+    public ResponseEntity<?> getVerifiedReports() {
+        try {
+            List<Report> reports = reportService.getVerifiedReports();
+            return ResponseEntity.ok(reports);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    Map.of(
+                            "message", "Failed to fetch verified reports",
                             "status", "failure",
                             "error", e.getMessage()
                     )

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Risk-Radar Mapa (API Polling z Klastrowaniem)</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        h1 { position: absolute; top: 10px; left: 50px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; opacity: 0.8;}
+    </style>
+</head>
+<body>
+<h1>Risk-Radar Mapa Na Żywo (Polling z Klastrowaniem)</h1>
+<div id="map"></div>
+
+<script>
+    var map = L.map('map').setView([52.23, 21.01], 6);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+    }).addTo(map);
+
+    var markers = L.markerClusterGroup();
+    map.addLayer(markers);
+
+
+    const baseIconProps = {
+        iconSize: [32, 32],
+        iconAnchor: [12, 24],
+        popupAnchor: [0, -24]
+    };
+
+    const categoryIcons = {
+        'VANDALISM': L.icon({ iconUrl: '/icons/format_paint.png', ...baseIconProps }),
+        'INFRASTRUCTURE': L.icon({ iconUrl: '/icons/construction.png', ...baseIconProps }),
+        'DANGEROUS_SITUATION': L.icon({ iconUrl: '/icons/warning.png', ...baseIconProps }),
+        'TRAFFIC_ACCIDENT': L.icon({ iconUrl: '/icons/car_crash.png', ...baseIconProps }),
+        'PARTICIPANT_BEHAVIOR': L.icon({ iconUrl: '/icons/person_alert.png', ...baseIconProps }),
+        'PARTICIPANT_HAZARD': L.icon({ iconUrl: '/icons/brightness_alert.png', ...baseIconProps }),
+        'WASTE_ILLEGAL_DUMPING': L.icon({ iconUrl: '/icons/delete_sweep.png', ...baseIconProps }),
+        'BIOLOGICAL_HAZARD': L.icon({ iconUrl: '/icons/bug_report.png', ...baseIconProps }),
+        'OTHER': L.icon({ iconUrl: '/icons/help_outline.png', ...baseIconProps })
+    };
+    const defaultIcon = categoryIcons['OTHER'];
+
+
+    var displayedReportIds = new Set();
+
+    function addMarkerToMap(report) {
+        if (!report || !report.latitude || !report.longitude) {
+            return;
+        }
+
+        if (displayedReportIds.has(report.id)) {
+            return;
+        }
+
+        const category = report.category;
+        const selectedIcon = categoryIcons[category] || defaultIcon;
+
+        console.log(`Dodaję NOWĄ pinezkę: ${report.title} (Kategoria: ${category})`);
+        displayedReportIds.add(report.id);
+
+        var marker = L.marker([report.latitude, report.longitude], { icon: selectedIcon })
+            .bindPopup(`<b>${report.title}</b><br>${report.description || 'Brak opisu.'}`);
+
+
+        markers.addLayer(marker);
+    }
+
+
+    function fetchReports() {
+        fetch('/api/reports')
+            .then(response => response.json())
+            .then(reports => {
+                console.log(`Pobrano ${reports.length} raportów.`);
+                reports.forEach(report => addMarkerToMap(report));
+            })
+            .catch(error => console.error('Błąd pobierania raportów:', error));
+    }
+
+    fetchReports();
+    setInterval(fetchReports, 5000);
+
+</script>
+</body>
+</html>

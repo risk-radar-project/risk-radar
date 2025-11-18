@@ -39,6 +39,9 @@ public class Report {
     private List<UUID> imageIds = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
+    private ReportCategory category;
+
+    @Enumerated(EnumType.STRING)
     private ReportStatus status = ReportStatus.PENDING;
 
     @NotNull
