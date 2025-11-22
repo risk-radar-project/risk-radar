@@ -1,9 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import './App.css';
 
-// Placeholder components
-const Home = () => <div>Home Page</div>;
+// Map component for the homepage
+const Home = () => {
+  const [mapHeight, setMapHeight] = useState('600px');
+
+  useEffect(() => {
+    const updateMapHeight = () => {
+      setMapHeight(`${window.innerHeight - 200}px`);
+    };
+
+    updateMapHeight();
+    window.addEventListener('resize', updateMapHeight);
+
+    return () => {
+      window.removeEventListener('resize', updateMapHeight);
+    };
+  }, []);
+
+  return (
+    <div className="map-container" style={{ width: '100%', height: mapHeight }}>
+      <iframe 
+        src={`${window.location.protocol}//${window.location.hostname}:8086`}
+        title="Risk Radar Map"
+        style={{ width: '100%', height: '100%', border: 'none' }}
+      />
+    </div>
+  );
+};
+
 const About = () => <div>About Page</div>;
 const Dashboard = () => <div>Dashboard Page</div>;
 
