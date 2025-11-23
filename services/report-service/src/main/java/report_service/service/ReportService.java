@@ -1,8 +1,12 @@
 package report_service.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import report_service.dto.ReportRequest;
 import report_service.entity.Report;
@@ -11,14 +15,24 @@ import report_service.repository.ReportRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-
+@Slf4j
 @Service
-@AllArgsConstructor
 public class ReportService {
 
     private final ReportRepository reportRepository;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${report.kafka.topic}")
+    private String reportTopic;
+
+    public ReportService(ReportRepository reportRepository, KafkaTemplate<String, Object> kafkaTemplate) {
+        this.reportRepository = reportRepository;
+        this.kafkaTemplate = kafkaTemplate;
+    }
 
 
     public void createReport(ReportRequest request) {
@@ -37,6 +51,11 @@ public class ReportService {
         if (savedReport.getId() == null) {
             throw new IllegalStateException("Report was not saved correctly – no ID returned.");
         }
+
+        Map<String, String> payload = reportToPayload(savedReport);
+        log.info("Sending report saved to topic: " + reportTopic);
+
+        kafkaTemplate.send(reportTopic, payload);
     }
 
     // ----------------- Aktualizacja statusu raportu -----------------
@@ -46,7 +65,6 @@ public class ReportService {
             Report report = reportOpt.get();
             report.setStatus(status);
             Report updatedReport = reportRepository.save(report);
-
         } else {
             throw new RuntimeException("Report not found");
         }
@@ -62,6 +80,13 @@ public class ReportService {
     }
     public List<Report> getVerifiedReports() {
         return reportRepository.findByStatus(ReportStatus.VERIFIED);
+    }
+    private Map<String, String> reportToPayload(Report report) {
+        return Map.of(
+                "id", report.getId().toString(),
+                "title", report.getTitle(),
+                "description", report.getDescription()
+        );
     }
 
 }

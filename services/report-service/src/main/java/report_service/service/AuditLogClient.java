@@ -55,21 +55,21 @@ public class AuditLogClient {
 
         String logContext = body.get("service") + ":" + body.get("action");
         log.info("[Kafka Debug] Konfiguracja Kafki - Bootstrap Servers: {}, Topic: {}, Client ID: {}",
-                kafkaConfig.getBootstrapServers(), kafkaConfig.getAuditTopic(), kafkaConfig.getClientId());
+                kafkaConfig.getBootstrapServers(), kafkaConfig.getTopic(), kafkaConfig.getClientId());
         log.info("[Kafka Debug] Próba wysłania wiadomości - Context: {}, Body: {}", logContext, body);
 
         try {
             log.debug("[Kafka Debug] Inicjalizacja wysyłania do Kafki...");
             CompletableFuture<SendResult<String, Object>> future = kafkaTemplate
-                    .send(kafkaConfig.getAuditTopic(), body);
+                    .send(kafkaConfig.getTopic(), body);
 
             log.info("[Kafka Debug] Wysłano zapytanie do Kafki. Topic: {}, Context: {}",
-                    kafkaConfig.getAuditTopic(), logContext);
+                    kafkaConfig.getTopic(), logContext);
 
             future.orTimeout(KAFKA_TIMEOUT.toSeconds(), TimeUnit.SECONDS)
                     .whenComplete((result, ex) -> {
                         if (ex == null) {
-                            log.debug("Audit log sent successfully to Kafka topic: {}", kafkaConfig.getAuditTopic());
+                            log.debug("Audit log sent successfully to Kafka topic: {}", kafkaConfig.getTopic());
                         } else {
                             if (ex instanceof TimeoutException) {
                                 log.error("Timeout while sending audit log to Kafka");
