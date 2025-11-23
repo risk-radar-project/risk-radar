@@ -22,6 +22,7 @@ import report_service.repository.ReportRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -39,7 +40,7 @@ class ReportServiceTest {
     private ReportRepository reportRepository;
 
     @Mock
-    private KafkaTemplate<String, Report> kafkaTemplate;
+    private KafkaTemplate<String, Object> kafkaTemplate;
 
     @Mock
     private AuditLogClient auditLogClient;
@@ -86,16 +87,16 @@ class ReportServiceTest {
                 new TopicPartition("reports", 1), 0L, 0,
                 System.currentTimeMillis(), 0, 0
         );
-        ProducerRecord<String, Report> producerRecord = new ProducerRecord<>("reports", savedReport);
-        SendResult<String, Report> sendResult = new SendResult<>(producerRecord, recordMetadata);
-        CompletableFuture<SendResult<String, Report>> successFuture = CompletableFuture.completedFuture(sendResult);
+        ProducerRecord<String, Object> producerRecord = new ProducerRecord<>("reports", "json-report", Map.of("id", savedReport.getId().toString()));
+        SendResult<String, Object> sendResult = new SendResult<>(producerRecord, recordMetadata);
+        CompletableFuture<SendResult<String, Object>> successFuture = CompletableFuture.completedFuture(sendResult);
 
-        when(kafkaTemplate.send(eq("reports"), any(Report.class))).thenReturn(successFuture);
+        when(kafkaTemplate.send(anyString(), anyString(), any())).thenReturn(successFuture);
 
         reportService.createReport(testRequest);
 
         verify(reportRepository, times(1)).save(any(Report.class));
-        verify(kafkaTemplate, times(1)).send(eq("reports"), any(Report.class));
+        verify(kafkaTemplate, times(1)).send(anyString(), eq(savedReport.getId().toString()), any());
     }
 
     @Test
@@ -109,7 +110,7 @@ class ReportServiceTest {
 
         assertEquals("Database error", thrown.getMessage());
 
-        verify(kafkaTemplate, never()).send(anyString(), any(Report.class));
+        verify(kafkaTemplate, never()).send(anyString(), anyString(), any());
     }
 
     @Test
@@ -117,15 +118,15 @@ class ReportServiceTest {
         when(reportRepository.save(any(Report.class))).thenReturn(savedReport);
 
         RuntimeException kafkaException = new RuntimeException("Kafka connection failed");
-        CompletableFuture<SendResult<String, Report>> failedFuture = CompletableFuture.failedFuture(kafkaException);
-        when(kafkaTemplate.send(eq("reports"), any(Report.class))).thenReturn(failedFuture);
+        CompletableFuture<SendResult<String, Object>> failedFuture = CompletableFuture.failedFuture(kafkaException);
+        when(kafkaTemplate.send(eq("reports"), anyString(), any())).thenReturn(failedFuture);
 
         assertDoesNotThrow(() -> {
             reportService.createReport(testRequest);
         });
 
         verify(reportRepository, times(1)).save(any(Report.class));
-        verify(kafkaTemplate, times(1)).send(eq("reports"), any(Report.class));
+        verify(kafkaTemplate, times(1)).send(eq("reports"), anyString(), any());
     }
 
 
@@ -140,6 +141,8 @@ class ReportServiceTest {
 
         assertEquals(newStatus, savedReport.getStatus());
         verify(reportRepository).save(savedReport);
+        // after update, service should publish updated report as an object to Kafka
+        verify(kafkaTemplate, times(1)).send(anyString(), eq(savedReport.getId().toString()), any());
     }
 
     @Test
