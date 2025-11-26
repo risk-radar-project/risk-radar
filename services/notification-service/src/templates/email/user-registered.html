@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Witaj w Risk Radar</title>
+    <link rel="stylesheet" href="styles.css" data-inline-styles="true" />
+</head>
+<body>
+    <div class="wrapper">
+        <div class="card">
+            <header class="header">
+                <h1>Cześć {{userName}}</h1>
+                <p>Twoje konto w Risk Radar zostało utworzone.</p>
+            </header>
+            <main class="content">
+                <p>Dziękujemy za stworzenie konta, przejdź na stronę klikając przycisk poniżej i zacznij korzystać!</p>
+                <a class="button" href="{{appUrl}}" target="_blank" rel="noopener" style="display: block; margin: 0 auto; text-align: center;">Otwórz panel</a>
+            </main>
+            <footer class="footer">
+                &copy; {{currentYear}} Risk Radar · Wiadomość automatyczna
+            </footer>
+        </div>
+    </div>
+</body>
+</html>
