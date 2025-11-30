@@ -14,7 +14,7 @@ public class ReportQueryController {
 
     private final ReportServiceClient reportServiceClient;
 
-    @GetMapping("/api/reports")
+    @GetMapping("/reports")
     public List<ReportDTO> getAllVerifiedReports() {
         return reportServiceClient.getVerifiedReports();
     }

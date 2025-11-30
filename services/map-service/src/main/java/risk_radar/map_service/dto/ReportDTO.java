@@ -10,7 +10,7 @@ public record ReportDTO(UUID id,
                         String title,
                         String description,
                         UUID userID,
-                        List<UUID> imagesIds,
+                        List<UUID> imageIds,
                         String status,
                         String category,
                         LocalDateTime createdAt
