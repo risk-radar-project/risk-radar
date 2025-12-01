@@ -17,6 +17,10 @@ export interface Config {
     kafkaClientId: string;
     kafkaGroupId: string;
     kafkaTopic: string;
+    kafkaConnectMaxRetries: number;
+    kafkaConnectRetryInitialDelayMs: number;
+    kafkaConnectRetryMaxDelayMs: number;
+    kafkaConnectRetryBackoffMultiplier: number;
 }
 
 const kafkaBrokers = (process.env.KAFKA_BROKERS || '')
@@ -25,6 +29,30 @@ const kafkaBrokers = (process.env.KAFKA_BROKERS || '')
     .filter((broker) => broker.length > 0);
 
 const kafkaTopic = (process.env.KAFKA_TOPIC || 'audit_logs').trim();
+
+const kafkaConnectMaxRetries = Math.max(
+    1,
+    parseInt(process.env.KAFKA_CONNECT_MAX_RETRIES || '12', 10)
+);
+
+const kafkaConnectRetryInitialDelayMs = Math.max(
+    100,
+    parseInt(process.env.KAFKA_CONNECT_RETRY_INITIAL_DELAY_MS || '1000', 10)
+);
+
+const kafkaConnectRetryMaxDelayMs = Math.max(
+    kafkaConnectRetryInitialDelayMs,
+    parseInt(process.env.KAFKA_CONNECT_RETRY_MAX_DELAY_MS || '15000', 10)
+);
+
+const kafkaConnectRetryBackoffMultiplierRaw = Number.parseFloat(
+    process.env.KAFKA_CONNECT_RETRY_BACKOFF_MULTIPLIER || '1.8'
+);
+
+const kafkaConnectRetryBackoffMultiplier = Number.isFinite(kafkaConnectRetryBackoffMultiplierRaw) &&
+    kafkaConnectRetryBackoffMultiplierRaw > 1
+    ? kafkaConnectRetryBackoffMultiplierRaw
+    : 1.8;
 
 const databaseUrl = (process.env.DATABASE_URL || '').trim();
 if (!databaseUrl) {
@@ -64,4 +92,8 @@ export const config: Config = {
     kafkaClientId: (process.env.KAFKA_CLIENT_ID || 'audit-log-service').trim(),
     kafkaGroupId: (process.env.KAFKA_GROUP_ID || 'audit-log-service-consumer').trim(),
     kafkaTopic,
+    kafkaConnectMaxRetries,
+    kafkaConnectRetryInitialDelayMs,
+    kafkaConnectRetryMaxDelayMs,
+    kafkaConnectRetryBackoffMultiplier,
 };
