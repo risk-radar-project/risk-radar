@@ -1,0 +1,38 @@
+spring:
+  data:
+    redis:
+      host: redis
+      port: 6379
+  datasource:
+    url: jdbc:postgresql://postgres:5432/risk-radar
+    username: risk-radar-admin
+    password: passwd
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+  kafka:
+    bootstrap-servers: kafka:9092
+    admin:
+      auto-create: true
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+      client-id: report-service
+      acks: all
+      retries: 3
+audit:
+  service:
+    url: http://audit-log-service:8080
+  kafka:
+    topic: audit_logs
+
+report:
+  kafka:
+    topic: reports
