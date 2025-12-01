@@ -1,0 +1,9 @@
+{
+    "root": true,
+    "extends": ["next/core-web-vitals", "plugin:prettier/recommended"],
+    "rules": {
+        "no-unused-vars": "warn",
+        "@next/next/no-img-element": "off",
+        "react-hooks/exhaustive-deps": "warn"
+    }
+}
