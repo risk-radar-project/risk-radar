@@ -9,6 +9,68 @@ import { getWebSocketHandler } from '../websocket/websocket-handler';
 let kafkaConsumer: Consumer | null = null;
 let consumerRunPromise: Promise<void> | null = null;
 
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function connectConsumerWithRetry(consumer: Consumer): Promise<void> {
+    const {
+        kafkaConnectMaxRetries,
+        kafkaConnectRetryInitialDelayMs,
+        kafkaConnectRetryMaxDelayMs,
+        kafkaConnectRetryBackoffMultiplier,
+    } = config;
+
+    let attempt = 0;
+    let delay = kafkaConnectRetryInitialDelayMs;
+    let lastError: unknown;
+
+    while (attempt < kafkaConnectMaxRetries) {
+        attempt++;
+
+        try {
+            logger.info(
+                `Attempting to connect to Kafka (attempt ${attempt}/${kafkaConnectMaxRetries})`
+            );
+
+            await consumer.connect();
+            await consumer.subscribe({ topic: config.kafkaTopic, fromBeginning: false });
+
+            logger.info('Kafka consumer connected and subscribed', {
+                brokers: config.kafkaBrokers,
+                topic: config.kafkaTopic,
+                groupId: config.kafkaGroupId,
+            });
+
+            return;
+        } catch (error) {
+            lastError = error;
+            const message = error instanceof Error ? error.message : 'Unknown error';
+
+            logger.warn('Kafka connection attempt failed', {
+                attempt,
+                maxRetries: kafkaConnectMaxRetries,
+                retryInMs: attempt >= kafkaConnectMaxRetries ? 0 : delay,
+                error: message,
+            });
+
+            await consumer.disconnect().catch(() => undefined);
+
+            if (attempt >= kafkaConnectMaxRetries) {
+                break;
+            }
+
+            await sleep(delay);
+            delay = Math.min(
+                Math.round(delay * kafkaConnectRetryBackoffMultiplier),
+                kafkaConnectRetryMaxDelayMs
+            );
+        }
+    }
+
+    throw lastError instanceof Error
+        ? lastError
+        : new Error('Failed to connect to Kafka after configured retries');
+}
+
 export interface KafkaMessageContext {
     topic: string;
     partition: number;
@@ -65,8 +127,7 @@ export async function startKafkaConsumer(): Promise<void> {
 
     kafkaConsumer = kafka.consumer({ groupId: config.kafkaGroupId });
 
-    await kafkaConsumer.connect();
-    await kafkaConsumer.subscribe({ topic: config.kafkaTopic, fromBeginning: false });
+    await connectConsumerWithRetry(kafkaConsumer);
 
     kafkaConsumer.on('consumer.crash', (event: { payload?: { error?: Error } }) => {
         const error = event.payload?.error;
