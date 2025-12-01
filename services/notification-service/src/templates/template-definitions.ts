@@ -129,8 +129,8 @@ export const templateDefinitions: TemplateDefinition[] = [
         templateKey: "USER_PASSWORD_RESET_REQUESTED_EMAIL",
         eventType: "USER_PASSWORD_RESET_REQUESTED",
         channel: "email",
-        subject: placeholder,
-        body: placeholder
+        subject: "Resetuj hasło w RiskRadar",
+        bodyFile: "user-password-reset-requested.html"
     },
     {
         templateKey: "USER_BANNED_IN_APP",
