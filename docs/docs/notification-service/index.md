@@ -212,6 +212,8 @@ Fallback endpoint to trigger notifications without Kafka.
 }
 ```
 
+Refer to **Event Templates & Payloads** for event-specific fields such as `payload.resetUrl` required by password reset emails.
+
 **Responses**
 - `202 Accepted` – `{ "status": "accepted", "eventId": "generated-uuid" }`
 - `400 Bad Request` – validation failure
@@ -238,6 +240,21 @@ Fallback endpoint to trigger notifications without Kafka.
 - **Logging:** Custom Kafka log creator funnels broker logs into Winston; noise can be suppressed via `LOG_KAFKA_EVENTS=false`.
 
 When no brokers are configured, the consumer stays disabled and the service relies solely on the fallback endpoint.
+
+---
+
+## 📨 Event Templates & Payloads
+
+| Event Type | Channels | Template Keys | Required Payload Fields | Notes |
+|------------|----------|---------------|-------------------------|-------|
+| `USER_REGISTERED` | `in_app`, `email` | `USER_REGISTERED_IN_APP`, `USER_REGISTERED_EMAIL` | _(none)_ | Include `displayName` for friendly salutation, `appUrl` for the CTA button, and override `email` in the payload when you do not want to rely on the User Service lookup. |
+| `USER_PASSWORD_RESET_REQUESTED` | `email` | `USER_PASSWORD_RESET_REQUESTED_EMAIL` | `payload.resetUrl` (must be https:// or http://) | Template explains that a password reset was requested and renders both a button and the raw URL so the user can open the link and define a new password. Optional `displayName`/`expiresInMinutes` personalize the copy. |
+
+Guidelines
+
+- Use this table as the single source of truth for channel coverage, template keys, and required payload attributes. Add a row whenever a new event/template pair is introduced so producers know what data to supply.
+- Every payload may include `email`, `userEmail`, or `recipientEmail` to override the address lookup; otherwise the dispatcher falls back to the User Service.
+- Template variables silently drop when missing, but strongly-typed requirements (like `resetUrl`) are enforced by the fallback validation schema and will cause a `400`.
 
 ---
 
