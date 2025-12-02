@@ -27,11 +27,7 @@ class KafkaClient:
         try:
             self.producer = AIOKafkaProducer(
                 bootstrap_servers=self.bootstrap_servers,
-                value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-                acks='all',
-                enable_idempotence=True,
-                retry_backoff_ms=100,
-                max_in_flight_requests_per_connection=5
+                value_serializer=lambda v: json.dumps(v).encode('utf-8')
             )
             await self.producer.start()
             logger.info(f"Kafka producer connected to {self.bootstrap_servers}")

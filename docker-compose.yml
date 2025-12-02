@@ -104,7 +104,7 @@ services:
         build:
             context: ./services/ai-assistant-service
             dockerfile: Dockerfile
-        container_name: ai-assistant-service
+        container_name: threat-analysis-service
         depends_on:
             - kafka
             - audit-log-service
@@ -112,10 +112,11 @@ services:
             <<: *global-env
             PORT: 8080
             KAFKA_BROKERS: kafka:9092
-            KAFKA_CLIENT_ID: ai-assistant-service
+            KAFKA_CLIENT_ID: threat-analysis-service
             KAFKA_ENABLED: "true"
             AUDIT_SERVICE_URL: http://audit-log-service:8080
             AUDIT_ENABLED: "true"
+            GOOGLE_API_KEY: "AIzaSyCv9EswwXxuQ0LDNxA3etKIsXmmdc9t0CA"
         ports:
             - "8088:8080"
         networks:
@@ -310,7 +311,7 @@ services:
             # Create topics
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic audit_logs --partitions 3 --replication-factor 1
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic notification_events --partitions 3 --replication-factor 1
-            kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic ai_assistant_events --partitions 2 --replication-factor 1
+            kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic threat_analysis_events --partitions 2 --replication-factor 1
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic verification_events --partitions 2 --replication-factor 1
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic categorization_events --partitions 2 --replication-factor 1
             
