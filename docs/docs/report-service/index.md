@@ -2,19 +2,20 @@
 
 **Owner:** @Filip Sanecki
 
-Report Service for **RiskRadar** responsible for creating, updating, and retrieving incident reports. It handles report creation, status management, audit logging, and integrates with Kafka and the database.
+Report Service dla **RiskRadar** odpowiedzialny za tworzenie, aktualizację, i pobieranie zgłoszeń incydentów. Obsługuje logikę biznesową związaną z raportami, zarządzanie ich statusem, a także integruje się z **Kafka** do publikacji zdarzeń oraz z zewnętrznym serwisem **Audit Log Service** do rejestrowania działań.
 
 ---
 
 ## 🎯 Purpose
 
-This service provides **report management** within RiskRadar.
-It ensures:
+Ten serwis zapewnia **kompleksowe zarządzanie raportami** w ramach RiskRadar.
+Zapewnia:
 
-* Creation of new incident reports
-* Status updates for reports (PENDING, VERIFIED, REJECTED)
-* Retrieval of reports with pagination, sorting, and filtering
-* Integration with Kafka for event publishing
+* **Kreację** nowych zgłoszeń incydentów.
+* Zarządzanie **statusami** raportów (`PENDING`, `VERIFIED`, `REJECTED`).
+* **Pobieranie** raportów z paginacją, sortowaniem i możliwością filtrowania (np. po statusie `VERIFIED`).
+* Integrację z **Kafka** do asynchronicznej publikacji zdarzeń po utworzeniu raportu.
+* Rejestrowanie **logów audytowych** dla kluczowych działań (tworzenie, zmiana statusu).
 
 ---
 
@@ -23,7 +24,8 @@ It ensures:
 * **Language:** Java 21
 * **Framework:** Spring Boot 3.5
 * **Database:** PostgreSQL (via Spring Data JPA + Hibernate)
-* **Cache / Queue:** Redis, Kafka
+* **Queue:** Kafka (dla publikacji zdarzeń i logów audytowych)
+* **External Service Integration:** Audit Log Service (przez `WebClient` jako **mechanizm awaryjny/fallback** dla logów audytowych)
 * **Build Tool:** Maven
 * **Communication:** REST (Spring Web)
 * **Deployment:** Docker / Docker Compose
@@ -32,50 +34,75 @@ It ensures:
 
 ## ⚙️ Core Components
 
-* **Report Creation**
+* **Report Creation (POST /createReport)**
+  * Akceptuje szczegóły raportu w body (DTO: `ReportRequest`).
+  * Waliduje i zapisuje raport w PostgreSQL.
+  * Publikuje zdarzenie o utworzeniu raportu do tematu Kafka (`report.kafka.topic`).
 
-    * Accepts report details via `POST /createReport`
-    * Validates input and stores reports in PostgreSQL
-    * Publishes creation events to Kafka
-
-* **Report Status Management**
-
-    * Update status via `PATCH /report/{id}/status`
-    * Logs audit events for status changes
+* **Report Status Management (PATCH /report/{id}/status)**
+  * Aktualizuje status raportu na podstawie przekazanego parametru (`PENDING`, `VERIFIED`, `REJECTED`).
+  * Loguje zdarzenie statusu do **Audit Log Service** (z priorytetem wysyłki przez Kafka, z fallbackiem do REST `WebClient`).
 
 * **Report Retrieval**
+  * `GET /reports`: Pobiera paginowaną listę wszystkich raportów.
+  * `GET /report/{id}`: Pobiera pojedynczy raport po UUID.
+  * `GET /reports/verified`: Pobiera listę raportów ze statusem `VERIFIED`.
 
-    * Fetch all reports with pagination and sorting via `GET /reports`
-    * Fetch single report by ID via `GET /report/{id}`
-    * Optional filtering by userId or status
-
-* **Audit Logging**
-
-    * Logs all actions on reports (creation, status update)
+* **Health Check (GET /status)**
+  * Zwraca status aplikacji (`UP`/`DOWN`).
+  * Sprawdza i raportuje stan połączenia z **PostgreSQL** (poprzez `JdbcTemplate.queryForObject("SELECT 1")`).
+  * Sprawdza i raportuje stan połączenia z **Kafka** (poprzez `AdminClient.listTopics().names().get()`).
 
 ---
 
 ## 🗄️ Database Schema
 
-### `report`
+### `report` (Encja: `Report.java`)
 
-| Column        | Type      | Constraints      | Description                  |
-| ------------- | --------- | ---------------- | ---------------------------- |
-| `id`          | UUID      | PK, not null     | Unique report identifier     |
-| `createdat`   | TIMESTAMP | Default: now()   | Report creation timestamp    |
-| `title`       | VARCHAR   | Not null         | Report title                 |
-| `description` | TEXT      | Not null         | Report description           |
-| `latitude`    | DOUBLE    | Not null         | Geographic latitude          |
-| `longitude`   | DOUBLE    | Not null         | Geographic longitude         |
-| `status`      | VARCHAR   | Default: PENDING | Report status                |
-| `user_id`     | UUID      | Not null         | ID of user submitting report |
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | UUID | **PK**, not null, updatable=false | Unikalny identyfikator raportu |
+| `created_at` | TIMESTAMP | Not null, Default: now() | Czas utworzenia raportu |
+| `title` | VARCHAR | Not null | Tytuł raportu |
+| `description` | TEXT | Not null | Szczegółowy opis incydentu |
+| `latitude` | DOUBLE | Not null | Szerokość geograficzna |
+| `longitude` | DOUBLE | Not null | Długość geograficzna |
+| `status` | VARCHAR | Not null, Default: PENDING | Status raportu (ENUM: PENDING, VERIFIED, REJECTED) |
+| `category` | VARCHAR | Not null | Kategoria raportu (ENUM: VANDALISM, INFRASTRUCTURE, ...) |
+| `user_id` | UUID | Not null | ID użytkownika zgłaszającego |
 
-### `report_image_ids`
+### `report_image_ids` (Element Collection)
 
-| Column      | Type   | Constraints        | Description       |
-| ----------- | ------ | ------------------ | ----------------- |
-| `report_id` | UUID   | FK to `report(id)` | Associated report |
-| `image_ids` | UUID[] | Not null           | List of image IDs |
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `report_id` | UUID | **FK** to `report(id)` | Klucz obcy do powiązanego raportu |
+| `image_ids` | UUID | Not null | Identyfikator obrazu powiązanego z raportem |
+
+---
+
+## 📑 Report Statuses
+
+Dostępne statusy dla raportów (Enum: `ReportStatus.java`):
+
+* **PENDING** - Oczekujący na weryfikację.
+* **VERIFIED** - Zweryfikowany, uznany za ważny.
+* **REJECTED** - Odrzucony.
+
+## 🗂️ Report Categories
+
+Kategorie zgłoszeń (Enum: `ReportCategory.java`):
+
+| Enum Name | Display Name (PL) | Icon Name (Google Material Symbols) |
+| :--- | :--- | :--- |
+| **VANDALISM** | Wandalizm | format\_paint |
+| **INFRASTRUCTURE** | Infrastruktura drogowa/chodników | construction |
+| **DANGEROUS\_SITUATION** | Niebezpieczne sytuacje | warning |
+| **TRAFFIC\_ACCIDENT** | Wypadki drogowe | car\_crash |
+| **PARTICIPANT\_BEHAVIOR** | Zachowania kierowców/pieszych | person\_alert |
+| **PARTICIPANT\_HAZARD** | Zagrożenia dla pieszych i rowerzystów i kierowców | brightness\_alert |
+| **WASTE\_ILLEGAL\_DUMPING** | Śmieci/nielegalne zaśmiecanie/nielegalne wysypiska śmieci | delete\_sweep |
+| **BIOLOGICAL\_HAZARD** | Zagrożenia biologiczne | bug\_report |
+| **OTHER** | Inne | help\_outline |
 
 ---
 
@@ -84,7 +111,7 @@ It ensures:
 ### 1. **Create Report**
 
 **POST** `/createReport`
-Creates a new report.
+Tworzy nowe zgłoszenie.
 
 * `201 Created` — Report created
 * `500 Internal Server Error` — Failed to create report
@@ -92,7 +119,7 @@ Creates a new report.
 ### 2. **Update Report Status**
 
 **PATCH** `/report/{id}/status?status=NEW_STATUS`
-Updates status of a report (`PENDING`, `APPROVED`, `REJECTED`).
+Aktualizuje status raportu (`PENDING`, `VERIFIED`, `REJECTED`).
 
 * `200 OK` — Status updated
 * `404 Not Found` — Report not found
@@ -101,7 +128,7 @@ Updates status of a report (`PENDING`, `APPROVED`, `REJECTED`).
 ### 3. **Get Reports (Paginated)**
 
 **GET** `/reports?page=0&size=10&sort=createdAt&direction=desc`
-Returns a paginated list of reports, sorted by any field.
+Zwraca paginowaną listę wszystkich raportów, sortowanych po dowolnym polu.
 
 * `200 OK` — Returns reports page
 * `500 Internal Server Error` — Failed to fetch reports
@@ -109,15 +136,24 @@ Returns a paginated list of reports, sorted by any field.
 ### 4. **Get Report by ID**
 
 **GET** `/report/{id}`
-Returns details of a single report.
+Zwraca szczegóły pojedynczego raportu.
 
 * `200 OK` — Report found
 * `404 Not Found` — Report not found
+* `500 Internal Server Error` — Failed to fetch report
 
-### 5. **Service Status / Health Check**
+### 5. **Get Verified Reports**
+
+**GET** `/reports/verified`
+Zwraca listę raportów, których status to **VERIFIED**.
+
+* `200 OK` — Returns reports
+* `500 Internal Server Error` — Failed to fetch verified reports
+
+### 6. **Service Status / Health Check**
 
 **GET** `/status`
-Returns service metadata, uptime, and status.
+Zwraca metadane serwisu, czas działania, oraz statusy kluczowych zależności (DB, Kafka).
 
 * `200 OK` — Service is healthy
 
@@ -125,66 +161,42 @@ Returns service metadata, uptime, and status.
 
 ## ❌ Error Handling
 
-All errors follow consistent format:
+Wszystkie błędy API zwracają spójny format JSON:
 
 ```json
 {
-  "message": "Description",
+  "message": "Description of the failure",
   "status": "failure",
-  "error": "Detailed error message"
+  "error": "Detailed error message (e.g., Report not found)"
 }
 ```
 
----
-
 ## 🧑‍💻 Example Usage
-
 ### Create Report
-
-```bash
+```Bash
 curl -X POST http://localhost:8085/createReport \
 -H "Content-Type: application/json" \
 -d '{
-  "title": "Zalana droga",
-  "description": "Ulica Przykładowa jest całkowicie zalana po ulewie.",
-  "latitude": 52.2297,
-  "longitude": 21.0122,
-  "userId": "550e8400-e29b-41d4-a716-446655440000",
-  "imageIds": [
-    "660e8400-e29b-41d4-a716-446655440000",
-    "770e8400-e29b-41d4-a716-446655440000"
-  ]
+"title": "Zalana droga",
+"description": "Ulica Przykładowa jest całkowicie zalana po ulewie.",
+"latitude": 52.2297,
+"longitude": 21.0122,
+"userId": "550e8400-e29b-41d4-a716-446655440000",
+"imageIds": [
+"660e8400-e29b-41d4-a716-446655440000"
+],
+"reportCategory": "INFRASTRUCTURE"
 }'
 ```
-
 ### Update Report Status
-
-```bash
-curl -X PATCH "http://localhost:8085/report/37794ccf-d2a8-4ac5-b72f-8f9b10390552/status?status=APPROVED"
+``` Bash
+  curl -X PATCH "http://localhost:8085/report/37794ccf-d2a8-4ac5-b72f-8f9b10390552/status?status=VERIFIED"
 ```
-
 ### Get Reports (paginated)
-
-```bash
-curl -X GET "http://localhost:8085/reports?page=0&size=5&sort=createdAt&direction=desc"
+``` Bash
+  curl -X GET "http://localhost:8085/reports?page=0&size=5&sort=createdAt&direction=desc"
 ```
-
 ### Get Single Report
-
-```bash
-curl -X GET "http://localhost:8085/report/37794ccf-d2a8-4ac5-b72f-8f9b10390552"
+``` Bash
+  curl -X GET "http://localhost:8085/report/37794ccf-d2a8-4ac5-b72f-8f9b10390552"
 ```
-
-### Status / Health Check
-
-```bash
-curl -X GET http://localhost:8085/status
-```
-
----
-
-## 🧪 Testing
-
-* Unit tests: JUnit 5, Mockito
-* Integration tests: Spring Boot Starter Test
-* Kafka tests: Embedded Kafka (spring-kafka-test)
