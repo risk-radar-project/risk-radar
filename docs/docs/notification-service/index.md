@@ -134,7 +134,7 @@ The **Notification Service** orchestrates all outbound user-facing communication
 
 ### `GET /status`
 
-Returns component health based on live dependency probes. `services.kafka` and `services.smtp` resolve to `"up"`, `"down"`, or `"disabled"` depending on broker/SMTP configuration, and the top-level `status` flips to `"degraded"` whenever a required dependency is down.
+Returns component health based on live dependency probes. The Kafka entry now exposes both the probe status and the consumer runtime mode (`connected`, `fallback`, or `disabled`), so operators can see when the service is relying on the HTTP fallback while Kafka is unavailable. `services.smtp` still resolves to `"up"`, `"down"`, or `"disabled"`, and the top-level `status` flips to `"degraded"` whenever a required dependency is down.
 
 **200 OK**
 ```json
@@ -142,12 +142,28 @@ Returns component health based on live dependency probes. `services.kafka` and `
 	"status": "ok",
 	"services": {
 		"database": "up",
-		"kafka": "up",
+		"kafka": {
+			"status": "up",
+			"mode": "connected",
+			"connected": true,
+			"reconnecting": false,
+			"brokersConfigured": true,
+			"lastError": null,
+			"lastFailureAt": null
+		},
 		"smtp": "disabled"
 	},
 	"timestamp": "2025-11-19T12:34:56.000Z"
 }
 ```
+
+When Kafka is unreachable, the service logs at startup:
+
+```
+[WARN] Kafka unavailable at startup; HTTP fallback active while retrying connection
+```
+
+This makes it obvious in aggregated logs that HTTP-only mode is active until brokers recover.
 
 ### `GET /notifications`
 

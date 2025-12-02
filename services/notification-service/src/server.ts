@@ -17,6 +17,13 @@ async function bootstrap(): Promise<void> {
     await runSeeder();
     emailScheduler.start();
     await notificationConsumer.start();
+    const kafkaRuntime = notificationConsumer.getRuntimeStatus();
+    if (kafkaRuntime.mode !== "connected") {
+        logger.warn("Kafka unavailable at startup; HTTP fallback active while retrying connection", {
+            kafkaMode: kafkaRuntime.mode,
+            lastError: kafkaRuntime.lastError
+        });
+    }
 }
 
 async function start(): Promise<void> {
