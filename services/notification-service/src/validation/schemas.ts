@@ -16,6 +16,15 @@ const eventTypes = [
     "USER_UNBANNED"
 ] as const;
 
+const genericPayloadSchema = Joi.object().unknown(true);
+
+const passwordResetPayloadSchema = Joi.object({
+    resetUrl: Joi.string()
+        .uri({ scheme: ["http", "https"] })
+        .messages({ "string.uri": '"payload.resetUrl" must be a valid http(s) URL' })
+        .required()
+}).unknown(true);
+
 export const listNotificationsQuerySchema = Joi.object({
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(100).default(20),
@@ -40,6 +49,10 @@ export const fallbackSendSchema = Joi.object({
         .messages({ "string.guid": '"userId" must be a valid UUID' })
         .required(),
     initiatorId: Joi.string().optional().allow(null),
-    payload: Joi.object().unknown(true).optional(),
+    payload: Joi.when("eventType", {
+        is: "USER_PASSWORD_RESET_REQUESTED",
+        then: passwordResetPayloadSchema.required(),
+        otherwise: genericPayloadSchema.optional()
+    }),
     source: Joi.string().optional(),
 });

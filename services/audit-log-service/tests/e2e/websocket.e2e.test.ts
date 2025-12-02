@@ -67,6 +67,7 @@ describe('WebSocket + HTTP integration (connect -> /status -> POST /logs -> WS e
         process.env.PORT = '5055';
         process.env.WEBSOCKET_ENABLED = 'true';
         process.env.LOG_LEVEL = 'error';
+        process.env.KAFKA_BROKERS = '';
         // eslint-disable-next-line max-len
         process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgres://test:test@localhost:5432/test_audit';
 

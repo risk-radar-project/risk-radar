@@ -134,7 +134,7 @@ The **Notification Service** orchestrates all outbound user-facing communication
 
 ### `GET /status`
 
-Returns component health based on live dependency probes. `services.kafka` and `services.smtp` resolve to `"up"`, `"down"`, or `"disabled"` depending on broker/SMTP configuration, and the top-level `status` flips to `"degraded"` whenever a required dependency is down.
+Returns component health based on live dependency probes. The Kafka entry now exposes both the probe status and the consumer runtime mode (`connected`, `fallback`, or `disabled`), so operators can see when the service is relying on the HTTP fallback while Kafka is unavailable. `services.smtp` still resolves to `"up"`, `"down"`, or `"disabled"`, and the top-level `status` flips to `"degraded"` whenever a required dependency is down.
 
 **200 OK**
 ```json
@@ -142,12 +142,28 @@ Returns component health based on live dependency probes. `services.kafka` and `
 	"status": "ok",
 	"services": {
 		"database": "up",
-		"kafka": "up",
+		"kafka": {
+			"status": "up",
+			"mode": "connected",
+			"connected": true,
+			"reconnecting": false,
+			"brokersConfigured": true,
+			"lastError": null,
+			"lastFailureAt": null
+		},
 		"smtp": "disabled"
 	},
 	"timestamp": "2025-11-19T12:34:56.000Z"
 }
 ```
+
+When Kafka is unreachable, the service logs at startup:
+
+```
+[WARN] Kafka unavailable at startup; HTTP fallback active while retrying connection
+```
+
+This makes it obvious in aggregated logs that HTTP-only mode is active until brokers recover.
 
 ### `GET /notifications`
 
@@ -212,6 +228,8 @@ Fallback endpoint to trigger notifications without Kafka.
 }
 ```
 
+Refer to **Event Templates & Payloads** for event-specific fields such as `payload.resetUrl` required by password reset emails.
+
 **Responses**
 - `202 Accepted` – `{ "status": "accepted", "eventId": "generated-uuid" }`
 - `400 Bad Request` – validation failure
@@ -238,6 +256,21 @@ Fallback endpoint to trigger notifications without Kafka.
 - **Logging:** Custom Kafka log creator funnels broker logs into Winston; noise can be suppressed via `LOG_KAFKA_EVENTS=false`.
 
 When no brokers are configured, the consumer stays disabled and the service relies solely on the fallback endpoint.
+
+---
+
+## 📨 Event Templates & Payloads
+
+| Event Type | Channels | Template Keys | Required Payload Fields | Notes |
+|------------|----------|---------------|-------------------------|-------|
+| `USER_REGISTERED` | `in_app`, `email` | `USER_REGISTERED_IN_APP`, `USER_REGISTERED_EMAIL` | _(none)_ | Include `displayName` for friendly salutation, `appUrl` for the CTA button, and override `email` in the payload when you do not want to rely on the User Service lookup. |
+| `USER_PASSWORD_RESET_REQUESTED` | `email` | `USER_PASSWORD_RESET_REQUESTED_EMAIL` | `payload.resetUrl` (must be https:// or http://) | Template explains that a password reset was requested and renders both a button and the raw URL so the user can open the link and define a new password. Optional `displayName`/`expiresInMinutes` personalize the copy. |
+
+Guidelines
+
+- Use this table as the single source of truth for channel coverage, template keys, and required payload attributes. Add a row whenever a new event/template pair is introduced so producers know what data to supply.
+- Every payload may include `email`, `userEmail`, or `recipientEmail` to override the address lookup; otherwise the dispatcher falls back to the User Service.
+- Template variables silently drop when missing, but strongly-typed requirements (like `resetUrl`) are enforced by the fallback validation schema and will cause a `400`.
 
 ---
 

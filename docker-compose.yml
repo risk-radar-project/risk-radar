@@ -105,10 +105,13 @@ services:
             AUDIT_KAFKA_BROKERS: kafka:9092
             AUDIT_KAFKA_TOPIC: audit_logs
             AUDIT_KAFKA_CLIENT_ID: media-service
+            MEDIA_ROOT: /app/data
         networks:
             - backend
         ports:
             - "8084:8080"
+        volumes:
+            - ./services/media-service/data:/app/data
     notification-service:
         build:
             context: ./services/notification-service

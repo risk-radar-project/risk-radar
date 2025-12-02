@@ -1,12 +1,14 @@
 import { Request, Response } from 'express';
 import { database } from '../database/database';
 import { getWebSocketHandler } from '../websocket/websocket-handler';
+import { getKafkaStatus } from '../messaging/kafka-consumer';
 
 export async function healthCheck(req: Request, res: Response): Promise<void> {
     try {
         const dbHealth = await database.healthCheck();
         const wsHandler = getWebSocketHandler();
         const wsConnections = wsHandler ? wsHandler.getConnectedClientsCount() : 0;
+        const kafkaStatus = getKafkaStatus();
 
         const status = {
             status: 'OK',
@@ -14,6 +16,7 @@ export async function healthCheck(req: Request, res: Response): Promise<void> {
             database_connection: dbHealth ? 'healthy' : 'unhealthy',
             websocket_enabled: Boolean(wsHandler),
             websocket_connections: wsConnections,
+            kafka_connection: kafkaStatus,
         };
 
         const httpStatus = dbHealth ? 200 : 503;
