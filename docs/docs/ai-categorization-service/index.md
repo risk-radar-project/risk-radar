@@ -1,273 +1,176 @@
-# ai categorization service
+# ai-categorization-service
 
-**Owner:** @Michał Rzepecki
-
-
-## 🔹 Health & Root 🩺
-
-### GET /
-**Description:** Root endpoint with service information and a list of all available endpoints.
-
-**Example Response:**
-
-```json
-{
-  "service": "AI Categorization Service",
-  "version": "1.0.0",
-  "endpoints": {
-    "categorize": "POST /categorize - Categorize single incident",
-    "batch_categorize": "POST /batch-categorize - Categorize multiple incidents",
-    "categories": "GET /categories - List all available categories",
-    "category_info": "GET /categories/{category} - Get info about specific category",
-    "statistics": "GET /statistics - Get model and service statistics",
-    "validate": "POST /validate - Validate and preview text preprocessing",
-    "model_info": "GET /model-info - Get detailed model information",
-    "health": "GET /health - Health check"
-  }
-}
-```
+**Owner:** @Michal
 
 ---
 
-### GET /health
-**Description:** Checks the service's health status.
+# AI Categorization Service
 
-**Example Request:**
+The **AI Categorization Service** automatically categorizes incident reports using machine learning. It employs a trained scikit-learn pipeline to classify reports into predefined categories, helping organize and route reports efficiently within the RiskRadar platform.
+
+---
+
+## 🏗️ Architecture
+
+### Core Capabilities
+
+- **Automatic Categorization** – ML-based classification of incident reports
+- **Multi-class Prediction** – Supports multiple incident categories with confidence scores
+- **Event Publishing** – Kafka integration for categorization results
+- **Audit Logging** – Complete tracking of all categorization operations
+
+### Technology Stack
+
+- **Language:** Python 3.11
+- **Framework:** FastAPI with async/await support
+- **ML Models:** scikit-learn pipeline with TfidfVectorizer
+- **Messaging:** aiokafka for asynchronous Kafka operations
+- **Validation:** Pydantic models with type safety
+
+### Model Components
+
+- **Pipeline** – Complete sklearn preprocessing + classification pipeline
+- **Label Encoder** – Maps numeric predictions to category names
+
+---
+
+## 📊 API Endpoints
+
+### Health Check
+```http
+GET /health
 ```
-GET http://localhost:8083/health
-```
 
-**Example Response:**
-
+**Response:**
 ```json
 {
   "status": "healthy",
-  "service": "ai-categorization"
+  "service": "ai-categorization-service",
+  "timestamp": "2024-12-02T19:30:45.123Z",
+  "model_loaded": true,
+  "kafka_enabled": true
 }
 ```
 
 ---
 
-## 🔹 Categorization 📝
-
-### POST /categorize
-**Description:** Categorizes a single incident description.
-
-**Example Request Body:**
-
-```json
-{
-  "title": "Wypadek drogowy na głównej ulicy"
-}
+### Model Info
+```http
+GET /model-info
 ```
 
-**Example Response:**
-
+**Response:**
 ```json
 {
-  "category": "accident",
-  "title": "Wypadek drogowy na głównej ulicy",
-  "metrics": {
-    "prediction_confidence": 0.92,
-    "response_time_ms": 45.2,
-    "model_accuracy": "0.88",
-    "preprocessing_time_ms": 10.1,
-    "vectorization_time_ms": 8.3,
-    "inference_time_ms": 12.5
-  },
-  "model_info": {
-    "model_type": "LogisticRegression",
-    "model_version": "1.0.0",
-    "categories": ["traffic", "accident", "infrastructure", "damage", "pedestrian", "danger"],
-    "feature_count": {
-      "word_features": 5000,
-      "char_features": 2000,
-      "numerical_features": 7
-    },
-    "training_info": {
-      "training_date": "2025-01-01",
-      "model_file": "incident_classifier_clean.pkl"
-    }
-  }
-}
-```
-
----
-
-### POST /batch-categorize
-**Description:** Categorizes multiple incidents at once (max 100).
-
-**Example Request Body:**
-
-```json
-[
-  {"title": "Kolizja dwóch pojazdów"},
-  {"title": "Awaria sygnalizacji świetlnej"}
-]
-```
-
-**Example Response:**
-
-```json
-{
-  "results": [
-    {
-      "index": 0,
-      "category": "accident",
-      "title": "Kolizja dwóch pojazdów",
-      "confidence": 0.87,
-      "processing_time_ms": 40.2
-    },
-    {
-      "index": 1,
-      "category": "infrastructure",
-      "title": "Awaria sygnalizacji świetlnej",
-      "confidence": 0.91,
-      "processing_time_ms": 42.5
-    }
+  "model_type": "sklearn_pipeline",
+  "model_version": "1.0.0",
+  "categories": [
+    "infrastruktura_drogowa",
+    "bezpieczeństwo",
+    "środowisko",
+    "oświetlenie",
+    "inne"
   ],
-  "batch_stats": {
-    "total_items": 2,
-    "successful": 2,
-    "failed": 0,
-    "total_processing_time_ms": 85.1,
-    "average_time_per_item_ms": 42.6
-  }
+  "n_categories": 5
 }
 ```
 
 ---
 
-## 🔹 Categories 🗂️
-
-### GET /categories
-**Description:** Lists all available categories for the model.
-
-**Example Request:**
-```
-GET http://localhost:8083/categories
+### Categorize Report
+```http
+POST /categorize
 ```
 
-**Example Response:**
-
+**Request Body:**
 ```json
 {
-  "categories": ["traffic", "accident", "infrastructure", "damage", "pedestrian", "danger"],
-  "total_categories": 6,
-  "model_type": "LogisticRegression"
+  "report_id": "report-123",
+  "title": "Dziura w chodniku na ul. Głównej",
+  "description": "Duża dziura w chodniku która może być niebezpieczna dla pieszych",
+  "user_id": "user-456"
 }
 ```
 
----
-
-### GET /categories/{category}
-**Description:** Retrieves detailed information about a specific category.
-
-**Example Request:**
-```
-GET http://localhost:8083/categories/traffic
-```
-
-**Example Response:**
-
+**Response:**
 ```json
 {
-  "category": "traffic",
-  "description": "Traffic-related incidents including accidents, collisions, and traffic flow problems",
-  "keywords": ["ruch", "droga", "ulica", "auto", "samochód", "pojazd", "kierowca"],
-  "examples": ["Kolizja dwóch pojazdów", "Korek na głównej ulicy", "Awaria pojazdu na drodze"],
-  "total_categories": 6
-}
-```
-
----
-
-## 🔹 Model & Statistics 📈
-
-### GET /statistics
-**Description:** Provides statistics about the model and the service.
-
-**Example Response:**
-
-```json
-{
-  "model_stats": {
-    "model_type": "LogisticRegression",
-    "model_version": "1.0.0",
-    "model_accuracy": "0.88",
-    "training_date": "2025-01-01",
-    "total_categories": 6
+  "report_id": "report-123",
+  "category": "infrastruktura_drogowa",
+  "confidence": 0.8523,
+  "all_probabilities": {
+    "infrastruktura_drogowa": 0.8523,
+    "bezpieczeństwo": 0.1123,
+    "środowisko": 0.0234,
+    "oświetlenie": 0.0089,
+    "inne": 0.0031
   },
-  "feature_stats": {
-    "word_features": 5000,
-    "char_features": 2000,
-    "numerical_features": 7,
-    "total_features": 7007
-  },
-  "categories": ["traffic", "accident", "infrastructure", "damage", "pedestrian", "danger"],
-  "service_info": {
-    "service_name": "AI Categorization Service",
-    "version": "1.0.0",
-    "status": "operational"
-  }
+  "processing_time_ms": 45.23
 }
 ```
 
 ---
 
-### GET /model-info
-**Description:** Fetches detailed information about the machine learning model.
+## 🔧 Configuration
 
-**Example Response:**
+### Environment Variables
 
-```json
-{
-  "model_info": {
-    "model_type": "LogisticRegression",
-    "model_file": "incident_classifier_clean.pkl",
-    "numerical_features": ["text_length", "word_count", "has_traffic", "has_accident"],
-    "word_vectorizer_features": 5000,
-    "char_vectorizer_features": 2000,
-    "model_accuracy": "0.88",
-    "training_date": "2025-01-01",
-    "model_version": "1.0.0",
-    "categories": ["traffic", "accident", "infrastructure", "damage", "pedestrian", "danger"]
-  },
-  "status": "loaded"
-}
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Service port | `8080` |
+| `KAFKA_BROKERS` | Kafka bootstrap servers | `kafka:9092` |
+| `KAFKA_CLIENT_ID` | Kafka client identifier | `ai-categorization-service` |
+| `KAFKA_ENABLED` | Enable/disable Kafka | `true` |
+| `AUDIT_SERVICE_URL` | Audit log service URL | `http://audit-log-service:8080` |
+| `AUDIT_ENABLED` | Enable/disable audit logging | `true` |
 
 ---
 
-## 🔹 Validation ✅
+## 🤖 Machine Learning Pipeline
 
-### POST /validate
-**Description:** Validates input and provides a preview of how text is preprocessed before being fed to the model.
+### Categories
 
-**Example Request Body:**
+- **infrastruktura_drogowa** – Road infrastructure issues
+- **bezpieczeństwo** – Safety concerns
+- **środowisko** – Environmental issues
+- **oświetlenie** – Lighting problems
+- **inne** – Other uncategorized issues
 
-```json
-{
-  "title": "Awaria sygnalizacji świetlnej na skrzyżowaniu"
-}
+---
+
+## 📝 Audit Events
+
+### Logged Actions
+
+- `service_startup` – Service initialization
+- `service_shutdown` – Service shutdown
+- `model_load` – Model loading status
+- `categorize_report` – Categorization performed
+
+---
+
+## 🔄 Kafka Integration
+
+### Published Topics
+
+- **`categorization_events`** – Categorization results
+- **`notification_events`** – User notifications
+
+---
+
+## 🚀 Development
+
+### Local Setup
+
+```bash
+cd services/ai-categorization-service
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8080
 ```
 
-**Example Response:**
+### Docker
 
-```json
-{
-  "original_text": "Awaria sygnalizacji świetlnej na skrzyżowaniu",
-  "cleaned_text": "awaria sygnalizacja świetlny skrzyżowanie",
-  "text_length": 43,
-  "cleaned_length": 39,
-  "word_count": 5,
-  "cleaned_word_count": 4,
-  "detected_features": {
-    "text_length": 43,
-    "word_count": 5,
-    "has_infrastructure": 1,
-    "has_damage": 1
-  },
-  "is_valid": true
-}
+```bash
+docker build -t ai-categorization-service .
+docker run -p 8083:8080 ai-categorization-service
 ```

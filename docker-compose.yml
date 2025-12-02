@@ -8,6 +8,8 @@ x-global-env: &global-env
     REPORT_SERVICE: 8085
     MAP_SERVICE: 8086
     NOTIFICATION_SERVICE: 8087
+    AI_ASSISTANT_SERVICE_PORT: 8088
+    AI_VERIFICATION_DUPLICATION_SERVICE_PORT: 8089
     DOCS_SERVICE_PORT: 8000
     POSTGRES_PORT: 5432
     REDIS_PORT: 6379
@@ -82,11 +84,61 @@ services:
             context: ./services/ai-categorization-service
             dockerfile: Dockerfile
         container_name: ai-categorization-service
+        depends_on:
+            - kafka
+            - audit-log-service
         environment:
             <<: *global-env
             PORT: 8080
+            KAFKA_BROKERS: kafka:9092
+            KAFKA_CLIENT_ID: ai-categorization-service
+            KAFKA_ENABLED: "true"
+            AUDIT_SERVICE_URL: http://audit-log-service:8080
+            AUDIT_ENABLED: "true"
         ports:
             - "8083:8080"
+        networks:
+            - backend
+
+    ai-assistant-service:
+        build:
+            context: ./services/ai-assistant-service
+            dockerfile: Dockerfile
+        container_name: ai-assistant-service
+        depends_on:
+            - kafka
+            - audit-log-service
+        environment:
+            <<: *global-env
+            PORT: 8080
+            KAFKA_BROKERS: kafka:9092
+            KAFKA_CLIENT_ID: ai-assistant-service
+            KAFKA_ENABLED: "true"
+            AUDIT_SERVICE_URL: http://audit-log-service:8080
+            AUDIT_ENABLED: "true"
+        ports:
+            - "8088:8080"
+        networks:
+            - backend
+
+    ai-verification-duplication-service:
+        build:
+            context: ./services/ai-verification-duplication-service
+            dockerfile: Dockerfile
+        container_name: ai-verification-duplication-service
+        depends_on:
+            - kafka
+            - audit-log-service
+        environment:
+            <<: *global-env
+            PORT: 8080
+            KAFKA_BROKERS: kafka:9092
+            KAFKA_CLIENT_ID: ai-verification-duplication-service
+            KAFKA_ENABLED: "true"
+            AUDIT_SERVICE_URL: http://audit-log-service:8080
+            AUDIT_ENABLED: "true"
+        ports:
+            - "8089:8080"
         networks:
             - backend
 
@@ -240,6 +292,30 @@ services:
             KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
             KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
             KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+            KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+        networks:
+            - backend
+
+    kafka-init:
+        image: confluentinc/cp-kafka:7.5.0
+        container_name: kafka-init
+        depends_on:
+            - kafka
+        entrypoint: [ '/bin/sh', '-c' ]
+        command: |
+            "
+            # Wait for Kafka to be ready
+            cub kafka-ready -b kafka:9092 1 30
+            
+            # Create topics
+            kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic audit_logs --partitions 3 --replication-factor 1
+            kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic notification_events --partitions 3 --replication-factor 1
+            kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic ai_assistant_events --partitions 2 --replication-factor 1
+            kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic verification_events --partitions 2 --replication-factor 1
+            kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic categorization_events --partitions 2 --replication-factor 1
+            
+            echo 'Topics created successfully'
+            "
         networks:
             - backend
 
