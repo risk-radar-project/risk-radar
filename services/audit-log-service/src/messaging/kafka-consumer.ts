@@ -8,6 +8,46 @@ import { getWebSocketHandler } from '../websocket/websocket-handler';
 
 let kafkaConsumer: Consumer | null = null;
 let consumerRunPromise: Promise<void> | null = null;
+let reconnectTimeout: NodeJS.Timeout | null = null;
+let kafkaInitializing = false;
+let kafkaStopRequested = false;
+
+export type KafkaConnectionState =
+    | 'disabled'
+    | 'connecting'
+    | 'connected'
+    | 'error'
+    | 'reconnecting'
+    | 'stopped';
+
+export interface KafkaConnectionStatus {
+    enabled: boolean;
+    state: KafkaConnectionState;
+    lastError?: string | null;
+    lastConnectedAt?: string | null;
+    retryScheduledAt?: string | null;
+}
+
+let kafkaStatus: KafkaConnectionStatus = {
+    enabled: config.kafkaEnabled,
+    state: config.kafkaEnabled ? 'stopped' : 'disabled',
+    retryScheduledAt: null,
+    lastConnectedAt: null,
+    lastError: null,
+};
+
+const updateKafkaStatus = (partial: Partial<KafkaConnectionStatus>): void => {
+    const sanitizedEntries = Object.entries(partial).filter(([, value]) => typeof value !== 'undefined');
+    const sanitized = Object.fromEntries(sanitizedEntries) as Partial<KafkaConnectionStatus>;
+
+    kafkaStatus = {
+        ...kafkaStatus,
+        ...sanitized,
+        enabled: config.kafkaEnabled,
+    };
+};
+
+export const getKafkaStatus = (): KafkaConnectionStatus => ({ ...kafkaStatus });
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -78,107 +118,217 @@ export interface KafkaMessageContext {
     key?: string | null;
 }
 
-export async function startKafkaConsumer(): Promise<void> {
-    if (!config.kafkaEnabled) {
-        logger.info('Kafka consumer is disabled. Set KAFKA_BROKERS to enable ingestion.');
+const createKafkaLogCreator = (): (logEntry: LogEntry) => void =>
+    ({ namespace, level, label, log }: LogEntry) => {
+        const message = log?.message || 'Kafka client event';
+        const details = {
+            namespace,
+            label,
+            ...log,
+        };
+
+        const RESET = '\u001B[0m';
+        const MAGENTA = '\u001B[35m';
+        const GRAY = '\u001B[90m';
+        const prefix = `${MAGENTA}Kafka${RESET}`;
+        const detailText = Object.keys(details).length > 0
+            ? ` ${GRAY}${JSON.stringify(details)}${RESET}`
+            : '';
+        const formattedMessage = `${prefix} | ${namespace} | ${message}${detailText}`;
+
+        switch (level) {
+        case logLevel.ERROR:
+            logger.error(formattedMessage);
+            break;
+        case logLevel.WARN:
+            logger.warn(formattedMessage);
+            break;
+        case logLevel.INFO:
+            logger.info(formattedMessage);
+            break;
+        default:
+            logger.debug(formattedMessage);
+        }
+    };
+
+const scheduleKafkaReconnect = (): void => {
+    if (kafkaStopRequested || !config.kafkaEnabled) {
         return;
     }
 
-    if (kafkaConsumer) {
-        logger.warn('Attempted to start Kafka consumer, but it is already running.');
+    if (reconnectTimeout || kafkaInitializing) {
         return;
     }
+
+    const delay = config.kafkaConnectRetryMaxDelayMs;
+    const retryAt = new Date(Date.now() + delay).toISOString();
+
+    updateKafkaStatus({ state: 'reconnecting', retryScheduledAt: retryAt });
+
+    reconnectTimeout = setTimeout(() => {
+        reconnectTimeout = null;
+        void attemptKafkaStartup();
+    }, delay);
+};
+
+const handleKafkaRunFailure = async (error: unknown): Promise<void> => {
+    if (kafkaStopRequested) {
+        return;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error('Kafka consumer run loop stopped unexpectedly', { error: message });
+
+    updateKafkaStatus({ state: 'error', lastError: message, retryScheduledAt: null });
+
+    try {
+        await kafkaConsumer?.disconnect();
+    } catch {
+        // ignore
+    }
+
+    consumerRunPromise = null;
+    kafkaConsumer = null;
+
+    scheduleKafkaReconnect();
+};
+
+const attemptKafkaStartup = async (): Promise<void> => {
+    if (kafkaStopRequested || kafkaInitializing || kafkaConsumer) {
+        return;
+    }
+
+    kafkaInitializing = true;
+    updateKafkaStatus({ state: 'connecting', retryScheduledAt: null });
 
     const kafka = new Kafka({
         clientId: config.kafkaClientId,
         brokers: config.kafkaBrokers,
-        logCreator: () => ({ namespace, level, label, log }: LogEntry) => {
-            const message = log?.message || 'Kafka client event';
-            const details = {
-                namespace,
-                label,
-                ...log,
-            };
-
-            const RESET = '\u001B[0m';
-            const MAGENTA = '\u001B[35m';
-            const GRAY = '\u001B[90m';
-            const prefix = `${MAGENTA}Kafka${RESET}`;
-            const detailText = Object.keys(details).length > 0
-                ? ` ${GRAY}${JSON.stringify(details)}${RESET}`
-                : '';
-            const formattedMessage = `${prefix} | ${namespace} | ${message}${detailText}`;
-
-            switch (level) {
-            case logLevel.ERROR:
-                logger.error(formattedMessage);
-                break;
-            case logLevel.WARN:
-                logger.warn(formattedMessage);
-                break;
-            case logLevel.INFO:
-                logger.info(formattedMessage);
-                break;
-            default:
-                logger.debug(formattedMessage);
-            }
-        },
+        logCreator: createKafkaLogCreator,
     });
 
-    kafkaConsumer = kafka.consumer({ groupId: config.kafkaGroupId });
+    const consumer = kafka.consumer({ groupId: config.kafkaGroupId });
+    kafkaConsumer = consumer;
 
-    await connectConsumerWithRetry(kafkaConsumer);
+    try {
+        await connectConsumerWithRetry(consumer);
 
-    kafkaConsumer.on('consumer.crash', (event: { payload?: { error?: Error } }) => {
-        const error = event.payload?.error;
-        logger.error('Kafka consumer crashed', {
-            error: error instanceof Error ? error.message : error,
-        });
-    });
-
-    consumerRunPromise = kafkaConsumer.run({
-        eachMessage: async ({ topic, partition, message }: EachMessagePayload) => {
-            const offset = message.offset;
-            const key = message.key ? message.key.toString() : null;
-
-            if (!message.value) {
-                logger.warn('Received Kafka message without value', {
-                    topic,
-                    partition,
-                    offset,
-                    key,
-                });
-                return;
-            }
-
-            await processKafkaMessage(message.value, { topic, partition, offset, key });
-        },
-    });
-
-    if (consumerRunPromise) {
-        consumerRunPromise.catch((error) => {
-            logger.error('Kafka consumer run loop stopped unexpectedly', {
-                error: error instanceof Error ? error.message : error,
+        const handleConnectEvent = (): void => {
+            updateKafkaStatus({
+                state: 'connected',
+                lastError: null,
+                lastConnectedAt: new Date().toISOString(),
+                retryScheduledAt: null,
             });
+        };
+
+        const handleCrashEvent = (event: { payload?: { error?: Error } }): void => {
+            const error = event.payload?.error;
+            const message = error instanceof Error ? error.message : String(error ?? 'Unknown error');
+            logger.error('Kafka consumer crashed', { error: message });
+            void handleKafkaRunFailure(error ?? new Error(message));
+        };
+
+        const handleDisconnectEvent = (event: { payload?: { error?: Error } }): void => {
+            const error = event.payload?.error;
+            const message = error instanceof Error ? error.message : String(error ?? 'Disconnected');
+            logger.warn('Kafka consumer disconnected', { error: message });
+            if (!kafkaStopRequested) {
+                void handleKafkaRunFailure(error ?? new Error(message));
+            }
+        };
+
+        kafkaConsumer.on('consumer.connect', handleConnectEvent);
+        kafkaConsumer.on('consumer.crash', handleCrashEvent);
+        kafkaConsumer.on('consumer.disconnect', handleDisconnectEvent);
+
+        consumerRunPromise = kafkaConsumer.run({
+            eachMessage: async ({ topic, partition, message }: EachMessagePayload) => {
+                const offset = message.offset;
+                const key = message.key ? message.key.toString() : null;
+
+                if (!message.value) {
+                    logger.warn('Received Kafka message without value', {
+                        topic,
+                        partition,
+                        offset,
+                        key,
+                    });
+                    return;
+                }
+
+                await processKafkaMessage(message.value, { topic, partition, offset, key });
+            },
         });
+
+        consumerRunPromise.catch((error) => {
+            void handleKafkaRunFailure(error);
+        });
+
+        handleConnectEvent();
+
+        logger.info('Kafka consumer started', {
+            brokers: config.kafkaBrokers,
+            topic: config.kafkaTopic,
+            groupId: config.kafkaGroupId,
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('Kafka consumer failed to start', { error: message });
+
+        try {
+            await consumer.disconnect();
+        } catch {
+            // ignore
+        }
+
+        consumerRunPromise = null;
+        kafkaConsumer = null;
+
+        updateKafkaStatus({ state: 'error', lastError: message, retryScheduledAt: null });
+        scheduleKafkaReconnect();
+    } finally {
+        kafkaInitializing = false;
+    }
+};
+
+export async function startKafkaConsumer(): Promise<void> {
+    if (!config.kafkaEnabled) {
+        updateKafkaStatus({ state: 'disabled', lastError: null, retryScheduledAt: null });
+        logger.info('Kafka consumer is disabled. Set KAFKA_BROKERS to enable ingestion.');
+        return;
     }
 
-    logger.info('Kafka consumer started', {
-        brokers: config.kafkaBrokers,
-        topic: config.kafkaTopic,
-        groupId: config.kafkaGroupId,
-    });
+    kafkaStopRequested = false;
+
+    if (kafkaConsumer || kafkaInitializing) {
+        logger.warn('Attempted to start Kafka consumer, but it is already running.');
+        return;
+    }
+
+    void attemptKafkaStartup();
 }
 
 export async function stopKafkaConsumer(): Promise<void> {
+    kafkaStopRequested = true;
+
+    if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+    }
+
     if (!kafkaConsumer) {
+        updateKafkaStatus({
+            state: config.kafkaEnabled ? 'stopped' : 'disabled',
+            retryScheduledAt: null,
+        });
         return;
     }
 
     try {
         await kafkaConsumer.stop();
-        await kafkaConsumer.disconnect();
         await consumerRunPromise?.catch(() => undefined);
+        await kafkaConsumer.disconnect();
         logger.info('Kafka consumer stopped');
     } catch (error) {
         logger.warn('Failed to stop Kafka consumer cleanly', {
@@ -187,6 +337,11 @@ export async function stopKafkaConsumer(): Promise<void> {
     } finally {
         consumerRunPromise = null;
         kafkaConsumer = null;
+        kafkaInitializing = false;
+        updateKafkaStatus({
+            state: config.kafkaEnabled ? 'stopped' : 'disabled',
+            retryScheduledAt: null,
+        });
     }
 }
 

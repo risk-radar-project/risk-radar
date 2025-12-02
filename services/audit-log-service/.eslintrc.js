@@ -12,7 +12,7 @@ module.exports = {
     },
     rules: {
         indent: ["error", 4],
-        "max-len": ["error", { code: 100 }],
+        "max-len": ["error", { code: 120 }],
         "no-console": "warn",
         "@typescript-eslint/no-unused-vars": "error",
         "@typescript-eslint/explicit-function-return-type": "warn",

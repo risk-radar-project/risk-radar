@@ -79,7 +79,7 @@ describe('Audit Controller', () => {
             });
 
             // Act
-            await auditController.createLog(mockReq, mockRes);
+            await auditController.createLog(mockReq, mockRes, mockNext);
 
             // Assert
             expect(mockAuditLogService.createLog).toHaveBeenCalledWith(requestData);
@@ -100,7 +100,7 @@ describe('Audit Controller', () => {
             });
 
             // Act
-            await auditController.createLog(mockReq, mockRes);
+            await auditController.createLog(mockReq, mockRes, mockNext);
 
             // Assert
             expect(mockRes.status).toHaveBeenCalledWith(204); // No Content for idempotency
@@ -118,14 +118,12 @@ describe('Audit Controller', () => {
             mockAuditLogService.createLog.mockRejectedValue(serviceError);
 
             // Act
-            await auditController.createLog(mockReq, mockRes);
+            await auditController.createLog(mockReq, mockRes, mockNext);
 
             // Assert
-            expect(mockRes.status).toHaveBeenCalledWith(500);
-            expect(mockRes.json).toHaveBeenCalledWith({
-                error: 'Database connection failed',
-                message: 'Failed to create audit log',
-            });
+            expect(mockNext).toHaveBeenCalledWith(serviceError);
+            expect(mockRes.status).not.toHaveBeenCalled();
+            expect(mockRes.json).not.toHaveBeenCalled();
         });
     });
 
@@ -146,7 +144,7 @@ describe('Audit Controller', () => {
             mockAuditLogService.getLogs.mockResolvedValue(paginatedResponse);
 
             // Act
-            await auditController.getLogs(mockReq, mockRes);
+            await auditController.getLogs(mockReq, mockRes, mockNext);
 
             // Assert
             expect(mockAuditLogService.getLogs).toHaveBeenCalledWith(
@@ -198,7 +196,7 @@ describe('Audit Controller', () => {
             mockAuditLogService.getLogs.mockResolvedValue(paginatedResponse);
 
             // Act
-            await auditController.getLogs(mockReq, mockRes);
+            await auditController.getLogs(mockReq, mockRes, mockNext);
 
             // Assert
             expect(mockAuditLogService.getLogs).toHaveBeenCalledWith(
@@ -222,14 +220,12 @@ describe('Audit Controller', () => {
             mockAuditLogService.getLogs.mockRejectedValue(serviceError);
 
             // Act
-            await auditController.getLogs(mockReq, mockRes);
+            await auditController.getLogs(mockReq, mockRes, mockNext);
 
             // Assert
-            expect(mockRes.status).toHaveBeenCalledWith(500);
-            expect(mockRes.json).toHaveBeenCalledWith({
-                error: 'Database query failed',
-                message: 'Failed to get audit logs',
-            });
+            expect(mockNext).toHaveBeenCalledWith(serviceError);
+            expect(mockRes.status).not.toHaveBeenCalled();
+            expect(mockRes.json).not.toHaveBeenCalled();
         });
     });
 
@@ -241,7 +237,7 @@ describe('Audit Controller', () => {
             mockAuditLogService.getLogById.mockResolvedValue(log);
 
             // Act
-            await auditController.getLogById(mockReq, mockRes);
+            await auditController.getLogById(mockReq, mockRes, mockNext);
 
             // Assert
             expect(mockAuditLogService.getLogById).toHaveBeenCalledWith(log.id);
@@ -255,7 +251,7 @@ describe('Audit Controller', () => {
             mockAuditLogService.getLogById.mockResolvedValue(null);
 
             // Act
-            await auditController.getLogById(mockReq, mockRes);
+            await auditController.getLogById(mockReq, mockRes, mockNext);
 
             // Assert
             expect(mockRes.status).toHaveBeenCalledWith(404);
@@ -272,14 +268,12 @@ describe('Audit Controller', () => {
             mockAuditLogService.getLogById.mockRejectedValue(serviceError);
 
             // Act
-            await auditController.getLogById(mockReq, mockRes);
+            await auditController.getLogById(mockReq, mockRes, mockNext);
 
             // Assert
-            expect(mockRes.status).toHaveBeenCalledWith(500);
-            expect(mockRes.json).toHaveBeenCalledWith({
-                error: 'Database query failed',
-                message: 'Failed to get audit log',
-            });
+            expect(mockNext).toHaveBeenCalledWith(serviceError);
+            expect(mockRes.status).not.toHaveBeenCalled();
+            expect(mockRes.json).not.toHaveBeenCalled();
         });
     });
 
@@ -291,7 +285,7 @@ describe('Audit Controller', () => {
             mockAuditLogService.anonymizeLogs.mockResolvedValue(3);
 
             // Act
-            await auditController.anonymizeLogs(mockReq, mockRes);
+            await auditController.anonymizeLogs(mockReq, mockRes, mockNext);
 
             // Assert
             expect(mockAuditLogService.anonymizeLogs).toHaveBeenCalledWith('user123');
@@ -309,7 +303,7 @@ describe('Audit Controller', () => {
             mockAuditLogService.getAnonymizationCount.mockResolvedValue(3);
 
             // Act
-            await auditController.anonymizeLogs(mockReq, mockRes);
+            await auditController.anonymizeLogs(mockReq, mockRes, mockNext);
 
             // Assert
             expect(mockAuditLogService.getAnonymizationCount).toHaveBeenCalledWith('user123');
@@ -331,14 +325,12 @@ describe('Audit Controller', () => {
             mockAuditLogService.anonymizeLogs.mockRejectedValue(serviceError);
 
             // Act
-            await auditController.anonymizeLogs(mockReq, mockRes);
+            await auditController.anonymizeLogs(mockReq, mockRes, mockNext);
 
             // Assert
-            expect(mockRes.status).toHaveBeenCalledWith(500);
-            expect(mockRes.json).toHaveBeenCalledWith({
-                error: 'Database update failed',
-                message: 'Failed to anonymize logs',
-            });
+            expect(mockNext).toHaveBeenCalledWith(serviceError);
+            expect(mockRes.status).not.toHaveBeenCalled();
+            expect(mockRes.json).not.toHaveBeenCalled();
         });
     });
 });
