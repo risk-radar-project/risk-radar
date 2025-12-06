@@ -92,7 +92,7 @@ class KafkaClient:
         try:
             async for message in self.consumer:
                 try:
-                    await handler(message.value)
+                    await handler(message.value, message.topic, message.partition, message.offset)
                 except Exception as e:
                     logger.error(f"Error processing message: {e}")
         except Exception as e:

@@ -16,7 +16,7 @@ class AuditLogClient:
             "http://localhost:8082"
         )
         self.enabled = os.getenv("AUDIT_ENABLED", "true").lower() == "true"
-        self.service_name = os.getenv("SERVICE_NAME", "ai-service")
+        self.service_name = os.getenv("SERVICE_NAME", "ai-categorization-service")
         
     async def log_event(
         self,

@@ -98,6 +98,28 @@ async def load_model():
         logger.error(traceback.format_exc())
         raise RuntimeError(f"Cannot load model: {str(e)}")
 
+# Kafka message handler
+async def handle_report_message(message: Dict[str, Any], topic: str, partition: int, offset: int):
+    """Handle incoming messages from Kafka"""
+    logger.info(f"Received message from topic {topic} (partition {partition}, offset {offset})")
+    
+    try:
+        # Create a request object from the message
+        request = CategorizationRequest(
+            report_id=message.get("id"),
+            title=message.get("title"),
+            description=message.get("description"),
+            user_id=message.get("user_id", "system"), # Default to system if not present
+            metadata={"source_topic": topic}
+        )
+        
+        # Call the categorization logic
+        await categorize_report(request)
+        
+    except Exception as e:
+        logger.error(f"Error processing Kafka message: {e}")
+        # Optionally, publish to a dead-letter queue
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle startup and shutdown"""
@@ -110,8 +132,16 @@ async def lifespan(app: FastAPI):
     try:
         await kafka_client.start_producer()
         logger.info("Kafka producer initialized")
+        
+        # Start consumer for report events
+        await kafka_client.start_consumer(
+            topics=["reports_events"],
+            group_id="ai-categorization-group",
+            handler=handle_report_message
+        )
+        
     except Exception as e:
-        logger.warning(f"Kafka producer failed to initialize: {e}")
+        logger.warning(f"Kafka client failed to initialize: {e}")
     
     audit_client = get_audit_client()
     await audit_client.log_event(
@@ -129,6 +159,7 @@ async def lifespan(app: FastAPI):
     # Cleanup
     logger.info("Shutting down AI Categorization Service...")
     await kafka_client.stop_producer()
+    await kafka_client.stop_consumer()
     await audit_client.log_event(
         action="service_shutdown",
         actor={"id": "system", "type": "system"},
@@ -274,8 +305,8 @@ async def categorize_report(request: CategorizationRequest):
                 "event_type": "report_categorized",
                 "report_id": request.report_id,
                 "user_id": request.user_id,
-                "category": category,
-                "confidence": confidence,
+                "category": str(category),
+                "confidence": float(confidence),
                 "timestamp": datetime.utcnow().isoformat()
             },
             key=request.report_id

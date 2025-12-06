@@ -129,6 +129,30 @@ def extract_features(text: str) -> np.ndarray:
         logger.error(f"Feature extraction error: {e}")
         raise
 
+# Kafka message handler
+async def handle_report_message(message: Dict[str, Any], topic: str, partition: int, offset: int):
+    """Handle incoming report messages from Kafka for verification"""
+    logger.info(f"Received verification request from topic {topic} (partition {partition}, offset {offset})")
+    
+    try:
+        # For verification, we only need the basic details
+        verify_request = VerificationRequest(
+            report_id=message.get("id"),
+            title=message.get("title"),
+            description=message.get("description"),
+            user_id=message.get("user_id", "system"),
+            metadata={"source_topic": topic}
+        )
+        await verify_report(verify_request)
+        
+        # For duplication check, we would need existing reports.
+        # This part is more complex and might require a separate trigger or fetching reports from DB.
+        # For now, we focus on verification.
+        logger.info(f"Skipping duplicate check for now for report {message.get('id')}")
+
+    except Exception as e:
+        logger.error(f"Error processing Kafka message for verification: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle startup and shutdown"""
@@ -144,8 +168,16 @@ async def lifespan(app: FastAPI):
     try:
         await kafka_client.start_producer()
         logger.info("Kafka producer initialized")
+
+        # Start consumer for report events
+        await kafka_client.start_consumer(
+            topics=["reports_events"],
+            group_id="ai-verification-group",
+            handler=handle_report_message
+        )
+
     except Exception as e:
-        logger.warning(f"Kafka producer failed to initialize: {e}")
+        logger.warning(f"Kafka client failed to initialize: {e}")
     
     # Log startup
     audit_client = get_audit_client()
@@ -164,6 +196,7 @@ async def lifespan(app: FastAPI):
     # Cleanup
     logger.info("Shutting down AI Verification-Duplication Service...")
     await kafka_client.stop_producer()
+    await kafka_client.stop_consumer()
     await audit_client.log_event(
         action="service_shutdown",
         actor={"id": "system", "type": "system"},
