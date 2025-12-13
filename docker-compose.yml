@@ -224,6 +224,29 @@ services:
         ports:
             - "8086:8080"
 
+    frontend:
+        build:
+            context: ./services/frontend
+            dockerfile: Dockerfile
+        container_name: frontend
+        depends_on:
+            - user-service
+            - authz-service
+            - report-service
+            - map-service
+            - media-service
+        environment:
+            <<: *global-env
+            MAP_SERVICE_URL: http://map-service:8080
+        networks:
+            - backend
+        ports:
+            - "3000:3000"
+        volumes:
+            - ./services/frontend:/app
+            - /app/node_modules
+            - /app/.next
+
     redis:
         image: redis:latest
         container_name: redis
@@ -308,7 +331,7 @@ services:
             "
             # Wait for Kafka to be ready
             cub kafka-ready -b kafka:9092 1 30
-            
+
             # Create topics
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic audit_logs --partitions 3 --replication-factor 1
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic notification_events --partitions 3 --replication-factor 1
@@ -316,7 +339,7 @@ services:
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic verification_events --partitions 2 --replication-factor 1
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic categorization_events --partitions 2 --replication-factor 1
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic reports_events --partitions 2 --replication-factor 1
-            
+
             echo 'Topics created successfully'
             "
         networks:
@@ -325,6 +348,7 @@ services:
 volumes:
     redis_data:
     postgres_data:
+
 
 networks:
     backend:
