@@ -1,5 +1,7 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Report } from './map-component'
 
@@ -17,5 +19,17 @@ interface MapWrapperProps {
 }
 
 export default function MapWrapper({ initialReports }: MapWrapperProps) {
-    return <MapComponent initialReports={initialReports} />
+    const pathname = usePathname()
+    const [mounted, setMounted] = useState(false)
+
+    // Force re-mount on navigation by using pathname + timestamp
+    useEffect(() => {
+        setMounted(true)
+        return () => setMounted(false)
+    }, [pathname])
+
+    // Create unique key based on mount state to force re-render
+    const mapKey = `map-${pathname}-${mounted ? Date.now() : 0}`
+
+    return <MapComponent key={mapKey} initialReports={initialReports} />
 }

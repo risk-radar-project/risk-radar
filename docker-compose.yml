@@ -165,31 +165,31 @@ services:
             - "8084:8080"
         volumes:
             - ./services/media-service/data:/app/data
-    notification-service:
-        build:
-            context: ./services/notification-service
-            dockerfile: Dockerfile
-        container_name: notification-service
-        depends_on:
-            - postgres
-            - kafka
-            - mailpit
-        environment:
-            <<: *global-env
-            PORT: 8080
-            KAFKA_BROKERS: kafka:9092
-            KAFKA_CLIENT_ID: notification-service
-            KAFKA_GROUP_ID: notification-service-consumer
-            KAFKA_TOPIC: notification_events
-            SMTP_HOST: mailpit
-            SMTP_PORT: 1025
-            MAIL_FROM: '"Powiadomienia Risk Radar" <no-reply@riskradar.local>'
-            USER_SERVICE_BASE_URL: http://user-service:8080
-            AUDIT_LOG_SERVICE_BASE_URL: http://audit-log-service:8080
-        networks:
-            - backend
-        ports:
-            - "8087:8080"
+    # notification-service:
+    #     build:
+    #         context: ./services/notification-service
+    #         dockerfile: Dockerfile
+    #     container_name: notification-service
+    #     depends_on:
+    #         - postgres
+    #         - kafka
+    #         - mailpit
+    #     environment:
+    #         <<: *global-env
+    #         PORT: 8080
+    #         KAFKA_BROKERS: kafka:9092
+    #         KAFKA_CLIENT_ID: notification-service
+    #         KAFKA_GROUP_ID: notification-service-consumer
+    #         KAFKA_TOPIC: notification_events
+    #         SMTP_HOST: mailpit
+    #         SMTP_PORT: 1025
+    #         MAIL_FROM: '"Powiadomienia Risk Radar" <no-reply@riskradar.local>'
+    #         USER_SERVICE_BASE_URL: http://user-service:8080
+    #         AUDIT_LOG_SERVICE_BASE_URL: http://audit-log-service:8080
+    #     networks:
+    #         - backend
+    #     ports:
+    #         - "8087:8080"
     report-service:
         build:
             context: ./services/report-service
@@ -238,6 +238,8 @@ services:
         environment:
             <<: *global-env
             MAP_SERVICE_URL: http://map-service:8080
+            REPORT_SERVICE_URL: http://report-service:8080
+            MEDIA_SERVICE_URL: http://media-service:8080
         networks:
             - backend
         ports:
@@ -332,6 +334,7 @@ services:
             # Wait for Kafka to be ready
             cub kafka-ready -b kafka:9092 1 30
 
+
             # Create topics
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic audit_logs --partitions 3 --replication-factor 1
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic notification_events --partitions 3 --replication-factor 1
@@ -339,6 +342,7 @@ services:
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic verification_events --partitions 2 --replication-factor 1
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic categorization_events --partitions 2 --replication-factor 1
             kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic reports_events --partitions 2 --replication-factor 1
+
 
             echo 'Topics created successfully'
             "

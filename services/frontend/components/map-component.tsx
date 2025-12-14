@@ -106,6 +106,30 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
         }
     }, [sidebarOpen])
 
+    // Force map refresh when component mounts or becomes visible
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (!document.hidden && mapRef.current) {
+                setTimeout(() => {
+                    mapRef.current?.invalidateSize()
+                }, 100)
+            }
+        }
+
+        // Invalidate immediately on mount
+        if (mapRef.current) {
+            setTimeout(() => {
+                mapRef.current?.invalidateSize()
+            }, 100)
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+        }
+    }, [])
+
     useEffect(() => {
         if (!mapContainerRef.current || mapRef.current) return
 
@@ -124,6 +148,23 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             maxZoom: 19
         }).addTo(map)
+
+        // Fix map rendering issues - invalidate size after initialization
+        setTimeout(() => {
+            map.invalidateSize()
+        }, 100)
+
+        // Additional invalidation after tiles load
+        map.whenReady(() => {
+            setTimeout(() => {
+                map.invalidateSize()
+            }, 200)
+        })
+
+        // Listen for tile loading to ensure proper rendering
+        map.on('load', () => {
+            map.invalidateSize()
+        })
 
         // Add marker clustering
         const markers = L.markerClusterGroup()
@@ -369,22 +410,38 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                     </div>
                     <div className="flex flex-col gap-2 mt-8">
                         <a className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#d97706] hover:bg-[#d97706]/80 text-white font-semibold transition-colors"
-                            href="#">
+                            href="/submit-report">
                             <span className="material-symbols-outlined">add_location_alt</span>
                             <p className="text-base leading-normal">Zgłoś Nowe Zdarzenie</p>
                         </a>
+
+                        <div className="border-t border-[#e0dcd7]/10 my-2"></div>
+
                         <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
-                            href="#">
+                            href="/">
+                            <span className="material-symbols-outlined">home</span>
+                            <p className="text-base leading-normal">Strona główna</p>
+                        </a>
+                        <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
+                            href="/my-reports">
+                            <span className="material-symbols-outlined">description</span>
+                            <p className="text-base leading-normal">Moje zgłoszenia</p>
+                        </a>
+                        <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
+                            href="/profile">
                             <span className="material-symbols-outlined">person</span>
-                            <p className="text-base leading-normal">Twoja Aktywność</p>
+                            <p className="text-base leading-normal">Profil</p>
                         </a>
                         <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
-                            href="#">
-                            <span className="material-symbols-outlined">login</span>
-                            <p className="text-base leading-normal">Logowanie</p>
+                            href="/settings">
+                            <span className="material-symbols-outlined">settings</span>
+                            <p className="text-base leading-normal">Ustawienia</p>
                         </a>
+
+                        <div className="border-t border-[#e0dcd7]/10 my-2"></div>
+
                         <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
-                            href="#">
+                            href="/admin">
                             <span className="material-symbols-outlined">shield</span>
                             <p className="text-base leading-normal">Panel administratora</p>
                         </a>
