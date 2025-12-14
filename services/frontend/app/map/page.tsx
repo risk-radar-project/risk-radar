@@ -1,4 +1,8 @@
 // This is a Server Component
+// Force dynamic rendering - no caching
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 import { Report } from '@/components/map-component'
 import MapWrapper from '@/components/map-wrapper'
 

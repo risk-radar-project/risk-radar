@@ -38,8 +38,16 @@ export default async function RootLayout({
     const pathname = headersList.get("x-pathname") || ""
     const isMapPage = pathname.startsWith("/map")
 
+    console.log('[Layout] pathname:', pathname, 'isMapPage:', isMapPage)
+
     return (
         <html lang="en">
+            <head>
+                <link
+                    rel="stylesheet"
+                    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+                />
+            </head>
             <body className={cn(
                 "bg-[#2a221a] font-sans antialiased",
                 isMapPage ? "h-screen overflow-hidden" : "min-h-screen flex flex-col",
@@ -53,11 +61,11 @@ export default async function RootLayout({
                 />
                 <ClientSessionHydrator />
                 <QueryClientWrapper>
-                    <AppHeader />
-                    <main className={isMapPage ? "h-[calc(100vh-8rem)]" : "flex-1"}>
+                    {!isMapPage && <AppHeader />}
+                    <main className={isMapPage ? "h-screen" : "flex-1"}>
                         {children}
                     </main>
-                    <AppFooter />
+                    {!isMapPage && <AppFooter />}
                     <Toaster />
                 </QueryClientWrapper>
             </body>

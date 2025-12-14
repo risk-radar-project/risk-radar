@@ -11,12 +11,12 @@ export function AppHeader() {
                 </Link>
 
                 <nav className="flex items-center gap-6 text-sm">
-                    <Link
+                    <a
                         href="/map"
                         className="text-[#e0dcd7] hover:text-[#d97706] transition-colors font-medium"
                     >
                         Mapa
-                    </Link>
+                    </a>
                     <Link
                         href="/reports"
                         className="text-[#e0dcd7] hover:text-[#d97706] transition-colors font-medium"
