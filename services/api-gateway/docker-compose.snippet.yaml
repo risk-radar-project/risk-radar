@@ -1,0 +1,27 @@
+services:
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    environment:
+      - GATEWAY_CONFIG=/app/config.yaml
+    ports:
+      - "8080:8080"
+    depends_on:
+      - user-service
+      - authz-service
+      - report-service
+      - media-service
+      - notification-service
+      - audit-log-service
+      - ai-categorization-service
+      - ai-verification-duplication-service
+      - ai-assistant-service
+      - map-service
+      - statistics-service
+      - community-service
+      - admin-service
+      - monitoring-service
+    networks:
+      - backend

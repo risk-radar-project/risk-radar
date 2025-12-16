@@ -1,0 +1,755 @@
+openapi: 3.1.0
+info:
+  title: RiskRadar API Gateway
+  version: 1.0.0
+  description: Public HTTP surface of the RiskRadar platform routed through the API Gateway.
+servers:
+  - url: /
+    description: Gateway root
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Error:
+      description: Standardized error response
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  message:
+                    type: string
+            required: [success, error]
+    Status:
+      description: Basic status
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+paths:
+  /status:
+    get:
+      summary: Gateway health (no upstream checks)
+      responses:
+        '200':
+          $ref: '#/components/responses/Status'
+  /api/dev/generate-jwt:
+    post:
+      summary: Generate JWT for development (DEV ONLY)
+      description: Generates a valid JWT for testing purposes. Only available when NODE_ENV=development.
+      tags:
+        - Development
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+              properties:
+                user_id:
+                  type: string
+                  example: "test-user-123"
+                exp_hours:
+                  type: integer
+                  default: 1
+                  example: 24
+      responses:
+        '200':
+          description: Generated token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        '403':
+          description: Forbidden (not in development mode)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/responses/Error'
+  /api/users/register:
+    post:
+      summary: Register user
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                email: { type: string, format: email }
+                password: { type: string }
+              required: [username, email, password]
+      responses:
+        '201': { description: Registered }
+        '400': { $ref: '#/components/responses/Error' }
+  /api/users/login:
+    post:
+      summary: Login and obtain tokens
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+              required: [username, password]
+      responses:
+        '200': { description: Tokens issued }
+        '401': { $ref: '#/components/responses/Error' }
+  /api/users/logout:
+    post:
+      summary: Logout and invalidate tokens
+      tags: [users]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: Logged out }
+        '401': { $ref: '#/components/responses/Error' }
+  /api/users/refresh:
+    post:
+      summary: Refresh tokens
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken: { type: string }
+              required: [refreshToken]
+      responses:
+        '200': { description: Tokens refreshed }
+        '401': { $ref: '#/components/responses/Error' }
+  /api/users/forgot-password:
+    post:
+      summary: Request password reset
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+              required: [email]
+      responses:
+        '200': { description: Request accepted }
+  /api/users/reset-password:
+    post:
+      summary: Complete password reset
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: { type: string }
+                newPassword: { type: string }
+              required: [token, newPassword]
+      responses:
+        '200': { description: Password reset }
+        '400': { $ref: '#/components/responses/Error' }
+  /api/users/banUser:
+    post:
+      summary: Ban user (admin)
+      tags: [users]
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId: { type: string, format: uuid }
+              required: [userId]
+      responses:
+        '200': { description: User banned }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /api/reports/createReport:
+    post:
+      summary: Create report
+      tags: [reports]
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201': { description: Report created }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+  /api/reports/report/{id}/status:
+    patch:
+      summary: Update report status
+      tags: [reports]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: status
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Status updated }
+        '404': { $ref: '#/components/responses/Error' }
+  /api/reports/reports:
+    get:
+      summary: List reports (paginated)
+      tags: [reports]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 0 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: sort
+          schema: { type: string }
+        - in: query
+          name: direction
+          schema: { type: string, enum: [asc, desc] }
+      responses:
+        '200': { description: Reports page }
+  /api/reports/report/{id}:
+    get:
+      summary: Get report by id
+      tags: [reports]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Report }
+        '404': { $ref: '#/components/responses/Error' }
+  /api/reports/reports/verified:
+    get:
+      summary: List verified reports
+      tags: [reports]
+      responses:
+        '200': { description: Verified reports }
+  /api/reports/status:
+    get:
+      summary: Report service status
+      tags: [reports]
+      responses:
+        '200': { description: OK }
+  /api/map/reports:
+    get:
+      summary: Get verified reports for map
+      tags: [map]
+      responses:
+        '200': { description: Map reports }
+  /api/media/media:
+    post:
+      summary: Upload media
+      tags: [media]
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201': { description: Uploaded }
+        '401': { $ref: '#/components/responses/Error' }
+        '413': { $ref: '#/components/responses/Error' }
+    get:
+      summary: List media assets
+      tags: [media]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: Media list }
+        '401': { $ref: '#/components/responses/Error' }
+  /api/media/media/{id}:
+    get:
+      summary: Get master image
+      tags: [media]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Image }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      summary: Update media
+      tags: [media]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Updated }
+  /api/media/media/{id}/thumb:
+    get:
+      summary: Get thumbnail
+      tags: [media]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Thumbnail }
+        '404': { $ref: '#/components/responses/Error' }
+  /api/media/media/{id}/preview:
+    get:
+      summary: Get preview
+      tags: [media]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Preview }
+        '404': { $ref: '#/components/responses/Error' }
+  /api/media/media/temporary/keep:
+    post:
+      summary: Keep temporary media
+      tags: [media]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: Kept }
+  /api/media/media/temporary/reject:
+    post:
+      summary: Reject temporary media
+      tags: [media]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: Rejected }
+  /api/media/status:
+    get:
+      summary: Media service status
+      tags: [media]
+      responses:
+        '200': { description: OK }
+  /api/notifications/notifications:
+    get:
+      summary: List inbox notifications for user
+      tags: [notifications]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: isRead
+          schema: { type: boolean }
+      responses:
+        '200': { description: Notifications }
+        '401': { $ref: '#/components/responses/Error' }
+  /api/notifications/notifications/{id}/read:
+    post:
+      summary: Mark notification as read
+      tags: [notifications]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Marked read }
+        '404': { $ref: '#/components/responses/Error' }
+  /api/notifications/notifications/{id}/unread:
+    post:
+      summary: Mark notification as unread
+      tags: [notifications]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Marked unread }
+        '404': { $ref: '#/components/responses/Error' }
+  /api/notifications/status:
+    get:
+      summary: Notification service status
+      tags: [notifications]
+      responses:
+        '200': { description: OK }
+  /api/authz/status:
+    get:
+      summary: Authorization service status
+      tags: [authz]
+      responses:
+        '200': { description: OK }
+  /api/authz/roles:
+    get:
+      summary: List roles
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: Roles }
+    post:
+      summary: Create role
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '201': { description: Created }
+  /api/authz/roles/{roleId}:
+    get:
+      summary: Get role
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Role }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      summary: Update role
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Updated }
+    delete:
+      summary: Delete role
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Deleted }
+  /api/authz/permissions:
+    get:
+      summary: List permissions
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: Permissions }
+    post:
+      summary: Create permission
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '201': { description: Created }
+  /api/authz/permissions/{permissionId}:
+    get:
+      summary: Get permission
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: permissionId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Permission }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      summary: Update permission
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: permissionId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Updated }
+    delete:
+      summary: Delete permission
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: permissionId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Deleted }
+  /api/authz/has-permission:
+    get:
+      summary: Check permission
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: query
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: action
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Result }
+  /api/authz/users/{userId}/roles:
+    get:
+      summary: Get user roles
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Roles }
+    post:
+      summary: Assign role to user
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '201': { description: Assigned }
+  /api/authz/users/{userId}/roles/{roleId}:
+    delete:
+      summary: Remove role from user
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: roleId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Removed }
+  /api/authz/users/{userId}/permissions:
+    get:
+      summary: Get effective permissions
+      tags: [authz]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Permissions }
+  /api/ai/categorization/health:
+    get:
+      summary: Categorization service health
+      tags: [ai-categorization]
+      responses:
+        '200': { description: OK }
+  /api/ai/categorization/model-info:
+    get:
+      summary: Model info
+      tags: [ai-categorization]
+      responses:
+        '200': { description: Info }
+  /api/ai/categorization/categorize:
+    post:
+      summary: Categorize report
+      tags: [ai-categorization]
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200': { description: Categorization }
+  /api/ai/verification/health:
+    get:
+      summary: Verification service health
+      tags: [ai-verification]
+      responses:
+        '200': { description: OK }
+  /api/ai/verification/verify:
+    post:
+      summary: Verify report
+      tags: [ai-verification]
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200': { description: Verification result }
+  /api/ai/verification/check-duplicate:
+    post:
+      summary: Check duplicate
+      tags: [ai-verification]
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200': { description: Duplicate check }
+  /api/ai/assistant/health:
+    get:
+      summary: Assistant health
+      tags: [ai-assistant]
+      responses:
+        '200': { description: OK }
+  /api/ai/assistant/chat:
+    post:
+      summary: Chat with assistant
+      tags: [ai-assistant]
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200': { description: Response }
+  /api/ai/assistant/conversations/{conversationId}:
+    get:
+      summary: Get conversation
+      tags: [ai-assistant]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: conversationId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Conversation }
+  /api/audit/status:
+    get:
+      summary: Audit log service status
+      tags: [audit]
+      responses:
+        '200': { description: OK }
+  /api/audit/logs:
+    get:
+      summary: List audit logs
+      tags: [audit]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: Logs }
+    post:
+      summary: Create audit log
+      tags: [audit]
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201': { description: Created }
+  /api/audit/logs/{id}:
+    get:
+      summary: Get audit log by id
+      tags: [audit]
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Audit log }
+        '404': { $ref: '#/components/responses/Error' }
+  /api/audit/logs/anonymize:
+    post:
+      summary: Anonymize logs
+      tags: [audit]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: Anonymized }
+  /api/audit/logs/stream:
+    get:
+      summary: Stream audit logs (WebSocket)
+      tags: [audit]
+      responses:
+        '101': { description: Switching protocols }
+  /api/statistics/stats:
+    get:
+      summary: Get general statistics
+      tags: [statistics]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: Statistics }
+  /api/community/actions:
+    get:
+      summary: List community actions
+      tags: [community]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: Actions }
+  /api/admin/dashboard:
+    get:
+      summary: Admin dashboard data
+      tags: [admin]
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: Dashboard }
+  /api/monitoring/health:
+    get:
+      summary: System health
+      tags: [monitoring]
+      responses:
+        '200': { description: Health }
