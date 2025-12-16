@@ -43,10 +43,21 @@ export function AppHeader() {
                     </Link>
                     <Link
                         href="/admin"
-                        className="px-4 py-2 rounded-lg bg-[#d97706] hover:bg-[#d97706]/80 text-white font-semibold transition-colors"
+                        className="text-[#e0dcd7] hover:text-[#d97706] transition-colors font-medium"
                     >
                         Admin
                     </Link>
+                    <Link
+                        href="/login"
+                        className="px-4 py-2 rounded-lg bg-[#d97706] hover:bg-[#d97706]/80 text-white font-semibold transition-colors"
+                    >
+                        Zaloguj
+                    </Link>
+                    <button
+                        className="px-4 py-2 rounded-lg bg-transparent border border-[#d97706] text-[#d97706] hover:bg-[#d97706]/20 font-semibold transition-colors"
+                    >
+                        Wyloguj
+                    </button>
                 </nav>
             </div>
         </header>
