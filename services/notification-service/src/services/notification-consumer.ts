@@ -24,6 +24,19 @@ export class NotificationConsumer {
     private reconnecting = false;
     private stopped = false;
     private disabled = false;
+    private lastError: string | null = null;
+    private lastFailureAt: string | null = null;
+
+    getRuntimeStatus() {
+        return {
+            mode: this.disabled ? "disabled" : (this.running ? "connected" : "disconnected"),
+            connected: this.running,
+            reconnecting: this.reconnecting,
+            brokersConfigured: config.kafkaBrokers.length > 0,
+            lastError: this.lastError,
+            lastFailureAt: this.lastFailureAt
+        };
+    }
 
     async start(): Promise<void> {
         if (this.running) {
@@ -68,6 +81,8 @@ export class NotificationConsumer {
                 return;
             } catch (error) {
                 const message = error instanceof Error ? error.message : "unknown error";
+                this.lastError = message;
+                this.lastFailureAt = new Date().toISOString();
                 logger.error("Kafka consumer connection failed", {
                     attempt,
                     maxAttempts: failIfExhausted ? config.kafkaConnectRetryAttempts : "unbounded",
@@ -123,6 +138,8 @@ export class NotificationConsumer {
                 return;
             }
             const message = error instanceof Error ? error.message : "unknown error";
+            this.lastError = message;
+            this.lastFailureAt = new Date().toISOString();
             logger.error("Kafka consumer stopped unexpectedly", { error: message });
             this.running = false;
             if (this.reconnecting) {
