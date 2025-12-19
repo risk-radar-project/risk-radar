@@ -124,7 +124,7 @@ func TestDeriveErrorCode(t *testing.T) {
 	if code != "CUSTOM_ERROR" {
 		t.Errorf("expected CUSTOM_ERROR, got %s", code)
 	}
-	
+
 	code = deriveErrorCode(400, []byte(`{"error": {"code": "obj_error"}}`))
 	if code != "OBJ_ERROR" {
 		t.Errorf("expected OBJ_ERROR, got %s", code)

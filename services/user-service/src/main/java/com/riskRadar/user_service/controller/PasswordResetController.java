@@ -3,6 +3,7 @@ package com.riskRadar.user_service.controller;
 import com.riskRadar.user_service.dto.PasswordResetConfirmRequest;
 import com.riskRadar.user_service.dto.PasswordResetRequest;
 import com.riskRadar.user_service.service.PasswordResetService;
+import com.riskRadar.user_service.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,20 +11,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
 @RestController
-@RequestMapping("/password-reset")
 @RequiredArgsConstructor
 public class PasswordResetController {
 
     private final PasswordResetService passwordResetService;
+    private final UserService userService;
     private static final Logger logger = LoggerFactory.getLogger(PasswordResetController.class);
 
-    @PostMapping("/request")
+    @PostMapping("/forgot-password")
     public ResponseEntity<?> requestReset(@RequestBody PasswordResetRequest request) {
         try {
             if (request.email() == null || request.email().trim().isEmpty()) {
@@ -57,7 +57,7 @@ public class PasswordResetController {
         }
     }
 
-    @PostMapping("/confirm")
+    @PostMapping("/reset-password")
     public ResponseEntity<?> confirmReset(@RequestBody PasswordResetConfirmRequest request) {
         try {
             if (request.token() == null || request.token().trim().isEmpty()) {
@@ -70,19 +70,16 @@ public class PasswordResetController {
                         .body(Map.of("error", "New password must be at least 6 characters long"));
             }
 
-            // Tutaj potrzebna integracja z UserService do zresetowania hasła
-            // Obecnie nie widzimy dostępnych metod w UserService
+            String email = passwordResetService.getEmailByToken(request.token());
+            if (email == null) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Invalid or expired reset token"));
+            }
 
-            // Przykładowa implementacja (wymagana metoda resetPasswordByToken w UserService):
-            // boolean success = userService.resetPasswordByToken(request.token(), request.newPassword());
-            //
-            // if (!success) {
-            //     return ResponseEntity.badRequest()
-            //         .body(Map.of("error", "Invalid or expired reset token"));
-            // }
+            userService.updatePassword(email, request.newPassword());
+            passwordResetService.invalidateResetToken(request.token());
 
-            // Tymczasowa implementacja - logujemy że token został użyty
-            logger.info("Password reset attempt with token: {}", request.token().substring(0, Math.min(10, request.token().length())) + "...");
+            logger.info("Password successfully reset for email: {}", email);
 
             return ResponseEntity.ok(Map.of(
                     "message", "Password successfully reset",

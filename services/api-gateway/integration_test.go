@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"api-gateway/internal/config"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func TestIntegration_Gateway(t *testing.T) {
@@ -103,7 +104,7 @@ func TestIntegration_Gateway(t *testing.T) {
 		buf, _ = io.ReadAll(resp.Body)
 		t.Errorf("expected 200 with valid token, got %d. Body: %s", resp.StatusCode, string(buf))
 	}
-	
+
 	// Verify Response Body
 	var body map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&body)

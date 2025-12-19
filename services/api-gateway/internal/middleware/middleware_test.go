@@ -167,7 +167,7 @@ func TestContextHelpers(t *testing.T) {
 func TestClientIP(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	req.RemoteAddr = "1.2.3.4:1234"
-	
+
 	if got := clientIP(req); got != "1.2.3.4:1234" {
 		t.Errorf("expected 1.2.3.4:1234, got %s", got)
 	}

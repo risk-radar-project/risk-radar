@@ -101,6 +101,10 @@ func Load(path string) (RuntimeConfig, error) {
 	}
 	applyDefaults(&cfg)
 
+	if secret := os.Getenv("JWT_ACCESS_SECRET"); secret != "" {
+		cfg.JWT.HMACSecret = secret
+	}
+
 	// Validate JWT Secret
 	if cfg.JWT.Algorithm == "HS256" && cfg.JWT.HMACSecret == "" {
 		return RuntimeConfig{}, errors.New("JWT HMAC secret is required for HS256 algorithm")

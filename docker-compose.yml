@@ -328,8 +328,9 @@ services:
             dockerfile: Dockerfile
         container_name: api-gateway
         environment:
-            - GATEWAY_CONFIG=/app/config.yaml
-            - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+            <<: *global-env
+            GATEWAY_CONFIG: /app/config.yaml
+            NODE_ENV: development
         ports:
             - "8090:8080"
         depends_on:

@@ -247,8 +247,10 @@ func (g gateway) handle(w http.ResponseWriter, r *http.Request) {
 func generateJWTHandler(v *auth.Validator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			UserID   string `json:"user_id"`
-			ExpHours int    `json:"exp_hours"`
+			UserID      string   `json:"user_id"`
+			ExpHours    int      `json:"exp_hours"`
+			Roles       []string `json:"roles"`
+			Permissions []string `json:"permissions"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			middleware.WriteJSONError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid json body")
@@ -262,7 +264,7 @@ func generateJWTHandler(v *auth.Validator) http.HandlerFunc {
 			req.ExpHours = 1
 		}
 
-		token, err := v.GenerateDevToken(req.UserID, time.Duration(req.ExpHours)*time.Hour)
+		token, err := v.GenerateDevToken(req.UserID, time.Duration(req.ExpHours)*time.Hour, req.Roles, req.Permissions)
 		if err != nil {
 			middleware.WriteJSONError(w, http.StatusInternalServerError, "INTERNAL_ERROR", fmt.Sprintf("failed to generate token: %v", err))
 			return
@@ -364,6 +366,13 @@ func (g gateway) userInjector(route config.RuntimeRoute) func(http.Handler) http
 func (g gateway) timeout(route config.RuntimeRoute) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Skip timeout for WebSocket upgrades
+			if strings.EqualFold(r.Header.Get("Connection"), "upgrade") &&
+				strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			ctx, cancel := context.WithTimeout(r.Context(), g.cfg.UpstreamTimeout())
 			defer cancel()
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -421,5 +430,3 @@ func clientIP(r *http.Request) string {
 	}
 	return host
 }
-
-// ensure unused imports of httputil avoided

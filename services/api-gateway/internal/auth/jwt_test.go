@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"api-gateway/internal/config"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func TestValidator_Validate_HS256(t *testing.T) {

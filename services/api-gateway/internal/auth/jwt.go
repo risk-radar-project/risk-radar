@@ -2,6 +2,7 @@ package auth
 
 import (
 	"crypto/rsa"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -36,7 +37,11 @@ func NewValidator(cfg config.JWTConfig) (*Validator, error) {
 		if cfg.HMACSecret == "" {
 			return nil, errors.New("hmac_secret required for HS* algorithms")
 		}
-		v.hmacKey = []byte(cfg.HMACSecret)
+		if decoded, err := base64.StdEncoding.DecodeString(cfg.HMACSecret); err == nil {
+			v.hmacKey = decoded
+		} else {
+			v.hmacKey = []byte(cfg.HMACSecret)
+		}
 	case "RS256", "RS384", "RS512":
 		pk, err := loadRSAPublicKey(cfg)
 		if err != nil {
@@ -86,9 +91,21 @@ func (v *Validator) Validate(tokenString string) (string, error) {
 	if !token.Valid {
 		return "", errors.New("invalid token")
 	}
-	if iss, ok := claims["iss"].(string); !ok || iss != v.cfg.Issuer {
-		return "", errInvalidIssuer
+	if v.cfg.Issuer != "" {
+		if iss, ok := claims["iss"].(string); !ok || iss != v.cfg.Issuer {
+			return "", errInvalidIssuer
+		}
 	}
+
+	// Try to find user ID in custom claims first
+	if uid, ok := claims["userId"].(string); ok && uid != "" {
+		return uid, nil
+	}
+	if uid, ok := claims["user_id"].(string); ok && uid != "" {
+		return uid, nil
+	}
+
+	// Fallback to subject
 	sub, ok := claims["sub"].(string)
 	if !ok || sub == "" {
 		return "", errors.New("sub claim missing")
@@ -96,14 +113,21 @@ func (v *Validator) Validate(tokenString string) (string, error) {
 	return sub, nil
 }
 
-func (v *Validator) GenerateDevToken(userID string, duration time.Duration) (string, error) {
+func (v *Validator) GenerateDevToken(userID string, duration time.Duration, roles []string, permissions []string) (string, error) {
 	if strings.HasPrefix(v.algorithm, "HS") {
-		token := jwt.NewWithClaims(jwt.GetSigningMethod(v.algorithm), jwt.MapClaims{
+		claims := jwt.MapClaims{
 			"iss": v.cfg.Issuer,
 			"sub": userID,
 			"exp": time.Now().Add(duration).Unix(),
 			"iat": time.Now().Unix(),
-		})
+		}
+		if len(roles) > 0 {
+			claims["roles"] = roles
+		}
+		if len(permissions) > 0 {
+			claims["permissions"] = permissions
+		}
+		token := jwt.NewWithClaims(jwt.GetSigningMethod(v.algorithm), claims)
 		return token.SignedString(v.hmacKey)
 	}
 	return "", fmt.Errorf("token generation only supported for HMAC algorithms in dev mode")

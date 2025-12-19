@@ -7,8 +7,8 @@ server:
 
 jwt:
   algorithm: HS256
-  issuer: risk-radar
-  hmac_secret: "changeme"
+  issuer: ""
+  hmac_secret: "${JWT_ACCESS_SECRET}"
 
 cors:
   allowed_origins: ["*"]

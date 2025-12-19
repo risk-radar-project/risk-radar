@@ -81,11 +81,11 @@ func RequestLogger(logFunc func(map[string]interface{})) func(http.Handler) http
 			next.ServeHTTP(rw, r)
 
 			duration := time.Since(start)
-			
+
 			// Console logging (human readable, matching authz-service style)
 			statusColor := getStatusColor(rw.status)
 			methodColor := getMethodColor(r.Method)
-			
+
 			var durationStr string
 			nanoseconds := duration.Nanoseconds()
 			if nanoseconds == 0 {

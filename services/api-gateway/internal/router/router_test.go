@@ -16,8 +16,8 @@ func TestMatcher_Match(t *testing.T) {
 	m := NewMatcher(routes)
 
 	tests := []struct {
-		path     string
-		wantUp   string
+		path      string
+		wantUp    string
 		wantFound bool
 	}{
 		{"/api/users", "users", true},

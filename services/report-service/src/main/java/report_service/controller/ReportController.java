@@ -35,7 +35,32 @@ public class ReportController {
         String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
 
         try {
-            reportService.createReport(request);
+            // Extract User ID from header
+            String userIdHeader = httpRequest.getHeader("X-User-ID");
+            UUID userId = request.userId();
+            if (userId == null && userIdHeader != null && !userIdHeader.isEmpty()) {
+                try {
+                    userId = UUID.fromString(userIdHeader);
+                } catch (IllegalArgumentException e) {
+                    // Log warning or ignore
+                }
+            }
+
+            // Create new request with injected User ID if needed
+            ReportRequest effectiveRequest = request;
+            if (userId != null && !userId.equals(request.userId())) {
+                effectiveRequest = new ReportRequest(
+                        request.title(),
+                        request.description(),
+                        request.latitude(),
+                        request.longitude(),
+                        userId,
+                        request.imageIds(),
+                        request.reportCategory()
+                );
+            }
+
+            reportService.createReport(effectiveRequest);
 
             auditLogClient.logAction(Map.of(
                     "service", "report-service",

@@ -24,12 +24,10 @@ public class PasswordResetService {
             return null;
         }
 
-        String redisKey = "resetToken:" + email;
-        redisService.delete(redisKey);
-
         String resetToken = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());
+        String redisKey = "resetToken:" + resetToken;
 
-        redisService.saveWithTTL(redisKey, resetToken, 900, TimeUnit.SECONDS);
+        redisService.saveWithTTL(redisKey, email, 900, TimeUnit.SECONDS);
 
         logger.info("Password reset token generated for email: {}", email);
 
@@ -37,34 +35,20 @@ public class PasswordResetService {
         return resetToken;
     }
 
-    public boolean validateResetToken(String email, String token) {
-        if (token == null || email == null) {
-            logger.warn("Validation failed - null token or email");
-            return false;
+    public String getEmailByToken(String token) {
+        if (token == null) {
+            return null;
         }
-
-        String redisKey = "resetToken:" + email;
-        String storedToken = redisService.get(redisKey);
-
-        if (storedToken == null) {
-            logger.warn("No reset token found for email: {}", email);
-            return false;
-        }
-
-        boolean isValid = storedToken.equals(token);
-        logger.debug("Token validation result for email {}: {}", email, isValid);
-
-        return isValid;
+        String redisKey = "resetToken:" + token;
+        return redisService.get(redisKey);
     }
 
-    public void invalidateResetToken(String email) {
-        if (email == null) {
-            logger.warn("Cannot invalidate token - null email");
+    public void invalidateResetToken(String token) {
+        if (token == null) {
             return;
         }
-
-        String redisKey = "resetToken:" + email;
+        String redisKey = "resetToken:" + token;
         redisService.delete(redisKey);
-        logger.info("Password reset token invalidated for email: {}", email);
+        logger.info("Password reset token invalidated");
     }
 }
