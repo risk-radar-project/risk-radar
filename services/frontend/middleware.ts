@@ -7,6 +7,10 @@ import type { NextRequest } from "next/server"
 export function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl
 
+    // Set pathname header for layout detection
+    const response = NextResponse.next()
+    response.headers.set("x-pathname", pathname)
+
     // Protect /admin/*
     if (pathname.startsWith("/admin")) {
         // Placeholder session
@@ -19,9 +23,9 @@ export function middleware(req: NextRequest) {
         }
     }
 
-    return NextResponse.next()
+    return response
 }
 
 export const config = {
-    matcher: ["/admin/:path*"]
+    matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"]
 }

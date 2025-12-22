@@ -3,11 +3,15 @@ Kafka Client for AI Verification-Duplication Service
 Handles async message publishing and consumption
 """
 from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
-from typing import Dict, Optional, Callable
+from typing import Dict, Optional, Callable, List, Any
+from kafka import KafkaAdminClient
+from kafka.admin import NewTopic
+from kafka.errors import TopicAlreadyExistsError
 import json
 import logging
 import asyncio
 import os
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +22,47 @@ class KafkaClient:
         self.consumer: Optional[AIOKafkaConsumer] = None
         self.enabled = os.getenv("KAFKA_ENABLED", "true").lower() == "true"
         
+    def create_topics(self, topics: List[Dict[str, Any]], max_retries: int = 5) -> bool:
+        """Create Kafka topics if they don't exist"""
+        if not self.enabled:
+            logger.info("Kafka is disabled, skipping topic creation")
+            return False
+        
+        for attempt in range(max_retries):
+            try:
+                admin_client = KafkaAdminClient(
+                    bootstrap_servers=self.bootstrap_servers,
+                    client_id="verification-service-admin"
+                )
+                
+                new_topics = [
+                    NewTopic(
+                        name=topic['name'],
+                        num_partitions=topic.get('partitions', 2),
+                        replication_factor=topic.get('replication_factor', 1)
+                    )
+                    for topic in topics
+                ]
+                
+                try:
+                    admin_client.create_topics(new_topics=new_topics, validate_only=False)
+                    logger.info(f"Created topics: {[t['name'] for t in topics]}")
+                except TopicAlreadyExistsError:
+                    logger.info(f"Topics already exist: {[t['name'] for t in topics]}")
+                
+                admin_client.close()
+                return True
+                
+            except Exception as e:
+                logger.warning(f"Attempt {attempt + 1}/{max_retries} failed to create topics: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                else:
+                    logger.error(f"Failed to create topics after {max_retries} attempts")
+                    return False
+        
+        return False
+    
     async def start_producer(self):
         """Initialize Kafka producer"""
         if not self.enabled:

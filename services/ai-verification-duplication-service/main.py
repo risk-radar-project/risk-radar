@@ -166,6 +166,13 @@ async def lifespan(app: FastAPI):
     # Initialize Kafka
     kafka_client = get_kafka_client()
     try:
+        # Create required topics
+        topics = [
+            {"name": "verification_events", "partitions": 2, "replication_factor": 1},
+            {"name": "reports_events", "partitions": 2, "replication_factor": 1}
+        ]
+        kafka_client.create_topics(topics)
+        
         await kafka_client.start_producer()
         logger.info("Kafka producer initialized")
 
