@@ -323,6 +323,31 @@ services:
         networks:
             - backend
 
+    api-gateway:
+        build:
+            context: ./services/api-gateway
+            dockerfile: Dockerfile
+        container_name: api-gateway
+        environment:
+            <<: *global-env
+            GATEWAY_CONFIG: /app/config.yaml
+            NODE_ENV: development
+        ports:
+            - "8090:8080"
+        depends_on:
+            - user-service
+            - authz-service
+            - report-service
+            - media-service
+            - notification-service
+            - audit-log-service
+            - ai-categorization-service
+            - ai-verification-duplication-service
+            - ai-assistant-service
+            - map-service
+        networks:
+            - backend
+
 volumes:
     redis_data:
     postgres_data:

@@ -24,7 +24,7 @@ public class SecurityConfig {
 
     private final JwtTokenFilter jwtTokenFilter;
     private static final String[] PUBLIC_ENDPOINTS = {
-            "/login", "/register", "/refresh", "/status", "/password-reset/confirm", "/password-reset/request"
+            "/login", "/register", "/refresh", "/status", "/forgot-password", "/reset-password"
     };
 
     @Bean

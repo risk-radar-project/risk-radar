@@ -36,6 +36,7 @@ Zapewnia:
 
 * **Report Creation (POST /createReport)**
   * Akceptuje szczegóły raportu w body (DTO: `ReportRequest`).
+  * Obsługuje nagłówek `X-User-ID` (wstrzykiwany przez API Gateway) jako alternatywę dla pola `userId` w ciele żądania.
   * Waliduje i zapisuje raport w PostgreSQL.
   * Publikuje zdarzenie o utworzeniu raportu do tematu Kafka (`report.kafka.topic`).
 

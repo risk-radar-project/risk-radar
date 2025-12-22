@@ -1,0 +1,70 @@
+server:
+  port: 8080
+  read_timeout_seconds: 20
+  write_timeout_seconds: 20
+  idle_timeout_seconds: 60
+  upstream_timeout_seconds: 15
+
+jwt:
+  algorithm: HS256
+  issuer: ""
+  hmac_secret: "${JWT_ACCESS_SECRET}"
+
+cors:
+  allowed_origins: ["*"]
+  allowed_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+  allowed_headers: ["Authorization", "Content-Type", "X-Correlation-ID"]
+  allow_credentials: false
+  max_age_seconds: 600
+
+default_rate_limit:
+  anonymous: 100
+  authenticated: 300
+
+default_upload_max_bytes: 10485760  # 10 MB
+json_body_max_bytes: 2097152        # 2 MB
+
+routes:
+  - prefix: "/api/users"
+    upstream: "http://user-service:8080"
+    auth_required: false
+  - prefix: "/api/authz"
+    upstream: "http://authz-service:8080"
+    auth_required: true
+  - prefix: "/api/notifications"
+    upstream: "http://notification-service:8080"
+    auth_required: true
+  - prefix: "/api/reports"
+    upstream: "http://report-service:8080"
+    auth_required: true
+  - prefix: "/api/map"
+    upstream: "http://map-service:8080"
+    auth_required: false
+  - prefix: "/api/media"
+    upstream: "http://media-service:8080"
+    auth_required: true
+    upload_max_bytes: 10485760
+  - prefix: "/api/ai/categorization"
+    upstream: "http://ai-categorization-service:8080"
+    auth_required: true
+  - prefix: "/api/ai/verification"
+    upstream: "http://ai-verification-duplication-service:8080"
+    auth_required: true
+  - prefix: "/api/ai/assistant"
+    upstream: "http://ai-assistant-service:8080"
+    auth_required: true
+  - prefix: "/api/audit"
+    upstream: "http://audit-log-service:8080"
+    auth_required: true
+  # - prefix: "/api/monitoring"
+  #   upstream: "http://monitoring-service:8080"
+  #   auth_required: false
+  # - prefix: "/api/admin"
+  #   upstream: "http://admin-service:8080"
+  #   auth_required: true
+  # - prefix: "/api/community"
+  #   upstream: "http://community-service:8080"
+  #   auth_required: true
+  # - prefix: "/api/statistics"
+  #   upstream: "http://statistics-service:8080"
+  #   auth_required: true
