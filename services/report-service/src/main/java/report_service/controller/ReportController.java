@@ -42,7 +42,11 @@ public class ReportController {
                 try {
                     userId = UUID.fromString(userIdHeader);
                 } catch (IllegalArgumentException e) {
-                    // Log warning or ignore
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "message", "Invalid User ID format in header",
+                            "status", "failure",
+                            "error", "Invalid UUID string: " + userIdHeader
+                    ));
                 }
             }
 
