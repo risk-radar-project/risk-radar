@@ -173,9 +173,9 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
 
         // Icon configuration based on index.html
         const baseIconProps = {
-            iconSize: [32, 32] as [number, number],
-            iconAnchor: [12, 24] as [number, number],
-            popupAnchor: [0, -24] as [number, number]
+            iconSize: [40, 40] as [number, number],
+            iconAnchor: [20, 40] as [number, number],
+            popupAnchor: [0, -40] as [number, number]
         }
 
         const categoryIcons: Record<string, L.Icon> = {
