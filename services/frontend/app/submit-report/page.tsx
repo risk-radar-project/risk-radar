@@ -139,7 +139,7 @@ export default function SubmitReportPage() {
 
             setSuccess(true)
             setTimeout(() => {
-                window.location.href = '/map' // Force full page reload to ensure map loads
+                window.location.href = '/' // Force full page reload to ensure map loads
             }, 2000)
         } catch (err: any) {
             setError(err.message || 'Wystąpił błąd podczas tworzenia zgłoszenia')
@@ -169,7 +169,7 @@ export default function SubmitReportPage() {
                 {/* Header */}
                 <div className="mb-8">
                     <a
-                        href="/map"
+                        href="/"
                         className="inline-flex items-center gap-2 text-[#e0dcd7] hover:text-[#d97706] transition-colors mb-4"
                     >
                         <span className="material-symbols-outlined">arrow_back</span>
