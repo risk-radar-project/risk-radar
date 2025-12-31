@@ -81,6 +81,9 @@ public class ReportService {
     public List<Report> getVerifiedReports() {
         return reportRepository.findByStatus(ReportStatus.VERIFIED);
     }
+    public List<Report> getPendingReports() {
+        return reportRepository.findByStatus(ReportStatus.PENDING);
+    }
     private Map<String, String> reportToPayload(Report report) {
         return Map.of(
                 "id", report.getId().toString(),

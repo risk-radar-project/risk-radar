@@ -3,9 +3,11 @@
 import React from "react"
 import { Card } from "@/components/ui/card"
 
-export function SectionCard({ children }: { children: React.ReactNode }) {
+import { cn } from "@/lib/utils"
+
+export function SectionCard({ children, className }: { children: React.ReactNode, className?: string }) {
     return (
-        <Card className="p-6 space-y-4">
+        <Card className={cn("p-6 space-y-4", className)}>
             {children}
         </Card>
     )

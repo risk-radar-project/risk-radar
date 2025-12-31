@@ -21,7 +21,7 @@ export function AppHeader() {
                         href="/reports"
                         className="text-[#e0dcd7] hover:text-[#d97706] transition-colors font-medium"
                     >
-                        Zgłoszenia
+                        Weryfikacja
                     </Link>
                     <Link
                         href="/profile"
