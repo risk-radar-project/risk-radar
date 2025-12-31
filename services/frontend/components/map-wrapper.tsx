@@ -31,5 +31,9 @@ export default function MapWrapper({ initialReports }: MapWrapperProps) {
     // Create unique key based on mount state to force re-render
     const mapKey = `map-${pathname}-${mounted ? Date.now() : 0}`
 
-    return <MapComponent key={mapKey} initialReports={initialReports} />
+    return (
+        <div className="h-screen w-full">
+            <MapComponent key={mapKey} initialReports={initialReports} />
+        </div>
+    )
 }

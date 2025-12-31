@@ -36,7 +36,7 @@ export default async function RootLayout({
 
     const headersList = await headers()
     const pathname = headersList.get("x-pathname") || ""
-    const isMapPage = pathname.startsWith("/map")
+    const isMapPage = pathname === "/" || pathname === ""
 
     console.log('[Layout] pathname:', pathname, 'isMapPage:', isMapPage)
 

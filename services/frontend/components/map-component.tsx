@@ -258,13 +258,17 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
 
         // Fetch reports
         const fetchReports = async () => {
-            // If initial reports are provided, use them and don't fetch
-            if (initialReports && initialReports.length > 0) {
-                initialReports.forEach(report => addMarkerToMap(report))
+            // If initial reports are provided (even if empty array), use them
+            // Empty array means the server tried to fetch but there were no reports or backend was down
+            if (initialReports !== undefined) {
+                if (initialReports.length > 0) {
+                    initialReports.forEach(report => addMarkerToMap(report))
+                }
+                // Map will load without markers if array is empty - this is OK
                 return
             }
 
-            // Fallback fetch (if SSR failed or returned empty)
+            // Fallback fetch ONLY if initialReports was not provided at all
             try {
                 // Fetch from our local API route (proxy)
                 const response = await fetch('/api/reports')
@@ -394,12 +398,12 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                     className={`absolute inset-y-0 left-0 z-30 flex w-72 flex-col bg-[#362c20]/90 p-4 backdrop-blur-sm transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
                 >
                     <div className="flex items-center justify-between px-3 py-2">
-                        <div className="flex items-center gap-3">
+                        <a href="/" className="flex items-center gap-3">
                             <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
                                 style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBCpSftcBIvJAKvmwFok7b1n6PmpFeiao9KAOoqFs1ajLc3TP11U4nkdfvllw469DY1mB-Y1m1e7oB8GSX8bbwky-01VrnWL9l125eTlHbsCZUcZjvd7TiB8IW5deiSfMZwMmILFSm1c_nTv7Ci1kWaC8oKq2yPxg4R5NvJS4GZiUGdi1_IPO8Br02BiSIni02B55xHKLE6UZ8ijEO6waP2xaJfd7-QajaNPHqxIs-PfTZTFZp7RFc3jiA6t0XacRdEVHpJlzgLrz4")' }}
                             />
                             <h1 className="text-[#e0dcd7] text-lg font-bold leading-normal">RiskRadar</h1>
-                        </div>
+                        </a>
                         <button
                             onClick={() => setSidebarOpen(false)}
                             className="flex size-10 items-center justify-center rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
@@ -418,19 +422,14 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                         <div className="border-t border-[#e0dcd7]/10 my-2"></div>
 
                         <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
-                            href="/">
-                            <span className="material-symbols-outlined">home</span>
-                            <p className="text-base leading-normal">Strona główna</p>
+                            href="/profile">
+                            <span className="material-symbols-outlined">person</span>
+                            <p className="text-base leading-normal">Profil</p>
                         </a>
                         <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
                             href="/my-reports">
                             <span className="material-symbols-outlined">description</span>
                             <p className="text-base leading-normal">Moje zgłoszenia</p>
-                        </a>
-                        <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
-                            href="/profile">
-                            <span className="material-symbols-outlined">person</span>
-                            <p className="text-base leading-normal">Profil</p>
                         </a>
                         <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
                             href="/settings">
