@@ -13,6 +13,7 @@ from typing import Optional, Dict, Any
 import numpy as np
 import os
 from datetime import datetime
+import uuid
 
 from audit_client import get_audit_client
 from kafka_client import get_kafka_client
@@ -133,16 +134,17 @@ async def lifespan(app: FastAPI):
         # Create required topics
         topics = [
             {"name": "categorization_events", "partitions": 2, "replication_factor": 1},
-            {"name": "reports_events", "partitions": 2, "replication_factor": 1}
+            {"name": "report", "partitions": 2, "replication_factor": 1},
+            {"name": "notification_events", "partitions": 2, "replication_factor": 1}
         ]
         kafka_client.create_topics(topics)
         
         await kafka_client.start_producer()
         logger.info("Kafka producer initialized")
         
-        # Start consumer for report events
+        # Start consumer for report events (topic 'report' from report-service)
         await kafka_client.start_consumer(
-            topics=["reports_events"],
+            topics=["report"],
             group_id="ai-categorization-group",
             handler=handle_report_message
         )
@@ -319,15 +321,19 @@ async def categorize_report(request: CategorizationRequest):
             key=request.report_id
         )
         
-        # Send notification event
+        # Send notification event (format compatible with notification-service)
         await kafka_client.publish(
             topic="notification_events",
             message={
-                "type": "report_categorized",
-                "user_id": request.user_id,
-                "report_id": request.report_id,
-                "category": category,
-                "timestamp": datetime.utcnow().isoformat()
+                "eventId": str(uuid.uuid4()),
+                "eventType": "REPORT_CATEGORIZED",
+                "userId": request.user_id,
+                "source": "ai-categorization-service",
+                "payload": {
+                    "reportId": request.report_id,
+                    "category": category,
+                    "confidence": confidence
+                }
             },
             key=request.user_id
         )

@@ -152,6 +152,27 @@ export const templateDefinitions: TemplateDefinition[] = [
         channel: "in_app",
         title: placeholder,
         body: placeholder
+    },
+    {
+        templateKey: "REPORT_CATEGORIZED_IN_APP",
+        eventType: "REPORT_CATEGORIZED",
+        channel: "in_app",
+        title: "Raport skategoryzowany",
+        body: "Twój raport został automatycznie skategoryzowany jako: {{category}}"
+    },
+    {
+        templateKey: "FAKE_REPORT_DETECTED_IN_APP",
+        eventType: "FAKE_REPORT_DETECTED",
+        channel: "in_app",
+        title: "Wykryto podejrzany raport",
+        body: "Twój raport został oznaczony jako potencjalnie nieprawdziwy."
+    },
+    {
+        templateKey: "FAKE_REPORT_DETECTED_EMAIL",
+        eventType: "FAKE_REPORT_DETECTED",
+        channel: "email",
+        subject: "Wykryto podejrzany raport",
+        body: "Twój raport został oznaczony jako potencjalnie nieprawdziwy. Prawdopodobieństwo: {{fake_probability}}%"
     }
 ];
 

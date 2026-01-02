@@ -19,7 +19,9 @@ export interface NotificationEvent {
         | "USER_REGISTERED"
         | "USER_PASSWORD_RESET_REQUESTED"
         | "USER_BANNED"
-        | "USER_UNBANNED";
+        | "USER_UNBANNED"
+        | "REPORT_CATEGORIZED"
+        | "FAKE_REPORT_DETECTED";
     userId: string;
     initiatorId?: string | null;
     payload?: NotificationEventPayload;

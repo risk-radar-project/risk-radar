@@ -12,6 +12,7 @@ from datetime import datetime
 import torch
 import joblib
 import numpy as np
+import uuid
 from transformers import BertTokenizer, BertModel
 
 from kafka_client import get_kafka_client
@@ -169,16 +170,17 @@ async def lifespan(app: FastAPI):
         # Create required topics
         topics = [
             {"name": "verification_events", "partitions": 2, "replication_factor": 1},
-            {"name": "reports_events", "partitions": 2, "replication_factor": 1}
+            {"name": "report", "partitions": 2, "replication_factor": 1},
+            {"name": "notification_events", "partitions": 2, "replication_factor": 1}
         ]
         kafka_client.create_topics(topics)
         
         await kafka_client.start_producer()
         logger.info("Kafka producer initialized")
 
-        # Start consumer for report events
+        # Start consumer for report events (topic 'report' from report-service)
         await kafka_client.start_consumer(
-            topics=["reports_events"],
+            topics=["report"],
             group_id="ai-verification-group",
             handler=handle_report_message
         )
@@ -256,12 +258,12 @@ async def verify_report(request: VerificationRequest):
         # Check if models are loaded
         if bert_model is None or tokenizer is None:
             # Return mock response when models aren't loaded
-            return VerifyResponse(
+            return VerificationResponse(
                 report_id=request.report_id,
                 is_fake=False,
                 fake_probability=0.0,
                 confidence="low",
-                message="Models not loaded - mock response"
+                explanation="Models not loaded - mock response"
             )
         
         # Combine title and description
@@ -296,16 +298,20 @@ async def verify_report(request: VerificationRequest):
             key=request.report_id
         )
         
-        # Send notification if fake detected
+        # Send notification if fake detected (format compatible with notification-service)
         if is_fake:
             await kafka_client.publish(
                 topic="notification_events",
                 message={
-                    "type": "fake_report_detected",
-                    "user_id": request.user_id,
-                    "report_id": request.report_id,
-                    "fake_probability": fake_prob,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "eventId": str(uuid.uuid4()),
+                    "eventType": "FAKE_REPORT_DETECTED",
+                    "userId": request.user_id,
+                    "source": "ai-verification-duplication-service",
+                    "payload": {
+                        "reportId": request.report_id,
+                        "fake_probability": round(fake_prob * 100, 2),
+                        "confidence": confidence
+                    }
                 },
                 key=request.user_id
             )
