@@ -1,13 +1,106 @@
+"use client";
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 export default function LoginPage() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+    rememberMe: false,
+  });
+  const [errors, setErrors] = useState({
+    username: "",
+    password: "",
+    form: "",
+  });
+  const [successMessage, setSuccessMessage] = useState("");
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("registered") === "true") {
+      setSuccessMessage("Rejestracja zakończona sukcesem. Możesz się teraz zalogować.");
+    }
+  }, [searchParams]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
+    if (errors[id as keyof typeof errors]) {
+      setErrors((prev) => ({ ...prev, [id]: "" }));
+    }
+  };
+
+  const handleSubmit = async () => {
+    let newErrors = { username: "", password: "", form: "" };
+    let isValid = true;
+
+    if (!formData.username) {
+      newErrors.username = "Nazwa użytkownika lub email jest wymagany";
+      isValid = false;
+    }
+
+    if (!formData.password) {
+      newErrors.password = "Hasło jest wymagane";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+
+    if (isValid) {
+      try {
+        const response = await fetch("http://localhost:8090/api/users/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: formData.username,
+            password: formData.password,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Store tokens in localStorage (support both camelCase and snake_case)
+          const accessToken = data.accessToken || data.access_token;
+          const refreshToken = data.refreshToken || data.refresh_token;
+
+          if (accessToken) localStorage.setItem("access_token", accessToken);
+          if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
+
+          // Redirect to home page
+          window.location.href = "/";
+        } else {
+          const data = await response.json();
+          if (response.status === 401) {
+            setErrors((prev) => ({ ...prev, form: "Nieprawidłowa nazwa użytkownika lub hasło" }));
+          } else {
+            setErrors((prev) => ({ ...prev, form: data.error || "Wystąpił błąd podczas logowania" }));
+          }
+        }
+      } catch (error) {
+        console.error("Login error:", error);
+        setErrors((prev) => ({ ...prev, form: "Błąd połączenia z serwerem" }));
+      }
+    }
+  };
+
   return (
     <div className="w-full mt-6">
+      {successMessage && (
+        <div className="mb-4 p-4 text-sm text-green-500 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
+          {successMessage}
+        </div>
+      )}
       <div className="pb-3">
         <div className="flex border-b border-[#54473b] justify-between">
           <Link
@@ -32,16 +125,22 @@ export default function LoginPage() {
         <div className="flex flex-col w-full">
           <Label
             className="text-white text-base font-medium leading-normal pb-2"
-            htmlFor="email"
+            htmlFor="username"
           >
-            Email
+            Email lub login
           </Label>
           <Input
-            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#54473b] bg-[#27211b] focus:border-primary h-14 placeholder:text-[#baab9c] p-[15px] text-base font-normal leading-normal"
-            id="email"
-            placeholder="jan.kowalski@example.com"
-            type="email"
+            className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border ${errors.username ? "border-red-500 focus:border-red-500" : "border-[#54473b] focus:border-primary"
+              } bg-[#27211b] h-14 placeholder:text-[#baab9c] p-[15px] text-base font-normal leading-normal`}
+            id="username"
+            placeholder="jan.kowalski@example.com lub janek"
+            type="text"
+            value={formData.username}
+            onChange={handleInputChange}
           />
+          {errors.username && (
+            <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+          )}
         </div>
         <div className="flex flex-col w-full">
           <Label
@@ -50,20 +149,28 @@ export default function LoginPage() {
           >
             Hasło
           </Label>
-          <div className="flex w-full flex-1 items-stretch rounded-lg">
+          <div className={`flex w-full flex-1 items-center rounded-lg border ${errors.password ? "border-red-500 focus-within:border-red-500" : "border-[#54473b] focus-within:border-primary"
+            } bg-[#27211b] focus-within:ring-2 focus-within:ring-primary/50 h-14 overflow-hidden`}>
             <Input
-              className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#54473b] bg-[#27211b] focus:border-primary h-14 placeholder:text-[#baab9c] p-[15px] rounded-r-none border-r-0 pr-2 text-base font-normal leading-normal"
+              className="form-input flex w-full min-w-0 flex-1 resize-none border-0 bg-transparent text-white placeholder:text-[#baab9c] focus-visible:ring-0 focus-visible:ring-offset-0 h-full p-[15px] pr-2 text-base font-normal leading-normal rounded-none shadow-none"
               id="password"
               placeholder="Wpisz swoje hasło"
-              type="password"
+              type={showPassword ? "text" : "password"}
+              value={formData.password}
+              onChange={handleInputChange}
             />
             <Button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
               aria-label="Toggle password visibility"
-              className="text-[#baab9c] flex border border-[#54473b] bg-[#27211b] items-center justify-center px-[15px] rounded-r-lg border-l-0 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
+              className="h-full text-[#baab9c] flex items-center justify-center px-[15px] hover:text-white bg-transparent border-0 hover:bg-transparent focus:ring-0 rounded-none shadow-none"
             >
-              <Eye className="h-5 w-5" />
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </Button>
           </div>
+          {errors.password && (
+            <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-between py-3">
@@ -71,57 +178,33 @@ export default function LoginPage() {
           <Checkbox
             className="form-checkbox h-4 w-4 rounded border-[#54473b] bg-[#27211b] text-primary focus:ring-primary"
             id="remember-me"
+            checked={formData.rememberMe}
+            onCheckedChange={(checked) =>
+              setFormData((prev) => ({ ...prev, rememberMe: checked === true }))
+            }
           />
           <Label className="text-sm text-[#baab9c]" htmlFor="remember-me">
             Zapamiętaj mnie
           </Label>
         </div>
-        <Link className="text-sm text-primary hover:underline" href="#">
+        <Link className="text-sm text-white hover:underline" href="#">
           Nie pamiętasz hasła?
         </Link>
       </div>
       <div className="flex flex-col gap-4 py-3">
-        <Button className="flex h-14 w-full items-center justify-center rounded-lg bg-primary px-6 text-base font-bold text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-dark">
+        <Button
+          onClick={handleSubmit}
+          className="flex h-14 w-full items-center justify-center rounded-lg bg-primary px-6 text-base font-bold text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-dark"
+        >
           Zaloguj się
         </Button>
-        <div className="relative flex items-center justify-center py-2">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-[#54473b]"></div>
-          </div>
-          <div className="relative bg-[#181411] px-4 text-sm text-[#baab9c]">
-            Lub zaloguj się przez
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          className="flex h-14 w-full items-center justify-center gap-3 rounded-lg border border-[#54473b] bg-transparent px-6 text-base font-medium text-white shadow-sm hover:bg-[#27211b] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-dark"
-        >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M22.578 12.27c0-.79-.07-1.54-.2-2.27H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.73 3.28-8.07z"
-              fill="#4285F4"
-            ></path>
-            <path
-              d="M12 23c3.24 0 5.95-1.08 7.93-2.91l-3.57-2.77c-1.08.73-2.45 1.16-4.36 1.16-3.37 0-6.23-2.28-7.25-5.33H1.07v2.87C3.06 20.25 7.22 23 12 23z"
-              fill="#34A853"
-            ></path>
-            <path
-              d="M4.75 13.54c-.19-.57-.3-1.18-.3-1.81s.11-1.24.3-1.81V7.05H1.07A10.99 10.99 0 000 11.73c0 1.62.36 3.16 1.07 4.54l3.68-2.74z"
-              fill="#FBBC05"
-            ></path>
-            <path
-              d="M12 4.28c1.77 0 3.35.61 4.62 1.83l3.15-3.15C17.95.88 15.24 0 12 0 7.22 0 3.06 2.75 1.07 7.05l3.68 2.87c1.02-3.05 3.88-5.33 7.25-5.33z"
-              fill="#EA4335"
-            ></path>
-          </svg>
-          Kontynuuj z Google
-        </Button>
+
       </div>
+      {errors.form && (
+        <div className="pb-3 text-center">
+          <p className="text-red-500 text-sm">{errors.form}</p>
+        </div>
+      )}
     </div>
   );
 }

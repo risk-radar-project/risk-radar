@@ -1,0 +1,54 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { parseJwt, JwtPayload } from "@/lib/auth/jwt-utils";
+
+interface UseAuthReturn {
+    user: JwtPayload | null;
+    roles: string[];
+    permissions: string[];
+    isAuthenticated: boolean;
+    hasRole: (role: string) => boolean;
+    hasPermission: (permission: string) => boolean;
+    loading: boolean;
+}
+
+export function useAuth(): UseAuthReturn {
+    const [user, setUser] = useState<JwtPayload | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const token = localStorage.getItem("access_token");
+        if (token) {
+            const decoded = parseJwt(token);
+            setUser(decoded);
+        }
+        setLoading(false);
+    }, []);
+
+    const roles = user?.roles || [];
+    const permissions = user?.permissions || [];
+    const isAuthenticated = !!user;
+
+    const hasRole = (role: string) => {
+        if (!roles) return false;
+        // Sprawdź dokładne dopasowanie lub z prefiksem ROLE_
+        return roles.includes(role) || roles.includes(`ROLE_${role.toUpperCase()}`);
+    };
+
+    const hasPermission = (permission: string) => {
+        if (!permissions) return false;
+        // Sprawdź dokładne dopasowanie lub z prefiksem PERM_
+        return permissions.includes(permission) || permissions.includes(`PERM_${permission.toUpperCase()}`);
+    };
+
+    return {
+        user,
+        roles,
+        permissions,
+        isAuthenticated,
+        hasRole,
+        hasPermission,
+        loading
+    };
+}

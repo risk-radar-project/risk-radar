@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { QueryClientWrapper } from "@/components/providers/query-client-provider"
 import { ClientSessionHydrator } from "@/components/providers/client-session-hydrator"
 import { loadSession } from "@/lib/auth/load-session"
+import AuthGuard from "@/components/auth-guard"
 
 const fontSans = Geist({
     variable: "--font-geist-sans",
@@ -61,12 +62,14 @@ export default async function RootLayout({
                 />
                 <ClientSessionHydrator />
                 <QueryClientWrapper>
-                    {!isMapPage && <AppHeader />}
-                    <main className={isMapPage ? "h-screen" : "flex-1"}>
-                        {children}
-                    </main>
-                    {!isMapPage && <AppFooter />}
-                    <Toaster />
+                    <AuthGuard>
+                        {!isMapPage && <AppHeader />}
+                        <main className={isMapPage ? "h-screen" : "flex-1"}>
+                            {children}
+                        </main>
+                        {!isMapPage && <AppFooter />}
+                        <Toaster />
+                    </AuthGuard>
                 </QueryClientWrapper>
             </body>
         </html>
