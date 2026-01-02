@@ -49,6 +49,8 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     const markersRef = useRef<L.MarkerClusterGroup | null>(null)
     const displayedReportIdsRef = useRef<Set<string>>(new Set())
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const userLocationMarkerRef = useRef<L.Marker | null>(null)
+    const userLocationCircleRef = useRef<L.Circle | null>(null)
 
     const [lightboxImage, setLightboxImage] = useState<string | null>(null)
     const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -56,6 +58,38 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     const [searchResults, setSearchResults] = useState<SearchResult[]>([])
     const [showResults, setShowResults] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
+    
+    // AI Assistant state
+    const [aiLoading, setAiLoading] = useState(false)
+    const [aiResponse, setAiResponse] = useState<{
+        visible: boolean
+        dangerLevel: string
+        dangerScore: number
+        summary: string
+        reportsCount: number
+    } | null>(null)
+    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+
+    // Create user location icon (blue pulsing dot)
+    const createUserLocationIcon = () => {
+        const svgIcon = `
+            <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="20" cy="20" r="18" fill="#3b82f6" fill-opacity="0.2" stroke="#3b82f6" stroke-width="2">
+                    <animate attributeName="r" values="12;18;12" dur="2s" repeatCount="indefinite"/>
+                    <animate attributeName="fill-opacity" values="0.4;0.1;0.4" dur="2s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="20" cy="20" r="8" fill="#3b82f6" stroke="#ffffff" stroke-width="3"/>
+            </svg>
+        `
+        const iconDataUrl = `data:image/svg+xml;base64,${btoa(svgIcon)}`
+        
+        return L.icon({
+            iconUrl: iconDataUrl,
+            iconSize: [40, 40],
+            iconAnchor: [20, 20],
+            popupAnchor: [0, -20]
+        })
+    }
 
     // Load Material Symbols & Leaflet CSS (CDN fallback)
     useEffect(() => {
@@ -388,6 +422,154 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
         })
     }
 
+    // AI Assistant - analyze nearby threats
+    const handleAIAnalysis = async () => {
+        if (aiLoading) return
+        
+        setAiLoading(true)
+        setAiResponse(null)
+        
+        // First, get user's location
+        if (!navigator.geolocation) {
+            alert('Geolokalizacja nie jest wspierana przez Twoją przeglądarkę')
+            setAiLoading(false)
+            return
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude
+                const lng = position.coords.longitude
+                
+                setUserLocation({ lat, lng })
+                
+                // Add user location marker to the map
+                if (mapRef.current) {
+                    // Remove previous user location marker and circle
+                    if (userLocationMarkerRef.current) {
+                        mapRef.current.removeLayer(userLocationMarkerRef.current)
+                        userLocationMarkerRef.current = null
+                    }
+                    if (userLocationCircleRef.current) {
+                        mapRef.current.removeLayer(userLocationCircleRef.current)
+                        userLocationCircleRef.current = null
+                    }
+                    
+                    // Add circle showing 1km radius
+                    const circle = L.circle([lat, lng], {
+                        color: '#3b82f6',
+                        fillColor: '#3b82f6',
+                        fillOpacity: 0.1,
+                        radius: 1000, // 1km in meters
+                        weight: 2,
+                        dashArray: '5, 10'
+                    }).addTo(mapRef.current)
+                    userLocationCircleRef.current = circle
+                    
+                    // Add user location marker (blue pulsing dot)
+                    const marker = L.marker([lat, lng], { 
+                        icon: createUserLocationIcon(),
+                        zIndexOffset: 1000 // Make sure it's on top
+                    })
+                        .addTo(mapRef.current)
+                        .bindPopup(`
+                            <div class="text-center">
+                                <b>📍 Twoja lokalizacja</b><br>
+                                <span class="text-xs text-gray-500">
+                                    ${lat.toFixed(6)}, ${lng.toFixed(6)}
+                                </span>
+                            </div>
+                        `)
+                    userLocationMarkerRef.current = marker
+                    
+                    // Center map on user location
+                    mapRef.current.flyTo([lat, lng], 14, { duration: 1.5 })
+                }
+                
+                try {
+                    // Call AI Assistant API
+                    const response = await fetch('/api/ai-assistant/nearby-threats', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            latitude: lat,
+                            longitude: lng,
+                            radius_km: 1.0
+                        })
+                    })
+                    
+                    if (!response.ok) {
+                        throw new Error('AI analysis failed')
+                    }
+                    
+                    const data = await response.json()
+                    
+                    setAiResponse({
+                        visible: true,
+                        dangerLevel: data.danger_level,
+                        dangerScore: data.danger_score,
+                        summary: data.ai_summary,
+                        reportsCount: data.reports_count
+                    })
+                } catch (error) {
+                    console.error('AI analysis error:', error)
+                    setAiResponse({
+                        visible: true,
+                        dangerLevel: 'Błąd',
+                        dangerScore: 0,
+                        summary: 'Nie udało się pobrać analizy. Spróbuj ponownie później.',
+                        reportsCount: 0
+                    })
+                } finally {
+                    setAiLoading(false)
+                }
+            },
+            (error) => {
+                console.error('Geolocation error:', error)
+                alert('Nie można pobrać Twojej lokalizacji: ' + error.message)
+                setAiLoading(false)
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        )
+    }
+
+    // Get danger level color
+    const getDangerColor = (level: string) => {
+        switch (level) {
+            case 'Bardzo niski': return 'bg-green-500'
+            case 'Niski': return 'bg-green-400'
+            case 'Umiarkowany': return 'bg-yellow-500'
+            case 'Wysoki': return 'bg-orange-500'
+            case 'Bardzo wysoki': return 'bg-red-500'
+            default: return 'bg-gray-500'
+        }
+    }
+
+    // Get danger level emoji
+    const getDangerEmoji = (level: string) => {
+        switch (level) {
+            case 'Bardzo niski': return '🌟'
+            case 'Niski': return '✅'
+            case 'Umiarkowany': return '⚠️'
+            case 'Wysoki': return '🔶'
+            case 'Bardzo wysoki': return '🚨'
+            default: return '❓'
+        }
+    }
+
+    // Close AI response and remove only the circle (keep marker visible)
+    const handleCloseAIResponse = () => {
+        setAiResponse(null)
+        
+        // Remove only the circle from map, keep the marker
+        if (mapRef.current) {
+            if (userLocationCircleRef.current) {
+                mapRef.current.removeLayer(userLocationCircleRef.current)
+                userLocationCircleRef.current = null
+            }
+        }
+    }
+
     return (
         <>
             {/* Styles moved to globals.css */}
@@ -509,6 +691,97 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                     <div className="absolute inset-0">
                         <div ref={mapContainerRef} className="h-full w-full z-[1]" />
                     </div>
+
+                    {/* AI Assistant Button - Left Bottom Corner */}
+                    <div className="absolute bottom-6 left-6 z-20">
+                        <button
+                            onClick={handleAIAnalysis}
+                            disabled={aiLoading}
+                            className={`
+                                flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg
+                                ${aiLoading 
+                                    ? 'bg-[#d97706]/70 cursor-wait' 
+                                    : 'bg-gradient-to-r from-[#d97706] to-[#ea580c] hover:from-[#ea580c] hover:to-[#dc2626]'
+                                }
+                                text-white font-semibold transition-all duration-300
+                                hover:scale-105 hover:shadow-xl
+                            `}
+                            title="Sprawdź bezpieczeństwo okolicy z AI"
+                        >
+                            {aiLoading ? (
+                                <>
+                                    <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                                    <span>Analizuję...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-xl">✨</span>
+                                    <span>AI Asystent</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+
+                    {/* AI Response Bubble */}
+                    {aiResponse?.visible && (
+                        <div className="absolute bottom-24 left-6 z-30 max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+                                {/* Header with danger level */}
+                                <div className={`${getDangerColor(aiResponse.dangerLevel)} px-4 py-3 flex items-center justify-between`}>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-2xl">{getDangerEmoji(aiResponse.dangerLevel)}</span>
+                                        <div>
+                                            <p className="text-white font-bold text-sm">Analiza bezpieczeństwa</p>
+                                            <p className="text-white/90 text-xs">
+                                                {aiResponse.reportsCount} zgłoszeń w promieniu 1km
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={handleCloseAIResponse}
+                                        className="text-white/80 hover:text-white transition-colors"
+                                        title="Zamknij"
+                                    >
+                                        <span className="material-symbols-outlined">close</span>
+                                    </button>
+                                </div>
+                                
+                                {/* Danger Score Badge */}
+                                <div className="px-4 py-2 bg-gray-50 flex items-center justify-between border-b border-gray-100">
+                                    <span className="text-gray-600 text-sm font-medium">Poziom zagrożenia:</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`
+                                            px-3 py-1 rounded-full text-sm font-bold text-white
+                                            ${getDangerColor(aiResponse.dangerLevel)}
+                                        `}>
+                                            {aiResponse.dangerLevel}
+                                        </span>
+                                        <span className="text-gray-500 text-xs">
+                                            ({Math.round(aiResponse.dangerScore)}/100)
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                {/* AI Summary */}
+                                <div className="px-4 py-4">
+                                    <p className="text-gray-700 text-sm leading-relaxed">
+                                        {aiResponse.summary}
+                                    </p>
+                                </div>
+                                
+                                {/* Footer */}
+                                <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
+                                    <span className="text-xs">🤖</span>
+                                    <span className="text-gray-400 text-xs">
+                                        Analiza wygenerowana przez AI • RiskRadar
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            {/* Speech bubble arrow */}
+                            <div className="absolute -bottom-2 left-8 w-4 h-4 bg-white border-r border-b border-gray-200 transform rotate-45"></div>
+                        </div>
+                    )}
 
                     {/* Map Controls */}
                     <div className="absolute bottom-6 right-6 flex items-end justify-end gap-3 z-20">

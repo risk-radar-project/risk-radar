@@ -1,17 +1,17 @@
 """
 Threat Analysis Microservice for RiskRadar
 Analyzes local threats based on user location using AI
+Uses Report Service API as the ONLY data source
 """
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 import logging
 from contextlib import asynccontextmanager
 import os
-from datetime import datetime, timedelta
-import numpy as np
-import math
+from datetime import datetime
 import json
+import httpx
 import google.generativeai as genai
 
 from kafka_client import get_kafka_client
@@ -25,13 +25,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Pydantic models
-class ThreatAnalysisRequest(BaseModel):
+class NearbyThreatRequest(BaseModel):
+    """Request for analyzing real threats from database"""
     latitude: float = Field(..., description="User latitude coordinate")
     longitude: float = Field(..., description="User longitude coordinate")
-    radius_km: float = Field(default=2.0, description="Search radius in kilometers")
+    radius_km: float = Field(default=1.0, description="Search radius in kilometers")
     user_id: Optional[str] = Field(None, description="User ID for tracking")
 
-class ThreatAnalysisResponse(BaseModel):
+class NearbyThreatResponse(BaseModel):
+    """Response with AI-generated threat summary"""
     status: str
     location: Dict[str, float]
     radius_km: float
@@ -39,8 +41,6 @@ class ThreatAnalysisResponse(BaseModel):
     danger_score: float
     danger_level: str
     ai_summary: str
-    method: str
-    model: str
     timestamp: str
 
 class HealthResponse(BaseModel):
@@ -48,112 +48,134 @@ class HealthResponse(BaseModel):
     service: str
     timestamp: str
     kafka_enabled: bool
+
 # Global variables
 google_ai_model = None
-reports_db = None
 
-# Threat types (Polish)
-THREAT_TYPES = [
-    "kradzież roweru", "włamanie do samochodu", "pobicie", 
-    "kradzież portfela", "wandalizm", "napad", "przemoc domowa",
-    "oszustwo", "groźby", "kradzież sklepowa"
-]
+# Report Service URL
+REPORT_SERVICE_URL = os.getenv("REPORT_SERVICE_URL", "http://report-service:8085")
 
-def generate_sample_reports(num_reports: int = 50) -> np.ndarray:
-    """Generate sample threat reports in Krakow area"""
-    base_lat, base_lon = 50.0647, 19.9450
-    reports = []
+# Category name mapping (Polish)
+CATEGORY_NAMES = {
+    "VANDALISM": "Wandalizm",
+    "INFRASTRUCTURE": "Uszkodzenie infrastruktury",
+    "DANGEROUS_SITUATION": "Niebezpieczna sytuacja",
+    "TRAFFIC_ACCIDENT": "Wypadek drogowy",
+    "PARTICIPANT_BEHAVIOR": "Niebezpieczne zachowanie",
+    "PARTICIPANT_HAZARD": "Zagrożenie dla uczestników",
+    "OTHER": "Inne zagrożenie"
+}
+
+async def fetch_nearby_reports(latitude: float, longitude: float, radius_km: float) -> List[Dict]:
+    """Fetch real reports from Report Service within specified radius
+    
+    Raises:
+        HTTPException: If Report Service is unavailable or returns error
+    """
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{REPORT_SERVICE_URL}/reports/nearby",
+                params={
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "radiusKm": radius_km
+                }
+            )
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("reports", [])
+            else:
+                logger.error(f"Report Service returned {response.status_code}")
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Report Service niedostępny (status: {response.status_code})"
+                )
+    except httpx.RequestError as e:
+        logger.error(f"Failed to connect to Report Service: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Nie można połączyć się z Report Service. Spróbuj ponownie później."
+        )
+
+def prepare_real_reports_for_ai(reports: List[Dict]) -> str:
+    """Convert real reports from database into structured text format for AI"""
+    if not reports:
+        return ""
+    
     current_time = datetime.now()
-    
-    for i in range(num_reports):
-        lat_offset = np.random.uniform(-0.05, 0.05)
-        lon_offset = np.random.uniform(-0.05, 0.05)
-        
-        report = [
-            i,
-            base_lat + lat_offset,
-            base_lon + lon_offset,
-            np.random.choice(len(THREAT_TYPES)),
-            (current_time - timedelta(days=np.random.randint(0, 30))).timestamp()
-        ]
-        reports.append(report)
-    
-    return np.array(reports)
-
-def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Calculate distance between two GPS points using Haversine formula"""
-    R = 6371
-    lat1_rad = math.radians(lat1)
-    lat2_rad = math.radians(lat2)
-    delta_lat = math.radians(lat2 - lat1)
-    delta_lon = math.radians(lon2 - lon1)
-    
-    a = (math.sin(delta_lat / 2) ** 2 + 
-         math.cos(lat1_rad) * math.cos(lat2_rad) * 
-         math.sin(delta_lon / 2) ** 2)
-    c = 2 * math.asin(math.sqrt(a))
-    
-    return R * c
-
-def get_nearby_reports(reports: np.ndarray, user_lat: float, user_lon: float, 
-                       radius_km: float = 2.0) -> np.ndarray:
-    """Get all reports within radius from user location"""
-    nearby = []
-    for report in reports:
-        report_lat, report_lon = report[1], report[2]
-        distance = calculate_distance(user_lat, user_lon, report_lat, report_lon)
-        if distance <= radius_km:
-            nearby.append(report)
-    return np.array(nearby) if nearby else np.array([])
-
-def prepare_reports_for_ai(reports: np.ndarray) -> str:
-    """Convert raw report data into structured text format for AI"""
-    current_time = datetime.now().timestamp()
     report_texts = []
     
     for i, report in enumerate(reports, 1):
-        threat_type = THREAT_TYPES[int(report[3])]
-        timestamp = report[4]
-        days_ago = int((current_time - timestamp) / (24 * 3600))
+        category = report.get("category", "OTHER")
+        category_name = CATEGORY_NAMES.get(category, category)
+        title = report.get("title", "Brak tytułu")
+        description = report.get("description", "")[:100]  # Limit description length
         
-        if days_ago == 0:
-            time_str = "dzisiaj"
-        elif days_ago == 1:
-            time_str = "wczoraj"
+        # Calculate time ago
+        created_at = report.get("createdAt")
+        if created_at:
+            try:
+                # Parse ISO format
+                report_time = datetime.fromisoformat(created_at.replace("Z", "+00:00").replace("+00:00", ""))
+                days_ago = (current_time - report_time).days
+                if days_ago == 0:
+                    time_str = "dzisiaj"
+                elif days_ago == 1:
+                    time_str = "wczoraj"
+                else:
+                    time_str = f"{days_ago} dni temu"
+            except:
+                time_str = "niedawno"
         else:
-            time_str = f"{days_ago} dni temu"
+            time_str = "niedawno"
         
-        report_texts.append(f"{i}. {threat_type} - {time_str}")
+        report_texts.append(f"{i}. [{category_name}] {title} - {time_str}")
+        if description:
+            report_texts.append(f"   Opis: {description}...")
     
-    formatted_data = f"Lista {len(reports)} zgłoszeń w okolicy:\n"
+    formatted_data = f"Lista {len(reports)} zgłoszeń w Twojej okolicy:\n"
     formatted_data += "\n".join(report_texts)
     return formatted_data
 
-def analyze_threats_with_ai(reports_text: str, model) -> Dict:
-    """AI agent to analyze threat reports and return structured analysis"""
-    prompt = f"""Jesteś agentem AI specjalizującym się w analizie bezpieczeństwa publicznego. Twoim zadaniem jest ocena zagrożenia na podstawie listy incydentów i zwrócenie odpowiedzi w formacie JSON.
+def analyze_real_threats_with_ai(reports_text: str, model, reports_count: int) -> Dict:
+    """AI agent to analyze real threat reports and generate user-friendly summary
+    
+    Raises:
+        HTTPException: If AI analysis fails
+    """
+    prompt = f"""Jesteś asystentem bezpieczeństwa w aplikacji RiskRadar. Użytkownik sprawdza bezpieczeństwo swojej okolicy.
 
-Przeanalizuj poniższe zgłoszenia:
+WAŻNE: W okolicy użytkownika znajduje się DOKŁADNIE {reports_count} zgłoszeń.
+
+Przeanalizuj poniższe PRAWDZIWE zgłoszenia z bazy danych:
 {reports_text}
 
-Twoja odpowiedź MUSI być poprawnym obiektem JSON z następującymi kluczami:
-- "danger_score": liczba od 0 do 100 (0=bardzo bezpiecznie, 100=skrajnie niebezpiecznie).
-- "danger_level": jeden z ["Bardzo niski", "Niski", "Umiarkowany", "Wysoki", "Bardzo wysoki"].
-- "summary": krótkie, 2-3 zdaniowe podsumowanie sytuacji po polsku, zawierające kluczowe zagrożenia i zalecenia.
+Twoim zadaniem jest:
+1. Ocenić poziom zagrożenia w tej okolicy na podstawie KONKRETNYCH zgłoszeń
+2. Napisać UNIKATOWE, spersonalizowane podsumowanie dla użytkownika (max 2-3 zdania)
+3. Wymienić najważniejsze zagrożenia z listy i dać praktyczne rady
+4. ZAWSZE używaj prawidłowej liczby zgłoszeń: {reports_count}
 
-Przykład odpowiedzi JSON:
+Twoja odpowiedź MUSI być poprawnym obiektem JSON:
 {{
-  "danger_score": 65,
-  "danger_level": "Wysoki",
-  "summary": "W okolicy odnotowano wzmożoną aktywność związaną z włamaniami do samochodów i kradzieżami. Zaleca się parkowanie w oświetlonych miejscach i niepozostawianie cennych przedmiotów w pojazdach."
+  "danger_score": <liczba 0-100>,
+  "danger_level": <"Bardzo niski" | "Niski" | "Umiarkowany" | "Wysoki" | "Bardzo wysoki">,
+  "summary": "<UNIKATOWE podsumowanie dopasowane do konkretnych zagrożeń - wspomnij o typach zgłoszeń z listy>"
 }}
 
-Odpowiedz TYLKO I WYŁĄCZNIE poprawnym obiektem JSON.
+Zasady:
+- Bądź konkretny - odnosisz się do RZECZYWISTYCH zgłoszeń z listy
+- Nie używaj ogólników - napisz co dokładnie zgłoszono
+- Jeśli zgłoszeń jest mało lub są stare, oceń ryzyko jako niskie
+- ZAWSZE podawaj prawidłową liczbę zgłoszeń: {reports_count}
+- Podsumowanie ma być zrozumiałe i pomocne dla użytkownika
 
 JSON:"""
 
+    logger.info("🤖 AI analizuje prawdziwe zgłoszenia...")
+    
     try:
-        logger.info("🤖 Agent AI analizuje dane...")
         response = model.generate_content(prompt)
         response_text = response.text.strip()
         
@@ -168,42 +190,38 @@ JSON:"""
                 logger.info("✓ Analiza AI zakończona sukcesem")
                 return analysis
             else:
-                raise ValueError("Missing required keys in JSON response")
+                raise ValueError("Brak wymaganych pól w odpowiedzi AI")
         else:
-            raise ValueError("No valid JSON object found in response")
+            raise ValueError("Nieprawidłowy format JSON w odpowiedzi AI")
+            
     except Exception as e:
-        logger.warning(f"⚠ Błąd agenta AI: {e}. Używam analizy awaryjnej")
-        report_count = reports_text.count("\n")
-        score = min(report_count * 5, 75)
-        return {
-            "danger_score": score,
-            "danger_level": "Umiarkowany" if score > 40 else "Niski",
-            "summary": f"W okolicy odnotowano {report_count} zgłoszeń. Zalecana jest ogólna ostrożność."
-        }
+        logger.error(f"❌ Błąd AI: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Analiza AI niedostępna: {str(e)}. Spróbuj ponownie później."
+        )
 
 # Lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle startup and shutdown"""
-    global google_ai_model, reports_db
+    global google_ai_model
     
     logger.info("🚀 Starting Threat Analysis Microservice...")
     
     # Initialize Google AI
-    api_key = os.getenv("GOOGLE_API_KEY", "AIzaSyCv9EswwXxuQ0LDNxA3etKIsXmmdc9t0CA")
+    api_key = os.getenv("GOOGLE_API_KEY")
+    model_name = os.getenv("GOOGLE_AI_MODEL", "gemini-1.5-flash")
+    
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            google_ai_model = genai.GenerativeModel("gemini-1.5-flash")
-            logger.info("✓ Google AI model initialized")
+            google_ai_model = genai.GenerativeModel(model_name)
+            logger.info(f"✓ Google AI model initialized ({model_name})")
         except Exception as e:
             logger.error(f"Failed to initialize Google AI: {e}")
     else:
-        logger.warning("GOOGLE_API_KEY not set")
-    
-    # Generate sample reports database
-    reports_db = generate_sample_reports(50)
-    logger.info(f"✓ Generated {len(reports_db)} sample threat reports")
+        logger.warning("GOOGLE_API_KEY not set - AI analysis will not be available")
     
     # Initialize Kafka
     kafka_client = get_kafka_client()
@@ -263,27 +281,30 @@ async def health_check():
         kafka_enabled=kafka_client.enabled and kafka_client.producer is not None
     )
 
-@app.post("/api/v1/analyze", response_model=ThreatAnalysisResponse)
-async def analyze_location(request: ThreatAnalysisRequest):
+@app.post("/api/v1/nearby-threats", response_model=NearbyThreatResponse)
+async def analyze_nearby_threats(request: NearbyThreatRequest):
     """
-    Analyze local threats based on GPS coordinates
+    🎯 GŁÓWNY ENDPOINT - Analiza zagrożeń w okolicy użytkownika
     
-    This endpoint:
-    1. Finds nearby threat reports within specified radius
-    2. Uses AI to analyze danger level and generate summary
-    3. Publishes results to Kafka for further processing
+    Ten endpoint:
+    1. Pobiera lokalizację użytkownika (latitude, longitude)
+    2. Wysyła zapytanie do Report Service po raporty w promieniu 1km
+    3. Filtruje niebezpieczne zdarzenia (VERIFIED/PENDING)
+    4. Przekazuje dane do AI (Google Gemini)
+    5. Zwraca krótkie, zrozumiałe podsumowanie dla użytkownika
+    
+    Używany przez przycisk AI na mapie w frontendzie.
     """
-    global google_ai_model, reports_db
+    global google_ai_model
     
     audit_client = get_audit_client()
-    kafka_client = get_kafka_client()
     
     try:
-        logger.info(f"🔍 Analyzing location: ({request.latitude}, {request.longitude})")
+        logger.info(f"🔍 Analyzing nearby threats at: ({request.latitude}, {request.longitude}), radius: {request.radius_km}km")
         
         # Log the request
         await audit_client.log_event(
-            action="threat_analysis_request",
+            action="nearby_threat_analysis",
             actor={"id": request.user_id or "anonymous", "type": "user"},
             status="success",
             log_type="ACTION",
@@ -293,118 +314,71 @@ async def analyze_location(request: ThreatAnalysisRequest):
             }
         )
         
-        # Get nearby reports
-        nearby_reports = get_nearby_reports(
-            reports_db, 
-            request.latitude, 
-            request.longitude, 
+        # 1. Fetch real reports from Report Service
+        nearby_reports = await fetch_nearby_reports(
+            request.latitude,
+            request.longitude,
             request.radius_km
         )
         
-        # If no reports, return safe status
+        logger.info(f"📊 Found {len(nearby_reports)} reports from database")
+        
+        # 2. If no reports, return safe status
         if len(nearby_reports) == 0:
-            result = ThreatAnalysisResponse(
+            return NearbyThreatResponse(
                 status="success",
                 location={"lat": request.latitude, "lon": request.longitude},
                 radius_km=request.radius_km,
                 reports_count=0,
                 danger_score=0.0,
                 danger_level="Bardzo niski",
-                ai_summary="Brak zgłoszeń w tej okolicy. Obszar wydaje się bezpieczny.",
-                method="ai_agent",
-                model="none",
-                timestamp=datetime.utcnow().isoformat()
-            )
-        else:
-            logger.info(f"✓ Found {len(nearby_reports)} reports nearby")
-            
-            # Prepare data for AI
-            formatted_reports = prepare_reports_for_ai(nearby_reports)
-            
-            # Analyze with AI
-            if google_ai_model:
-                ai_analysis = analyze_threats_with_ai(formatted_reports, google_ai_model)
-                model_name = google_ai_model.model_name
-            else:
-                # Fallback if AI not available
-                ai_analysis = {
-                    "danger_score": min(len(nearby_reports) * 5, 75),
-                    "danger_level": "Umiarkowany",
-                    "summary": f"W okolicy znaleziono {len(nearby_reports)} zgłoszeń. Zalecana ostrożność."
-                }
-                model_name = "fallback"
-            
-            result = ThreatAnalysisResponse(
-                status="success",
-                location={"lat": request.latitude, "lon": request.longitude},
-                radius_km=request.radius_km,
-                reports_count=len(nearby_reports),
-                danger_score=ai_analysis.get("danger_score", 0.0),
-                danger_level=ai_analysis.get("danger_level", "Brak danych"),
-                ai_summary=ai_analysis.get("summary", "Brak podsumowania"),
-                method="ai_agent",
-                model=model_name,
+                ai_summary="🌟 Świetnie! W promieniu {:.0f}km od Ciebie nie ma żadnych zgłoszeń. Okolica wydaje się bezpieczna.".format(request.radius_km),
                 timestamp=datetime.utcnow().isoformat()
             )
         
-        # Publish to Kafka
-        await kafka_client.publish(
-            topic="threat_analysis_events",
-            message={
-                "event_type": "threat_analysis_completed",
-                "user_id": request.user_id or "anonymous",
-                "location": {"lat": request.latitude, "lon": request.longitude},
-                "radius_km": request.radius_km,
-                "reports_count": result.reports_count,
-                "danger_score": result.danger_score,
-                "danger_level": result.danger_level,
-                "timestamp": result.timestamp
-            },
-            key=request.user_id or "anonymous"
+        # 3. Prepare data for AI analysis
+        formatted_reports = prepare_real_reports_for_ai(nearby_reports)
+        reports_count = len(nearby_reports)
+        logger.info(f"📝 Prepared {reports_count} reports for AI:\n{formatted_reports[:500]}...")
+        
+        # 4. Analyze with AI (required - no fallback)
+        if not google_ai_model:
+            logger.error("❌ Google AI model not initialized")
+            raise HTTPException(
+                status_code=503,
+                detail="Usługa AI niedostępna. Model nie został zainicjalizowany."
+            )
+        
+        ai_analysis = analyze_real_threats_with_ai(formatted_reports, google_ai_model, reports_count)
+        
+        # 5. Return response
+        result = NearbyThreatResponse(
+            status="success",
+            location={"lat": request.latitude, "lon": request.longitude},
+            radius_km=request.radius_km,
+            reports_count=len(nearby_reports),
+            danger_score=ai_analysis.get("danger_score", 0.0),
+            danger_level=ai_analysis.get("danger_level", "Brak danych"),
+            ai_summary=ai_analysis.get("summary", "Brak podsumowania"),
+            timestamp=datetime.utcnow().isoformat()
         )
         
-        # Publish notification if danger level is high
-        if result.danger_score >= 60:
-            await kafka_client.publish(
-                topic="notification_events",
-                message={
-                    "type": "high_threat_alert",
-                    "user_id": request.user_id or "anonymous",
-                    "danger_level": result.danger_level,
-                    "danger_score": result.danger_score,
-                    "location": {"lat": request.latitude, "lon": request.longitude},
-                    "summary": result.ai_summary,
-                    "timestamp": result.timestamp
-                },
-                key=request.user_id or "anonymous"
-            )
-        
-        logger.info(f"✓ Analysis complete: {result.danger_level} ({result.danger_score}/100)")
+        logger.info(f"✓ Nearby analysis complete: {result.danger_level} ({result.danger_score}/100)")
         return result
         
+    except HTTPException:
+        # Re-raise HTTPException without wrapping
+        raise
     except Exception as e:
-        logger.error(f"Threat analysis error: {e}")
+        logger.error(f"Nearby threat analysis error: {e}")
         await audit_client.log_event(
-            action="threat_analysis_request",
+            action="nearby_threat_analysis",
             actor={"id": request.user_id or "anonymous", "type": "user"},
             status="error",
             log_type="ERROR",
             metadata={"error": str(e)}
         )
-        raise HTTPException(status_code=500, detail=f"Threat analysis failed: {str(e)}")
-
-@app.get("/api/v1/stats")
-async def get_statistics():
-    """Get overall threat statistics"""
-    global reports_db
-    
-    return {
-        "total_reports": len(reports_db) if reports_db is not None else 0,
-        "time_range_days": 30,
-        "threat_types": THREAT_TYPES,
-        "coverage_area": "Krakow, Poland",
-        "last_updated": datetime.utcnow().isoformat()
-    }
+        raise HTTPException(status_code=500, detail=f"Błąd analizy zagrożeń: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

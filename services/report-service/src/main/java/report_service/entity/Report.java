@@ -46,4 +46,10 @@ public class Report {
 
     @NotNull
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    // AI Verification fields
+    private Boolean aiIsFake;
+    private Double aiFakeProbability;
+    private String aiConfidence;
+    private LocalDateTime aiVerifiedAt;
 }

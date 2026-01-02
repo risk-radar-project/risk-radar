@@ -13,7 +13,7 @@ import torch
 import joblib
 import numpy as np
 import uuid
-from transformers import BertTokenizer, BertModel
+from transformers import RobertaTokenizer, RobertaModel, RobertaConfig
 
 from kafka_client import get_kafka_client
 from audit_client import get_audit_client
@@ -68,67 +68,106 @@ class HealthResponse(BaseModel):
     kafka_enabled: bool
 
 def load_models():
-    """Load all ML models"""
+    """Load all ML models - ALL models are REQUIRED"""
     global bert_model, tokenizer, scaler, fake_detector, duplicate_classifier
     
     model_dir = "detector_model_components"
     
-    try:
-        logger.info("Loading BERT model and tokenizer...")
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        bert_model = BertModel.from_pretrained('bert-base-uncased')
-        
-        # Load fine-tuned BERT weights with strict=False to handle shape mismatches
-        bert_path = os.path.join(model_dir, "bert_model_finetuned.pth")
-        if os.path.exists(bert_path):
-            try:
-                state_dict = torch.load(bert_path, map_location='cpu')
-                # Try to load with strict=False to ignore mismatched layers
-                bert_model.load_state_dict(state_dict, strict=False)
-                logger.info("Loaded fine-tuned BERT model (with partial weights)")
-            except Exception as e:
-                logger.warning(f"Could not load fine-tuned weights: {e}. Using base BERT model.")
-        
-        bert_model.eval()
-        logger.info("✅ BERT model loaded successfully")
-        
-        # Skip loading joblib models due to numpy version incompatibility
-        # These models were pickled with numpy 2.x and cannot be loaded with numpy 1.x
-        logger.warning("Skipping joblib model loading due to numpy version incompatibility")
-        logger.warning("Service will run with BERT-only features (mock predictions for fake/duplicate detection)")
-        
-        logger.info("Service loaded successfully (degraded mode - BERT only)")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Failed to load models: {e}")
-        return False
+    logger.info("Loading BERT model and tokenizer...")
+    
+    # Load fine-tuned BERT weights - REQUIRED
+    bert_path = os.path.join(model_dir, "bert_model_finetuned.pth")
+    if not os.path.exists(bert_path):
+        raise RuntimeError(f"Required model file not found: {bert_path}")
+    
+    state_dict = torch.load(bert_path, map_location='cpu')
+    
+    # Detect model configuration from saved weights
+    vocab_size = state_dict['embeddings.word_embeddings.weight'].shape[0]
+    max_position = state_dict['embeddings.position_embeddings.weight'].shape[0]
+    logger.info(f"Detected model config: vocab_size={vocab_size}, max_position={max_position}")
+    
+    # Use RoBERTa tokenizer and model since the fine-tuned model has RoBERTa-like config
+    from transformers import RobertaTokenizer, RobertaModel, RobertaConfig
+    
+    # Create custom config matching the saved model
+    config = RobertaConfig(
+        vocab_size=vocab_size,
+        max_position_embeddings=max_position,
+        hidden_size=768,
+        num_hidden_layers=12,
+        num_attention_heads=12,
+        intermediate_size=3072
+    )
+    
+    tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+    bert_model = RobertaModel(config)
+    bert_model.load_state_dict(state_dict, strict=False)
+    bert_model.eval()
+    logger.info("✅ BERT/RoBERTa model loaded successfully")
+    
+    # Load scaler - REQUIRED
+    scaler_path = os.path.join(model_dir, "scaler.joblib")
+    if not os.path.exists(scaler_path):
+        raise RuntimeError(f"Required model file not found: {scaler_path}")
+    scaler = joblib.load(scaler_path)
+    logger.info("✅ Scaler loaded successfully")
+    
+    # Load fake detector head - REQUIRED
+    fake_detector_path = os.path.join(model_dir, "fake_detector_head.pth")
+    if not os.path.exists(fake_detector_path):
+        raise RuntimeError(f"Required model file not found: {fake_detector_path}")
+    
+    # Create classifier head for fake detection (768→256→64→2)
+    fake_detector = torch.nn.Sequential(
+        torch.nn.Linear(768, 256),
+        torch.nn.ReLU(),
+        torch.nn.Dropout(0.3),
+        torch.nn.Linear(256, 64),
+        torch.nn.ReLU(),
+        torch.nn.Dropout(0.3),
+        torch.nn.Linear(64, 2)
+    )
+    # Load state dict - weights are saved with "classifier." prefix
+    state_dict = torch.load(fake_detector_path, map_location='cpu')
+    # Map classifier.X.weight/bias to X.weight/bias
+    new_state_dict = {}
+    for k, v in state_dict.items():
+        new_key = k.replace('classifier.', '')
+        new_state_dict[new_key] = v
+    fake_detector.load_state_dict(new_state_dict)
+    fake_detector.eval()
+    logger.info("✅ Fake detector loaded successfully")
+    
+    # Load duplicate classifier - REQUIRED
+    duplicate_path = os.path.join(model_dir, "duplicate_classifier.joblib")
+    if not os.path.exists(duplicate_path):
+        raise RuntimeError(f"Required model file not found: {duplicate_path}")
+    duplicate_classifier = joblib.load(duplicate_path)
+    logger.info("✅ Duplicate classifier loaded successfully")
+    
+    logger.info("All models loaded successfully")
+    return True
 
 def extract_features(text: str) -> np.ndarray:
     """Extract BERT features from text"""
-    try:
-        inputs = tokenizer(
-            text,
-            return_tensors='pt',
-            truncation=True,
-            padding=True,
-            max_length=512
-        )
-        
-        with torch.no_grad():
-            outputs = bert_model(**inputs)
-            # Use CLS token embedding
-            features = outputs.last_hidden_state[:, 0, :].numpy()
-        
-        # Scale features
-        if scaler:
-            features = scaler.transform(features)
-        
-        return features
-        
-    except Exception as e:
-        logger.error(f"Feature extraction error: {e}")
-        raise
+    if bert_model is None or tokenizer is None:
+        raise RuntimeError("BERT model not loaded")
+    
+    inputs = tokenizer(
+        text,
+        return_tensors='pt',
+        truncation=True,
+        padding=True,
+        max_length=512
+    )
+    
+    with torch.no_grad():
+        outputs = bert_model(**inputs)
+        # Use CLS token embedding - convert to numpy via cpu
+        features = outputs.last_hidden_state[:, 0, :].cpu().detach().numpy()
+    
+    return features
 
 # Kafka message handler
 async def handle_report_message(message: Dict[str, Any], topic: str, partition: int, offset: int):
@@ -159,10 +198,8 @@ async def lifespan(app: FastAPI):
     """Handle startup and shutdown"""
     logger.info("🚀 Starting AI Verification-Duplication Service...")
     
-    # Load models
-    models_loaded = load_models()
-    if not models_loaded:
-        logger.warning("Models failed to load, service may not function properly")
+    # Load models - REQUIRED, fail if not loaded
+    load_models()  # Will raise RuntimeError if models cannot be loaded
     
     # Initialize Kafka
     kafka_client = get_kafka_client()
@@ -195,7 +232,7 @@ async def lifespan(app: FastAPI):
         actor={"id": "system", "type": "system"},
         status="success",
         log_type="SYSTEM",
-        metadata={"models_loaded": models_loaded, "service_version": "1.0.0"}
+        metadata={"models_loaded": True, "service_version": "1.0.0"}
     )
     
     logger.info("✅ AI Verification-Duplication Service started successfully")
@@ -226,10 +263,13 @@ app = FastAPI(
 async def health_check():
     """Health check endpoint"""
     kafka_client = get_kafka_client()
-    models_ok = all([bert_model, tokenizer, scaler, fake_detector, duplicate_classifier])
+    # Core models required: BERT, tokenizer, fake_detector, duplicate_classifier
+    # Scaler is loaded but not used (dimension mismatch: expects 4, BERT outputs 768)
+    models_ok = all([bert_model is not None, tokenizer is not None,  
+                     fake_detector is not None, duplicate_classifier is not None])
     
     return HealthResponse(
-        status="healthy" if models_ok else "degraded",
+        status="healthy" if models_ok else "unhealthy",
         service="ai-verification-duplication-service",
         timestamp=datetime.utcnow().isoformat() + "Z",
         models_loaded=models_ok,
@@ -239,10 +279,14 @@ async def health_check():
 @app.post("/verify", response_model=VerificationResponse)
 async def verify_report(request: VerificationRequest):
     """
-    Verify if a report is fake or authentic
+    Verify if a report is fake or authentic - uses ONLY pre-trained models
     """
     audit_client = get_audit_client()
     kafka_client = get_kafka_client()
+    
+    # Check if required models are loaded (scaler not used due to dimension mismatch)
+    if bert_model is None or tokenizer is None or fake_detector is None:
+        raise HTTPException(status_code=503, detail="Required models not loaded")
     
     try:
         # Log the request
@@ -255,33 +299,27 @@ async def verify_report(request: VerificationRequest):
             metadata={"title_length": len(request.title)}
         )
         
-        # Check if models are loaded
-        if bert_model is None or tokenizer is None:
-            # Return mock response when models aren't loaded
-            return VerificationResponse(
-                report_id=request.report_id,
-                is_fake=False,
-                fake_probability=0.0,
-                confidence="low",
-                explanation="Models not loaded - mock response"
-            )
-        
         # Combine title and description
         text = f"{request.title}. {request.description}"
         
-        # Extract features
+        # Extract features using BERT
         features = extract_features(text)
         
-        # Predict using fake detector
-        if fake_detector:
-            prediction = fake_detector(torch.tensor(features, dtype=torch.float32))
-            fake_prob = float(torch.sigmoid(prediction).item())
-        else:
-            # Fallback when detector not loaded
-            fake_prob = 0.0
+        # Predict using fake detector model (output: [class_0, class_1])
+        # Index 0 = authentic probability, Index 1 = fake probability
+        with torch.no_grad():
+            logits = fake_detector(torch.tensor(features, dtype=torch.float32))
+            probabilities = torch.softmax(logits, dim=1)[0]
+            
+            authentic_prob = float(probabilities[0].item())
+            fake_prob = float(probabilities[1].item())
+            
+            logger.info(f"Raw probabilities - authentic: {authentic_prob:.4f}, fake: {fake_prob:.4f}")
         
         is_fake = fake_prob > 0.5
         confidence = "high" if abs(fake_prob - 0.5) > 0.3 else "medium" if abs(fake_prob - 0.5) > 0.15 else "low"
+        
+        logger.info(f"Verification result for {request.report_id}: is_fake={is_fake}, fake_prob={fake_prob:.4f}, authentic_prob={authentic_prob:.4f}, confidence={confidence}")
         
         # Publish to Kafka
         await kafka_client.publish(
@@ -339,10 +377,14 @@ async def verify_report(request: VerificationRequest):
 @app.post("/check-duplicate", response_model=DuplicateCheckResponse)
 async def check_duplicate(request: DuplicateCheckRequest):
     """
-    Check if a report is a duplicate of existing reports
+    Check if a report is a duplicate of existing reports - uses ONLY pre-trained models
     """
     audit_client = get_audit_client()
     kafka_client = get_kafka_client()
+    
+    # Check if required models are loaded (scaler not used due to dimension mismatch)
+    if bert_model is None or tokenizer is None or duplicate_classifier is None:
+        raise HTTPException(status_code=503, detail="Required models not loaded")
     
     try:
         await audit_client.log_event(
@@ -353,21 +395,11 @@ async def check_duplicate(request: DuplicateCheckRequest):
             target={"id": request.report_id, "type": "report"}
         )
         
-        # Check if models are loaded
-        if bert_model is None or tokenizer is None:
-            # Return mock response when models aren't loaded
-            return DuplicateCheckResponse(
-                report_id=request.report_id,
-                is_duplicate=False,
-                duplicate_probability=0.0,
-                similar_reports=[]
-            )
-        
         # Extract features for the new report
         new_text = f"{request.title}. {request.description}"
         new_features = extract_features(new_text)
         
-        # Compare with existing reports
+        # Compare with existing reports using the duplicate classifier model
         similar_reports = []
         max_similarity = 0.0
         
@@ -375,8 +407,10 @@ async def check_duplicate(request: DuplicateCheckRequest):
             existing_text = f"{existing.get('title', '')}. {existing.get('description', '')}"
             existing_features = extract_features(existing_text)
             
-            # Calculate similarity (cosine similarity)
-            similarity = float(np.dot(new_features, existing_features.T)[0][0])
+            # Use duplicate classifier to predict similarity
+            # Concatenate features for comparison
+            combined_features = np.concatenate([new_features, existing_features], axis=1)
+            similarity = float(duplicate_classifier.predict_proba(combined_features)[0][1])
             
             if similarity > 0.7:  # Threshold for potential duplicate
                 similar_reports.append({
@@ -388,6 +422,8 @@ async def check_duplicate(request: DuplicateCheckRequest):
             max_similarity = max(max_similarity, similarity)
         
         is_duplicate = max_similarity > 0.85
+        
+        logger.info(f"Duplicate check for {request.report_id}: is_duplicate={is_duplicate}, max_similarity={max_similarity:.4f}")
         
         # Publish to Kafka
         await kafka_client.publish(

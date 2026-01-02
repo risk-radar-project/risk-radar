@@ -16,7 +16,8 @@ export async function verifyReport(reportId: string) {
             return { success: false, error: 'Failed to verify report' }
         }
 
-        revalidatePath('/reports')
+        revalidatePath('/admin/verification')
+        revalidatePath('/admin/reports')
         return { success: true }
     } catch (error) {
         console.error('Error verifying report:', error)
@@ -36,7 +37,8 @@ export async function rejectReport(reportId: string) {
             return { success: false, error: 'Failed to reject report' }
         }
 
-        revalidatePath('/reports')
+        revalidatePath('/admin/verification')
+        revalidatePath('/admin/reports')
         return { success: true }
     } catch (error) {
         console.error('Error rejecting report:', error)

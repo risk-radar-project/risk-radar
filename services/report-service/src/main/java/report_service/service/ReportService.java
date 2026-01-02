@@ -84,6 +84,15 @@ public class ReportService {
     public List<Report> getPendingReports() {
         return reportRepository.findByStatus(ReportStatus.PENDING);
     }
+    
+    /**
+     * Find reports within a radius from the given location
+     * Uses Haversine formula for accurate distance calculation
+     */
+    public List<Report> getReportsWithinRadius(Double latitude, Double longitude, Double radiusKm) {
+        return reportRepository.findReportsWithinRadius(latitude, longitude, radiusKm);
+    }
+    
     private Map<String, String> reportToPayload(Report report) {
         return Map.of(
                 "id", report.getId().toString(),
