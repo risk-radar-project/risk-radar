@@ -22,7 +22,7 @@ async function getInitialReports(): Promise<Report[]> {
         }
 
         const data = await res.json()
-        console.log(`[Server] Pobrano ${Array.isArray(data) ? data.length : 0} raportów z backendu.`)
+        console.log(`[Server] Fetched ${Array.isArray(data) ? data.length : 0} reports from backend.`)
         return data
     } catch (error) {
         console.error('Server side fetch error:', error)

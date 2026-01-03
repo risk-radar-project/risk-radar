@@ -20,7 +20,7 @@ public class UserController {
     private final RedisService redisService;
 
     @PostMapping("/banUser")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_USERS:BAN')")
     public ResponseEntity<?> banUser(@RequestBody BanUserRequest request) {
         if (request.username() == null || request.username().trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Username is required"));
@@ -30,7 +30,7 @@ public class UserController {
             userDetailsService.banUser(request.username());
             // Also ban in Redis to block immediate access
             redisService.banUser(request.username(), "Banned by admin");
-            
+
             return ResponseEntity.ok(Map.of("message", "User banned successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

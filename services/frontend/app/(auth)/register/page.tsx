@@ -26,6 +26,7 @@ export default function RegisterPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -85,6 +86,7 @@ export default function RegisterPage() {
     setErrors(newErrors);
 
     if (isValid) {
+      setIsLoading(true);
       try {
         const response = await fetch("http://localhost:8090/api/users/register", {
           method: "POST",
@@ -102,6 +104,7 @@ export default function RegisterPage() {
           // Redirect to login page on success
           window.location.href = "/login?registered=true";
         } else {
+          setIsLoading(false);
           // Handle specific error codes
           if (response.status === 409) {
             setErrors((prev) => ({ ...prev, form: "Użytkownik o podanej nazwie lub adresie email już istnieje." }));
@@ -115,6 +118,7 @@ export default function RegisterPage() {
           }
         }
       } catch (error) {
+        setIsLoading(false);
         console.error("Rejestracja error:", error);
         setErrors((prev) => ({ ...prev, form: "Błąd połączenia z serwerem. Sprawdź, czy serwer działa." }));
       }
@@ -158,6 +162,7 @@ export default function RegisterPage() {
             type="text"
             value={formData.username}
             onChange={handleInputChange}
+            disabled={isLoading}
           />
           {errors.username && (
             <p className="text-red-500 text-sm mt-1">{errors.username}</p>
@@ -178,6 +183,7 @@ export default function RegisterPage() {
             type="email"
             value={formData.email}
             onChange={handleInputChange}
+            disabled={isLoading}
           />
           {errors.email && (
             <p className="text-red-500 text-sm mt-1">{errors.email}</p>
@@ -199,12 +205,14 @@ export default function RegisterPage() {
               type={showPassword ? "text" : "password"}
               value={formData.password}
               onChange={handleInputChange}
+              disabled={isLoading}
             />
             <Button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               aria-label="Toggle password visibility"
               className="h-full text-[#baab9c] flex items-center justify-center px-[15px] hover:text-white bg-transparent border-0 hover:bg-transparent focus:ring-0 rounded-none shadow-none"
+              disabled={isLoading}
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </Button>
@@ -229,12 +237,14 @@ export default function RegisterPage() {
               type={showConfirmPassword ? "text" : "password"}
               value={formData.confirmPassword}
               onChange={handleInputChange}
+              disabled={isLoading}
             />
             <Button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               aria-label="Toggle password visibility"
               className="h-full text-[#baab9c] flex items-center justify-center px-[15px] hover:text-white bg-transparent border-0 hover:bg-transparent focus:ring-0 rounded-none shadow-none"
+              disabled={isLoading}
             >
               {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </Button>
@@ -251,6 +261,7 @@ export default function RegisterPage() {
               setFormData((prev) => ({ ...prev, terms: checked === true }));
               if (checked) handleErrorReset("terms");
             }}
+            disabled={isLoading}
           />
           <Label
             htmlFor="terms"
@@ -273,11 +284,16 @@ export default function RegisterPage() {
         <Button
           onClick={handleSubmit}
           className="flex h-14 w-full items-center justify-center rounded-lg bg-primary px-6 text-base font-bold text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-dark"
+          disabled={isLoading}
         >
-          Zarejestruj się
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+              <span>Przetwarzanie...</span>
+            </div>
+          ) : "Zarejestruj się"}
         </Button>
       </div>
     </div>
   );
 }
-

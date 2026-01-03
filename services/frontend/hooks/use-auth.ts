@@ -32,13 +32,13 @@ export function useAuth(): UseAuthReturn {
 
     const hasRole = (role: string) => {
         if (!roles) return false;
-        // Sprawdź dokładne dopasowanie lub z prefiksem ROLE_
+        // Check exact match or with ROLE_ prefix
         return roles.includes(role) || roles.includes(`ROLE_${role.toUpperCase()}`);
     };
 
     const hasPermission = (permission: string) => {
         if (!permissions) return false;
-        // Sprawdź dokładne dopasowanie lub z prefiksem PERM_
+        // Check exact match or with PERM_ prefix
         return permissions.includes(permission) || permissions.includes(`PERM_${permission.toUpperCase()}`);
     };
 

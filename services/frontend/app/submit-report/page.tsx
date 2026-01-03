@@ -89,6 +89,8 @@ export default function SubmitReportPage() {
             return
         }
 
+        const accessToken = localStorage.getItem('access_token')
+
         try {
             // First, upload images if any (one by one, as media-service accepts single file)
             let imageIds: string[] = []
@@ -99,7 +101,10 @@ export default function SubmitReportPage() {
 
                     const imageResponse = await fetch('/api/media/upload', {
                         method: 'POST',
-                        body: imageFormData
+                        body: imageFormData,
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`
+                        }
                     })
 
                     if (!imageResponse.ok) {
@@ -127,7 +132,8 @@ export default function SubmitReportPage() {
             const response = await fetch('/api/reports/create', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
                 },
                 body: JSON.stringify(reportData)
             })

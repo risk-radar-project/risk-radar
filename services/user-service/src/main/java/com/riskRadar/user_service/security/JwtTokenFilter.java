@@ -97,7 +97,10 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                         String roleString = r.startsWith("ROLE_") ? r : "ROLE_" + r.toUpperCase();
                         return new SimpleGrantedAuthority(roleString);
                     }),
-                    safePermissions.stream().map(p -> new SimpleGrantedAuthority("PERM_" + p.toUpperCase()))
+                    safePermissions.stream().map(p -> {
+                        String permString = p.startsWith("PERM_") ? p : "PERM_" + p.toUpperCase();
+                        return new SimpleGrantedAuthority(permString);
+                    })
             ).collect(Collectors.toSet());
 
             logger.debug("Authorities for user {}: {}", username, authorities);

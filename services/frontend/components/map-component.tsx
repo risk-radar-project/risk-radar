@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet.markercluster'
+import { JwtPayload, parseJwt } from '@/lib/auth/jwt-utils'
 
 const MEDIA_SERVICE_BASE_URL = 'http://localhost:8084/media/'
 
@@ -56,6 +57,25 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     const [searchResults, setSearchResults] = useState<SearchResult[]>([])
     const [showResults, setShowResults] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
+    const [isAdmin, setIsAdmin] = useState(false)
+
+    useEffect(() => {
+        const token = localStorage.getItem("access_token")
+        if (token) {
+            const user = parseJwt(token)
+            if (user) {
+                const permissions = user.permissions || []
+                const roles = user.roles || []
+
+                const hasAdminAccess = permissions.includes("*:*") ||
+                    permissions.includes("system:admin") ||
+                    permissions.includes("PERM_SYSTEM_ADMIN") ||
+                    roles.includes("ROLE_ADMIN")
+
+                setIsAdmin(hasAdminAccess)
+            }
+        }
+    }, [])
 
     // Load Material Symbols & Leaflet CSS (CDN fallback)
     useEffect(() => {
@@ -437,13 +457,17 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                             <p className="text-base leading-normal">Ustawienia</p>
                         </a>
 
-                        <div className="border-t border-[#e0dcd7]/10 my-2"></div>
+                        {isAdmin && (
+                            <>
+                                <div className="border-t border-[#e0dcd7]/10 my-2"></div>
 
-                        <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
-                            href="/admin">
-                            <span className="material-symbols-outlined">shield</span>
-                            <p className="text-base leading-normal">Panel administratora</p>
-                        </a>
+                                <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
+                                    href="/admin">
+                                    <span className="material-symbols-outlined">shield</span>
+                                    <p className="text-base leading-normal">Panel administratora</p>
+                                </a>
+                            </>
+                        )}
                     </div>
                 </aside>
 

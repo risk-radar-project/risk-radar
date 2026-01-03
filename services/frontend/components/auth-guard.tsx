@@ -7,14 +7,14 @@ import { refreshAccessToken } from "@/lib/auth/auth-service";
 
 const PUBLIC_PATHS = ["/", "/login", "/register", "/terms"];
 
-// Mapowanie ścieżek na wymagane uprawnienia
-// Jeśli ścieżka zaczyna się od klucza, użytkownik musi mieć PRZYNAJMNIEJ JEDNO z wymienionych uprawnień.
+// Map paths to required permissions
 const ROUTE_PERMISSIONS: Record<string, string[]> = {
     "/admin": ["system:admin", "PERM_SYSTEM_ADMIN"],
     "/stats": ["stats:view", "PERM_STATS_VIEW"],
     "/audit": ["audit:view", "PERM_AUDIT_VIEW"],
     "/users": ["users:view", "PERM_USERS_VIEW"],
-    // "/reports": ["reports:read", "PERM_REPORTS_READ"], // Dostępne dla każdego zalogowanego (user ma reports:read)
+    "/reports": ["reports:validate", "PERM_REPORTS_VALIDATE"],
+    "/submit-report": ["reports:create", "PERM_REPORTS_CREATE", "ROLE_USER"],
 };
 
 
@@ -23,15 +23,30 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const [authorized, setAuthorized] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [accessDenied, setAccessDenied] = useState(false);
+    const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false);
 
     // console.log("AuthGuard RENDER:", pathname, "| Loading:", loading, "| Authorized:", authorized);
 
     useEffect(() => {
         const checkAuth = async () => {
-            // Normalizacja ścieżki
+            setAccessDenied(false);
+            // Normalize path
             const normalizedPath = pathname.endsWith("/") && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
 
-            // Sprawdź czy to ścieżka publiczna
+            const accessToken = localStorage.getItem("access_token");
+
+            // Redirect logged-in users away from auth pages
+            if (accessToken && !isTokenExpired(accessToken)) {
+                if (["/login", "/register"].includes(normalizedPath)) {
+                    setAlreadyLoggedIn(true);
+                    setLoading(false);
+                    setTimeout(() => router.push("/"), 2000);
+                    return;
+                }
+            }
+
+            // Check if it's a public path
             const isPublicPath = PUBLIC_PATHS.includes(normalizedPath) ||
                 normalizedPath.startsWith("/_next") ||
                 normalizedPath.startsWith("/static") ||
@@ -43,7 +58,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                 return;
             }
 
-            const accessToken = localStorage.getItem("access_token");
             const refreshToken = localStorage.getItem("refresh_token");
 
             if (!accessToken) {
@@ -85,7 +99,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                 }
             }
 
-            // --- SPRAWDZANIE UPRAWNIEŃ (RBAC) ---
+            // --- CHECK PERMISSIONS (RBAC) ---
             const user = parseJwt(currentToken);
             if (!user) {
                 console.log("AuthGuard: Failed to parse token");
@@ -95,7 +109,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                 return;
             }
 
-            // Sprawdź czy ścieżka wymaga specjalnych uprawnień
+            // Check if path requires special permissions
             const requiredPermissions = Object.entries(ROUTE_PERMISSIONS).find(([path]) =>
                 normalizedPath.startsWith(path)
             )?.[1];
@@ -104,7 +118,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                 const userPermissions = user.permissions || [];
                 const userRoles = user.roles || [];
 
-                // Admin ma dostęp do wszystkiego
+                // Admin has access to everything
                 const isAdmin = userPermissions.includes("*:*") ||
                     userPermissions.includes("system:admin") ||
                     userRoles.includes("ROLE_ADMIN");
@@ -115,18 +129,26 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                     return;
                 }
 
-                // Sprawdź czy użytkownik ma wymagane uprawnienie
+                // Check if user has required permission
                 const hasPermission = requiredPermissions.some(req => {
                     const reqUpper = req.toUpperCase();
-                    return userPermissions.includes(req) ||
+                    // Check permissions
+                    if (userPermissions.includes(req) ||
                         userPermissions.includes(`PERM_${reqUpper}`) ||
-                        userPermissions.some(p => p === req);
+                        userPermissions.some(p => p === req)) {
+                        return true;
+                    }
+                    // Check roles
+                    if (userRoles.includes(req) ||
+                        userRoles.includes(`ROLE_${reqUpper}`)) {
+                        return true;
+                    }
+                    return false;
                 });
 
                 if (!hasPermission) {
                     console.log(`AuthGuard: Access Denied to ${normalizedPath}. Missing permissions: ${requiredPermissions}`);
-                    // Przekieruj na stronę główną, jeśli brak uprawnień
-                    router.push("/");
+                    setAccessDenied(true);
                     setLoading(false);
                     return;
                 }
@@ -141,8 +163,57 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     }, [pathname, router]);
 
     // Prevent flash of unauthorized content
+    if (alreadyLoggedIn) {
+        return (
+            <div className="min-h-screen bg-[#1b140e] flex flex-col items-center justify-center text-white gap-4">
+                <h1 className="text-xl font-bold text-[#d97706]">Jesteś już zalogowany</h1>
+                <p className="text-[#baab9c]">Przekierowywanie na stronę główną...</p>
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#d97706]"></div>
+            </div>
+        );
+    }
+
     if (loading) {
-        return <div className="min-h-screen bg-[#1b140e] flex items-center justify-center text-white">Loading auth...</div>;
+        return (
+            <div className="min-h-screen bg-[#1b140e] flex flex-col items-center justify-center text-white gap-4">
+                <p>Przekierowywanie do logowania...</p>
+                <button
+                    onClick={() => {
+                        localStorage.removeItem("access_token");
+                        localStorage.removeItem("refresh_token");
+                        window.location.href = "/login";
+                    }}
+                    className="text-sm text-red-400 hover:text-red-300 underline"
+                >
+                    Wymuś wylogowanie
+                </button>
+            </div>
+        );
+    }
+
+    if (accessDenied) {
+        return (
+            <div className="min-h-screen bg-[#1b140e] flex flex-col items-center justify-center text-white gap-4">
+                <h1 className="text-2xl font-bold text-red-500">Brak uprawnień</h1>
+                <p className="text-[#baab9c]">Nie masz wystarczających uprawnień, aby wyświetlić tę stronę.</p>
+                <button
+                    onClick={() => {
+                        localStorage.removeItem("access_token");
+                        localStorage.removeItem("refresh_token");
+                        window.location.href = "/login";
+                    }}
+                    className="px-6 py-2 rounded-lg bg-[#d97706] hover:bg-[#d97706]/80 text-white font-semibold transition-colors"
+                >
+                    Wyloguj i zaloguj ponownie
+                </button>
+                <button
+                    onClick={() => router.push("/")}
+                    className="text-sm text-[#baab9c] hover:text-white underline"
+                >
+                    Wróć na stronę główną
+                </button>
+            </div>
+        );
     }
 
     const normalizedPath = pathname.endsWith("/") && pathname.length > 1 ? pathname.slice(0, -1) : pathname;

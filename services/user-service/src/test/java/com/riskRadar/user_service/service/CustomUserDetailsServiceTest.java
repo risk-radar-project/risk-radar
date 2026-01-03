@@ -9,6 +9,7 @@ import com.riskRadar.user_service.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -30,7 +31,7 @@ class CustomUserDetailsServiceTest {
     private AuthzClient authzClient;
 
     @Mock
-    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private CustomUserDetailsService service;
@@ -91,10 +92,9 @@ class CustomUserDetailsServiceTest {
     void handleUserCreated_assignsUserRole() {
         Role userRole = new Role(UUID.randomUUID(), "user");
 
-
         RoleAndPermissionResponse response = mock(RoleAndPermissionResponse.class);
         when(response.role()).thenReturn(userRole);
-        when(authzClient.getAllRoles()).thenReturn(new RoleAndPermissionResponse[]{response});
+        when(authzClient.getAllRoles()).thenReturn(new RoleAndPermissionResponse[] { response });
 
         service.handleUserCreated(new UserCreatedEvent(UUID.randomUUID()));
 

@@ -30,9 +30,9 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final ApplicationEventPublisher eventPublisher;
 
     public CustomUserDetailsService(UserRepository userRepository,
-                                    PasswordEncoder passwordEncoder,
-                                    AuthzClient authzClient,
-                                    ApplicationEventPublisher eventPublisher) {
+            PasswordEncoder passwordEncoder,
+            AuthzClient authzClient,
+            ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authzClient = authzClient;
@@ -48,7 +48,6 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         return new CustomUserDetails(user);
     }
-
 
     @Transactional
     public void createUser(String username, String rawPassword, String email) {
@@ -80,7 +79,6 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         authzClient.assignRole(event.userId(), roleID.toString());
     }
-
 
     public boolean isUserBanned(String username) {
         return userRepository.findByUsername(username)

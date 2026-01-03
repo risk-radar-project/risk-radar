@@ -23,7 +23,16 @@ export default function LoginPage() {
     form: "",
   });
   const [successMessage, setSuccessMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false);
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      setIsAlreadyLoggedIn(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("registered") === "true") {
@@ -56,6 +65,7 @@ export default function LoginPage() {
     setErrors(newErrors);
 
     if (isValid) {
+      setIsLoading(true);
       try {
         const response = await fetch("http://localhost:8090/api/users/login", {
           method: "POST",
@@ -71,32 +81,58 @@ export default function LoginPage() {
         if (response.ok) {
           const data = await response.json();
           // Store tokens in localStorage (support both camelCase and snake_case)
-          const accessToken = data.accessToken || data.access_token;
+          const accessToken = data.accessToken || data.access_token || data.token;
           const refreshToken = data.refreshToken || data.refresh_token;
 
           if (accessToken) localStorage.setItem("access_token", accessToken);
           if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
 
-          // Redirect to home page
-          window.location.href = "/";
+          setSuccessMessage("Pomyślnie zalogowano! Trwa przekierowanie...");
+
+          // Delay redirect to show success message and simple loader
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 1500);
+
         } else {
-          const data = await response.json();
+          setIsLoading(false);
+          let data = null;
+          try {
+            data = await response.json();
+          } catch (e) {
+            console.warn("Failed to parse error response JSON", e);
+          }
+
           if (response.status === 401) {
             setErrors((prev) => ({ ...prev, form: "Nieprawidłowa nazwa użytkownika lub hasło" }));
           } else {
-            setErrors((prev) => ({ ...prev, form: data.error || "Wystąpił błąd podczas logowania" }));
+            const errorMessage = data && typeof data.error === 'string'
+              ? data.error
+              : (data && data.message ? String(data.message) : "Wystąpił błąd podczas logowania");
+
+            setErrors((prev) => ({ ...prev, form: errorMessage }));
           }
         }
       } catch (error) {
+        setIsLoading(false);
         console.error("Login error:", error);
         setErrors((prev) => ({ ...prev, form: "Błąd połączenia z serwerem" }));
       }
     }
   };
 
+  if (isLoading && successMessage) {
+    return (
+      <div className="w-full mt-6 flex flex-col items-center justify-center min-h-[300px] text-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+        <p className="text-lg font-medium text-green-500">{successMessage}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="w-full mt-6">
-      {successMessage && (
+      {successMessage && !isLoading && (
         <div className="mb-4 p-4 text-sm text-green-500 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
           {successMessage}
         </div>
@@ -112,7 +148,7 @@ export default function LoginPage() {
             </p>
           </Link>
           <Link
-            className="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#baab9c] pb-[13px] pt-4 flex-1"
+            className={`flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#baab9c] pb-[13px] pt-4 flex-1 ${isAlreadyLoggedIn ? 'pointer-events-none opacity-50' : ''}`}
             href="/register"
           >
             <p className="text-[#baab9c] text-sm font-bold leading-normal tracking-[0.015em]">
@@ -137,6 +173,7 @@ export default function LoginPage() {
             type="text"
             value={formData.username}
             onChange={handleInputChange}
+            disabled={isLoading || isAlreadyLoggedIn}
           />
           {errors.username && (
             <p className="text-red-500 text-sm mt-1">{errors.username}</p>
@@ -158,12 +195,14 @@ export default function LoginPage() {
               type={showPassword ? "text" : "password"}
               value={formData.password}
               onChange={handleInputChange}
+              disabled={isLoading || isAlreadyLoggedIn}
             />
             <Button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               aria-label="Toggle password visibility"
               className="h-full text-[#baab9c] flex items-center justify-center px-[15px] hover:text-white bg-transparent border-0 hover:bg-transparent focus:ring-0 rounded-none shadow-none"
+              disabled={isLoading || isAlreadyLoggedIn}
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </Button>
@@ -182,6 +221,7 @@ export default function LoginPage() {
             onCheckedChange={(checked) =>
               setFormData((prev) => ({ ...prev, rememberMe: checked === true }))
             }
+            disabled={isLoading || isAlreadyLoggedIn}
           />
           <Label className="text-sm text-[#baab9c]" htmlFor="remember-me">
             Zapamiętaj mnie
@@ -195,8 +235,14 @@ export default function LoginPage() {
         <Button
           onClick={handleSubmit}
           className="flex h-14 w-full items-center justify-center rounded-lg bg-primary px-6 text-base font-bold text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-dark"
+          disabled={isLoading || isAlreadyLoggedIn}
         >
-          Zaloguj się
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+              <span>Logowanie...</span>
+            </div>
+          ) : isAlreadyLoggedIn ? "Jesteś już zalogowany" : "Zaloguj się"}
         </Button>
 
       </div>
