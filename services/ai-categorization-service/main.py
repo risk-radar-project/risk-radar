@@ -13,6 +13,7 @@ from typing import Optional, Dict, Any
 import numpy as np
 import os
 from datetime import datetime
+import uuid
 
 from audit_client import get_audit_client
 from kafka_client import get_kafka_client
@@ -133,16 +134,17 @@ async def lifespan(app: FastAPI):
         # Create required topics
         topics = [
             {"name": "categorization_events", "partitions": 2, "replication_factor": 1},
-            {"name": "reports_events", "partitions": 2, "replication_factor": 1}
+            {"name": "report", "partitions": 2, "replication_factor": 1},
+            {"name": "notification_events", "partitions": 2, "replication_factor": 1}
         ]
         kafka_client.create_topics(topics)
         
         await kafka_client.start_producer()
         logger.info("Kafka producer initialized")
         
-        # Start consumer for report events
+        # Start consumer for report events (topic 'report' from report-service)
         await kafka_client.start_consumer(
-            topics=["reports_events"],
+            topics=["report"],
             group_id="ai-categorization-group",
             handler=handle_report_message
         )
@@ -215,11 +217,12 @@ class ModelInfoResponse(BaseModel):
 async def health_check():
     """Health check endpoint"""
     kafka_client = get_kafka_client()
+    models_loaded = model_pipeline is not None and label_encoder is not None
     return HealthResponse(
-        status="healthy" if model_pipeline is not None else "degraded",
+        status="healthy" if models_loaded else "unhealthy",
         service="ai-categorization-service",
         timestamp=datetime.utcnow().isoformat() + "Z",
-        model_loaded=model_pipeline is not None,
+        model_loaded=models_loaded,
         kafka_enabled=kafka_client.enabled and kafka_client.producer is not None
     )
 
@@ -253,41 +256,21 @@ async def categorize_report(request: CategorizationRequest):
         logger.info(f"Categorizing text: '{text[:100]}...'")
         
         # Predict using pipeline
-        try:
-            prediction_encoded = model_pipeline.predict([text])[0]
-            category = label_encoder.inverse_transform([prediction_encoded])[0]
-        except Exception as e:
-            logger.error(f"Prediction error: {e}")
-            # Fallback to a default category based on keywords
-            text_lower = text.lower()
-            if any(word in text_lower for word in ['dziura', 'droga', 'chodnik', 'asfalt']):
-                category = "Infrastruktura drogowa / chodników"
-            elif any(word in text_lower for word in ['światło', 'oświetlenie', 'lampa']):
-                category = "Infrastruktura drogowa / chodników"
-            elif any(word in text_lower for word in ['śmieci', 'odpady', 'zaśmiecenie']):
-                category = "Śmieci / nielegalne zaśmiecanie / wysypiska"
-            else:
-                category = "Inne"
-            prediction_encoded = 0
-            logger.warning(f"Used fallback categorization: {category}")
+        prediction_encoded = model_pipeline.predict([text])[0]
+        category = label_encoder.inverse_transform([prediction_encoded])[0]
         
-        # Get prediction probabilities
-        probabilities = None
-        confidence = 0.5  # Default confidence
+        # Get prediction probabilities - REQUIRED
+        if not hasattr(model_pipeline, 'predict_proba'):
+            raise HTTPException(status_code=503, detail="Model does not support probability prediction")
         
-        if hasattr(model_pipeline, 'predict_proba'):
-            try:
-                proba = model_pipeline.predict_proba([text])[0]
-                confidence = float(np.max(proba))
-                
-                # Map probabilities to category names
-                probabilities = {}
-                for idx, prob in enumerate(proba):
-                    cat_name = label_encoder.inverse_transform([idx])[0]
-                    probabilities[cat_name] = round(float(prob), 4)
-                    
-            except Exception as e:
-                logger.warning(f"Could not get probabilities: {e}")
+        proba = model_pipeline.predict_proba([text])[0]
+        confidence = float(np.max(proba))
+        
+        # Map probabilities to category names
+        probabilities = {}
+        for idx, prob in enumerate(proba):
+            cat_name = label_encoder.inverse_transform([idx])[0]
+            probabilities[cat_name] = round(float(prob), 4)
         
         processing_time = (time.time() - start_time) * 1000
         
@@ -319,15 +302,19 @@ async def categorize_report(request: CategorizationRequest):
             key=request.report_id
         )
         
-        # Send notification event
+        # Send notification event (format compatible with notification-service)
         await kafka_client.publish(
             topic="notification_events",
             message={
-                "type": "report_categorized",
-                "user_id": request.user_id,
-                "report_id": request.report_id,
-                "category": category,
-                "timestamp": datetime.utcnow().isoformat()
+                "eventId": str(uuid.uuid4()),
+                "eventType": "REPORT_CATEGORIZED",
+                "userId": request.user_id,
+                "source": "ai-categorization-service",
+                "payload": {
+                    "reportId": request.report_id,
+                    "category": category,
+                    "confidence": confidence
+                }
             },
             key=request.user_id
         )

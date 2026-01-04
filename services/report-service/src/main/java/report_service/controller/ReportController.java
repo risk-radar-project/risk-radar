@@ -27,8 +27,6 @@ public class ReportController {
         private final ReportService reportService;
         private final AuditLogClient auditLogClient;
 
-        // ----------------- Tworzenie nowego raportu -----------------
-
         @PostMapping("/createReport")
         public ResponseEntity<?> createReport(@RequestBody ReportRequest request,
                         HttpServletRequest httpRequest, Principal principal) {
@@ -99,7 +97,6 @@ public class ReportController {
                 }
         }
 
-        // ----------------- Zmiana statusu raportu -----------------
         @PatchMapping("/report/{id}/status")
         public ResponseEntity<?> updateReportStatus(
                         @PathVariable UUID id,
@@ -142,7 +139,6 @@ public class ReportController {
                 }
         }
 
-        // ----------------- Pobieranie raportów z paginacją -----------------
         @GetMapping("/reports")
         public ResponseEntity<?> getReports(
                         @RequestParam(defaultValue = "0") int page,
@@ -208,6 +204,31 @@ public class ReportController {
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                                         Map.of(
                                                         "message", "Failed to fetch pending reports",
+                                                        "status", "failure",
+                                                        "error", e.getMessage()));
+                }
+        }
+
+        /**
+         * Get reports within a specified radius from the given location
+         * Used for AI Assistant threat analysis
+         */
+        @GetMapping("/reports/nearby")
+        public ResponseEntity<?> getReportsNearby(
+                        @RequestParam Double latitude,
+                        @RequestParam Double longitude,
+                        @RequestParam(defaultValue = "1.0") Double radiusKm) {
+                try {
+                        List<Report> reports = reportService.getReportsWithinRadius(latitude, longitude, radiusKm);
+                        return ResponseEntity.ok(Map.of(
+                                        "location", Map.of("lat", latitude, "lng", longitude),
+                                        "radiusKm", radiusKm,
+                                        "count", reports.size(),
+                                        "reports", reports));
+                } catch (Exception e) {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                                        Map.of(
+                                                        "message", "Failed to fetch nearby reports",
                                                         "status", "failure",
                                                         "error", e.getMessage()));
                 }

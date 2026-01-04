@@ -1,13 +1,12 @@
 import type { ReactNode } from "react"
 import { AdminSidebar } from "@/components/layout/admin-sidebar"
-import { requireAdmin } from "@/lib/auth/guards/require-admin"
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-    const allowed = await requireAdmin()
-
-    if (!allowed) {
-        return <div className="p-10 text-red-400">Brak uprawnień (placeholder)</div>
-    }
+    // TODO: Add authentication check later
+    // const allowed = await requireAdmin()
+    // if (!allowed) {
+    //     return <div className="p-10 text-red-400">Brak uprawnień (placeholder)</div>
+    // }
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 flex">

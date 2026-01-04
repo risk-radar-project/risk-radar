@@ -34,6 +34,12 @@ export default async function RootLayout({
     const session = await loadSession()
     const serializedSession = JSON.stringify(session ?? null).replace(/</g, "\\u003c")
 
+    const headersList = await headers()
+    const pathname = headersList.get("x-pathname") || ""
+    const isMapPage = pathname === "/" || pathname === ""
+
+
+
     return (
         <html lang="en">
             <head>
@@ -57,7 +63,11 @@ export default async function RootLayout({
                 <ClientSessionHydrator />
                 <QueryClientWrapper>
                     <AuthGuard>
-                        <PathAwareShell>{children}</PathAwareShell>
+                        {!isMapPage && <AppHeader />}
+                        <main className={isMapPage ? "h-screen" : "flex-1"}>
+                            {children}
+                        </main>
+                        {!isMapPage && <AppFooter />}
                         <Toaster />
                     </AuthGuard>
                 </QueryClientWrapper>
