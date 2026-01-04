@@ -33,7 +33,7 @@ export interface VerificationResponse {
     report_id: string
     is_fake: boolean
     fake_probability: number
-    confidence: 'low' | 'medium' | 'high'
+    confidence: "low" | "medium" | "high"
     explanation?: string
 }
 
@@ -53,8 +53,8 @@ export interface SubmissionResult {
 }
 
 // API base URLs (will be proxied through Next.js API routes)
-const AI_CATEGORIZATION_URL = '/api/ai/categorize'
-const AI_VERIFICATION_URL = '/api/ai/verify'
+const AI_CATEGORIZATION_URL = "/api/ai/categorize"
+const AI_VERIFICATION_URL = "/api/ai/verify"
 
 /**
  * Call AI Categorization Service to get suggested category
@@ -63,22 +63,22 @@ const AI_VERIFICATION_URL = '/api/ai/verify'
 export async function categorizeReport(
     title: string,
     description: string,
-    userId: string = 'anonymous'
+    userId: string = "anonymous"
 ): Promise<CategorizationResponse> {
     const tempReportId = `temp-${Date.now()}`
-    
+
     const response = await fetch(AI_CATEGORIZATION_URL, {
-        method: 'POST',
+        method: "POST",
         headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json"
         },
         body: JSON.stringify({
             report_id: tempReportId,
             title,
-            description: description || '',
+            description: description || "",
             user_id: userId,
-            metadata: { source: 'frontend-preview' }
-        } satisfies CategorizationRequest),
+            metadata: { source: "frontend-preview" }
+        } satisfies CategorizationRequest)
     })
 
     if (!response.ok) {
@@ -100,17 +100,17 @@ export async function verifyReportContent(
     userId: string
 ): Promise<VerificationResponse> {
     const response = await fetch(AI_VERIFICATION_URL, {
-        method: 'POST',
+        method: "POST",
         headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json"
         },
         body: JSON.stringify({
             report_id: reportId,
             title,
             description,
             user_id: userId,
-            metadata: { source: 'frontend-submission' }
-        } satisfies VerificationRequest),
+            metadata: { source: "frontend-submission" }
+        } satisfies VerificationRequest)
     })
 
     if (!response.ok) {
@@ -124,24 +124,21 @@ export async function verifyReportContent(
 /**
  * Determine submission result based on verification response
  */
-export function determineSubmissionResult(
-    reportId: string,
-    verification: VerificationResponse
-): SubmissionResult {
+export function determineSubmissionResult(reportId: string, verification: VerificationResponse): SubmissionResult {
     // Thresholds for automatic acceptance
-    const FAKE_THRESHOLD = 0.5  // Above this = likely fake
-    const HIGH_CONFIDENCE_THRESHOLD = 0.3  // Confidence difference from 0.5
+    // const FAKE_THRESHOLD = 0.5  // Above this = likely fake
+    // const HIGH_CONFIDENCE_THRESHOLD = 0.3  // Confidence difference from 0.5
 
     const isFake = verification.is_fake
-    const isHighConfidenceFake = isFake && verification.confidence === 'high'
-    const isLowConfidenceResult = verification.confidence === 'low'
+    const isHighConfidenceFake = isFake && verification.confidence === "high"
+    const isLowConfidenceResult = verification.confidence === "low"
 
     if (isHighConfidenceFake) {
         // High confidence fake - reject or flag for review
         return {
             accepted: false,
             requiresReview: true,
-            message: 'Zgłoszenie wymaga weryfikacji. Wykryto potencjalnie nieprawdziwe treści.',
+            message: "Zgłoszenie wymaga weryfikacji. Wykryto potencjalnie nieprawdziwe treści.",
             verification,
             reportId
         }
@@ -152,7 +149,7 @@ export function determineSubmissionResult(
         return {
             accepted: true,
             requiresReview: true,
-            message: 'Zgłoszenie przekazane do dalszej weryfikacji.',
+            message: "Zgłoszenie przekazane do dalszej weryfikacji.",
             verification,
             reportId
         }
@@ -162,7 +159,7 @@ export function determineSubmissionResult(
     return {
         accepted: true,
         requiresReview: false,
-        message: 'Zgłoszenie zaakceptowane!',
+        message: "Zgłoszenie zaakceptowane!",
         verification,
         reportId
     }
@@ -182,11 +179,11 @@ export async function submitAndVerifyReport(
         return determineSubmissionResult(reportId, verification)
     } catch (error) {
         // On verification error, accept with review flag (fail-open for UX)
-        console.error('Verification error:', error)
+        console.error("Verification error:", error)
         return {
             accepted: true,
             requiresReview: true,
-            message: 'Zgłoszenie przyjęte. Weryfikacja automatyczna niedostępna.',
+            message: "Zgłoszenie przyjęte. Weryfikacja automatyczna niedostępna.",
             verification: null,
             reportId
         }

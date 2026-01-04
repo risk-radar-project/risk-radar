@@ -64,7 +64,7 @@ function ProfileError({ onRetry }: { onRetry: () => void }) {
 
             <SectionCard>
                 <div className="space-y-3">
-                    <div className="text-sm text-destructive">Nie udało się załadować profilu.</div>
+                    <div className="text-destructive text-sm">Nie udało się załadować profilu.</div>
                     <Button variant="outline" onClick={onRetry}>
                         Spróbuj ponownie
                     </Button>
@@ -75,8 +75,7 @@ function ProfileError({ onRetry }: { onRetry: () => void }) {
 }
 
 export default function ProfileContent() {
-    const cardClass =
-        "bg-[#1f1913] border-[#33281f] text-[#ede3d6] shadow-[0_18px_50px_-30px_rgba(0,0,0,0.8)] p-5 md:p-6"
+    const cardClass = "bg-[#1f1913] border-[#33281f] text-[#ede3d6] shadow-[0_18px_50px_-30px_rgba(0,0,0,0.8)] p-5 md:p-6"
     const labelMuted = "text-sm text-[#9c8876]"
 
     const { data: user, isLoading, isError, refetch } = useUserProfile()
@@ -132,7 +131,7 @@ export default function ProfileContent() {
                         </div>
                         <div className="space-y-1">
                             <div className={labelMuted}>ID</div>
-                            <div className="text-xs text-[#8c7a6b] break-all">{user.id}</div>
+                            <div className="text-xs break-all text-[#8c7a6b]">{user.id}</div>
                         </div>
                         <Separator className="border-[#31261d]" />
                         <div className="space-y-1">
@@ -168,7 +167,10 @@ export default function ProfileContent() {
                             {user.roles.length ? (
                                 <div className="flex flex-wrap gap-2">
                                     {user.roles.map((role) => (
-                                        <Badge key={role} className="bg-[#2c231b] text-[#f6eedf] border-[#3d3125] px-2.5 py-1">
+                                        <Badge
+                                            key={role}
+                                            className="border-[#3d3125] bg-[#2c231b] px-2.5 py-1 text-[#f6eedf]"
+                                        >
                                             {role}
                                         </Badge>
                                     ))}
@@ -182,7 +184,10 @@ export default function ProfileContent() {
                             {user.permissions && user.permissions.length ? (
                                 <div className="flex flex-wrap gap-2">
                                     {user.permissions.map((perm) => (
-                                        <Badge key={perm} className="bg-[#211912] text-[#f6eedf] border-[#3d3125] px-2 py-1 text-xs">
+                                        <Badge
+                                            key={perm}
+                                            className="border-[#3d3125] bg-[#211912] px-2 py-1 text-xs text-[#f6eedf]"
+                                        >
                                             {perm}
                                         </Badge>
                                     ))}
@@ -199,8 +204,8 @@ export default function ProfileContent() {
                         <div className="space-y-1">
                             <div className="text-base font-semibold text-[#f6eedf]">Zmień hasło</div>
                             <p className={labelMuted}>
-                                Wyślij link do resetu hasła na adres powiązany z kontem. Skorzystaj z linku w wiadomości,
-                                aby ustawić nowe hasło.
+                                Wyślij link do resetu hasła na adres powiązany z kontem. Skorzystaj z linku w wiadomości, aby
+                                ustawić nowe hasło.
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
@@ -208,7 +213,7 @@ export default function ProfileContent() {
                                 type="button"
                                 onClick={() => passwordMutation.mutate()}
                                 disabled={passwordMutation.isPending || !user.email}
-                                className="bg-[#d97706] text-[#120c07] hover:bg-[#f59e0b] border border-[#f5a52433]"
+                                className="border border-[#f5a52433] bg-[#d97706] text-[#120c07] hover:bg-[#f59e0b]"
                             >
                                 {passwordMutation.isPending ? "Wysyłanie..." : "Wyślij link resetujący"}
                             </Button>

@@ -11,7 +11,12 @@ interface TextFieldProps<TFieldValues extends FieldValues> {
     placeholder?: string
 }
 
-export function TextField<TFieldValues extends FieldValues>({ control, name, label, placeholder }: TextFieldProps<TFieldValues>) {
+export function TextField<TFieldValues extends FieldValues>({
+    control,
+    name,
+    label,
+    placeholder
+}: TextFieldProps<TFieldValues>) {
     return (
         <FormField
             control={control}

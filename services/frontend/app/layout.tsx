@@ -9,7 +9,8 @@ import { QueryClientWrapper } from "@/components/providers/query-client-provider
 import { ClientSessionHydrator } from "@/components/providers/client-session-hydrator"
 import { loadSession } from "@/lib/auth/load-session"
 import AuthGuard from "@/components/auth-guard"
-import { PathAwareShell } from "@/components/layout/path-aware-shell"
+import { AppHeader } from "@/components/layout/app-header"
+import { AppFooter } from "@/components/layout/app-footer"
 
 const fontSans = Geist({
     variable: "--font-geist-sans",
@@ -38,8 +39,6 @@ export default async function RootLayout({
     const pathname = headersList.get("x-pathname") || ""
     const isMapPage = pathname === "/" || pathname === ""
 
-
-
     return (
         <html lang="en">
             <head>
@@ -50,7 +49,7 @@ export default async function RootLayout({
             </head>
             <body
                 className={cn(
-                    "bg-[#2a221a] font-sans antialiased min-h-screen flex flex-col",
+                    "flex min-h-screen flex-col bg-[#2a221a] font-sans antialiased",
                     fontSans.variable,
                     fontMono.variable
                 )}
@@ -64,9 +63,7 @@ export default async function RootLayout({
                 <QueryClientWrapper>
                     <AuthGuard>
                         {!isMapPage && <AppHeader />}
-                        <main className={isMapPage ? "h-screen" : "flex-1"}>
-                            {children}
-                        </main>
+                        <main className={isMapPage ? "h-screen" : "flex-1"}>{children}</main>
                         {!isMapPage && <AppFooter />}
                         <Toaster />
                     </AuthGuard>
