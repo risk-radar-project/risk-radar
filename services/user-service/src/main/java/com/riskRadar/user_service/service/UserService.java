@@ -29,4 +29,13 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
     }
+
+    public java.util.Map<String, Long> getUserStats() {
+        long totalUsers = userRepository.count();
+        long bannedUsers = userRepository.countByIsBanned(true);
+
+        return java.util.Map.of(
+                "totalUsers", totalUsers,
+                "bannedUsers", bannedUsers);
+    }
 }

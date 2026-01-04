@@ -234,6 +234,19 @@ public class ReportController {
                 }
         }
 
+        @GetMapping("/reports/stats")
+        public ResponseEntity<?> getReportStats() {
+                try {
+                        return ResponseEntity.ok(reportService.getReportStats());
+                } catch (Exception e) {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                                        Map.of(
+                                                        "message", "Failed to get report stats",
+                                                        "status", "failure",
+                                                        "error", e.getMessage()));
+                }
+        }
+
         private Map<String, Object> getActor(Principal principal, HttpServletRequest request) {
                 String actorId = (principal != null) ? principal.getName() : "anonymous";
                 String actorType = (principal != null) ? "user" : "system";

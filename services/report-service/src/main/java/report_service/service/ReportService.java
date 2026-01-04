@@ -101,4 +101,23 @@ public class ReportService {
                 "description", report.getDescription());
     }
 
+    public Map<String, Object> getReportStats() {
+        long total = reportRepository.count();
+        long pending = reportRepository.countByStatus(ReportStatus.PENDING);
+        long verified = reportRepository.countByStatus(ReportStatus.VERIFIED);
+        long rejected = reportRepository.countByStatus(ReportStatus.REJECTED);
+
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        long today = reportRepository.countByCreatedAtAfter(startOfDay);
+
+        long thisWeek = reportRepository.countByCreatedAtAfter(startOfDay.minusDays(7));
+
+        return Map.of(
+                "totalReports", total,
+                "pendingReports", pending,
+                "verifiedReports", verified,
+                "rejectedReports", rejected,
+                "reportsToday", today,
+                "reportsThisWeek", thisWeek);
+    }
 }

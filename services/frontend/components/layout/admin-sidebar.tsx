@@ -33,8 +33,6 @@ export function AdminSidebar() {
             const payload: JwtPayload | null = parseJwt(token)
             if (payload) {
                 setUserPermissions(payload.permissions || [])
-                console.log('[AdminSidebar] User permissions:', payload.permissions)
-                console.log('[AdminSidebar] User roles:', payload.roles)
             }
         }
     }, [])

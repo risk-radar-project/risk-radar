@@ -2,67 +2,21 @@
 
 import Link from "next/link"
 import { FileText, Users, CheckCircle, XCircle, Clock, AlertTriangle, TrendingUp, ArrowRight } from "lucide-react"
+import { useEffect, useState } from "react"
 
-// Mock stats - to be replaced with API call
-const stats = {
-    totalReports: 156,
-    pendingReports: 12,
-    verifiedReports: 132,
-    rejectedReports: 12,
-    totalUsers: 89,
-    bannedUsers: 3,
-    reportsToday: 8,
-    reportsThisWeek: 42
+
+
+// Report interface for type safety
+interface Report {
+    id: string
+    title: string
+    category: string
+    status: string
+    createdAt: string
+    aiIsFake?: boolean
+    aiFakeProbability?: number
 }
 
-// Mock recent reports - to be replaced with API call
-const recentReports = [
-    {
-        id: "r1",
-        title: "Dziura w jezdni na ul. Głównej",
-        category: "INFRASTRUCTURE",
-        status: "PENDING",
-        createdAt: "2026-01-02T10:30:00",
-        aiIsFake: false,
-        aiFakeProbability: 0.05
-    },
-    {
-        id: "r2",
-        title: "Awaria sygnalizacji świetlnej",
-        category: "INFRASTRUCTURE",
-        status: "PENDING",
-        createdAt: "2026-01-02T09:15:00",
-        aiIsFake: false,
-        aiFakeProbability: 0.12
-    },
-    {
-        id: "r3",
-        title: "Wandalizm w parku miejskim",
-        category: "VANDALISM",
-        status: "VERIFIED",
-        createdAt: "2026-01-02T08:00:00",
-        aiIsFake: false,
-        aiFakeProbability: 0.08
-    },
-    {
-        id: "r4",
-        title: "Podejrzany raport UFO",
-        category: "OTHER",
-        status: "REJECTED",
-        createdAt: "2026-01-02T07:30:00",
-        aiIsFake: true,
-        aiFakeProbability: 0.95
-    },
-    {
-        id: "r5",
-        title: "Nielegalne wysypisko śmieci",
-        category: "WASTE_ILLEGAL_DUMPING",
-        status: "PENDING",
-        createdAt: "2026-01-01T23:45:00",
-        aiIsFake: false,
-        aiFakeProbability: 0.03
-    },
-]
 
 const CATEGORY_NAMES: Record<string, string> = {
     'VANDALISM': 'Wandalizm',
@@ -80,6 +34,63 @@ const STATUS_STYLES: Record<string, { bg: string, text: string, icon: React.Elem
 }
 
 export default function AdminDashboard() {
+    const [stats, setStats] = useState({
+        totalReports: 0,
+        pendingReports: 0,
+        verifiedReports: 0,
+        rejectedReports: 0,
+        totalUsers: 0,
+        bannedUsers: 0,
+        reportsToday: 0,
+        reportsThisWeek: 0
+    })
+    const [recentReports, setRecentReports] = useState<Report[]>([])
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            const token = localStorage.getItem("access_token")
+            if (!token) return
+
+            try {
+                const res = await fetch("/api/admin/stats", {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                })
+                if (res.ok) {
+                    const data = await res.json()
+                    setStats(data)
+                }
+            } catch (err) {
+                console.error("Failed to fetch stats", err)
+            }
+        }
+
+        const fetchRecentReports = async () => {
+            const token = localStorage.getItem("access_token")
+            if (!token) return
+
+            try {
+                // Fetch last 5 reports
+                const res = await fetch("/api/admin/reports?page=0&size=5&sort=createdAt&direction=desc", {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+                if (res.ok) {
+                    const data = await res.json()
+                    // Backend returns Page<Report>, so data.content is the array
+                    if (data.content && Array.isArray(data.content)) {
+                        setRecentReports(data.content)
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch recent reports", err)
+            }
+        }
+
+        fetchStats()
+        fetchRecentReports()
+    }, [])
+
     return (
         <div className="space-y-6">
             <div>
@@ -124,6 +135,21 @@ export default function AdminDashboard() {
                 <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                         <div>
+                            <p className="text-zinc-500 text-sm">Zweryfikowane</p>
+                            <p className="text-2xl font-bold text-green-400 mt-1">{stats.verifiedReports}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                            <CheckCircle className="w-5 h-5 text-green-400" />
+                        </div>
+                    </div>
+                    <p className="mt-2 text-xs text-zinc-500">
+                        {stats.totalReports > 0 ? Math.round((stats.verifiedReports / stats.totalReports) * 100) : 0}% wszystkich zgłoszeń
+                    </p>
+                </div>
+
+                <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
                             <p className="text-zinc-500 text-sm">Użytkownicy</p>
                             <p className="text-2xl font-bold text-zinc-100 mt-1">{stats.totalUsers}</p>
                         </div>
@@ -135,21 +161,6 @@ export default function AdminDashboard() {
                         <AlertTriangle className="w-3 h-3" />
                         <span>{stats.bannedUsers} zablokowanych</span>
                     </div>
-                </div>
-
-                <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-zinc-500 text-sm">Zweryfikowane</p>
-                            <p className="text-2xl font-bold text-green-400 mt-1">{stats.verifiedReports}</p>
-                        </div>
-                        <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-                            <CheckCircle className="w-5 h-5 text-green-400" />
-                        </div>
-                    </div>
-                    <p className="mt-2 text-xs text-zinc-500">
-                        {Math.round((stats.verifiedReports / stats.totalReports) * 100)}% wszystkich zgłoszeń
-                    </p>
                 </div>
             </div>
 
@@ -196,8 +207,8 @@ export default function AdminDashboard() {
                                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded ${statusStyle.bg}`}>
                                         <StatusIcon className={`w-3 h-3 ${statusStyle.text}`} />
                                         <span className={`text-xs font-medium ${statusStyle.text}`}>
-                                            {report.status === 'PENDING' ? 'Oczekuje' : 
-                                             report.status === 'VERIFIED' ? 'Zweryfikowane' : 'Odrzucone'}
+                                            {report.status === 'PENDING' ? 'Oczekuje' :
+                                                report.status === 'VERIFIED' ? 'Zweryfikowane' : 'Odrzucone'}
                                         </span>
                                     </div>
                                 </div>
@@ -209,7 +220,7 @@ export default function AdminDashboard() {
 
             {/* Quick Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link 
+                <Link
                     href="/admin/verification"
                     className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:bg-zinc-800/50 transition-colors group"
                 >
@@ -224,7 +235,7 @@ export default function AdminDashboard() {
                     </div>
                 </Link>
 
-                <Link 
+                <Link
                     href="/admin/reports"
                     className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:bg-zinc-800/50 transition-colors group"
                 >
@@ -239,7 +250,7 @@ export default function AdminDashboard() {
                     </div>
                 </Link>
 
-                <Link 
+                <Link
                     href="/admin/users"
                     className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:bg-zinc-800/50 transition-colors group"
                 >
