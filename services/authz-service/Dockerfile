@@ -16,11 +16,11 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o authz-service ./cmd/main.go
+# Build the application (static, stripped)
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o authz-service ./cmd/main.go
 
 # Second stage: Run the application
-FROM alpine:latest
+FROM alpine:3.19
 
 # Install ca-certificates for HTTPS requests
 RUN apk --no-cache add ca-certificates

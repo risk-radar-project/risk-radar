@@ -3,7 +3,6 @@ node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
@@ -40,15 +39,7 @@ coverage/
 .git/
 .gitignore
 
-# Docker
-Dockerfile
-.dockerignore
-docker-compose.yml
-
-# Documentation
-README.md
-AGENTS.md
-*.md
+# Docker artifacts should stay in context (build instructions), so do not ignore Dockerfile/.dockerignore.
 
 # ESLint and Prettier
 .eslintcache
