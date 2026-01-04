@@ -40,7 +40,7 @@ export default function TermsPage() {
         <>
             {/* Sidebar - hidden on mobile */}
             <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-zinc-800 bg-[#2a221a] p-6 lg:block">
-                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">Spis treści</h2>
+                <h2 className="mb-4 text-sm font-semibold tracking-wider text-zinc-500 uppercase">Spis treści</h2>
                 <nav className="flex flex-col gap-1">
                     {navItems.map((item) => (
                         <Link
@@ -60,7 +60,7 @@ export default function TermsPage() {
 
             {/* Main content */}
             <main className="flex-1 overflow-y-auto bg-[#2a221a]">
-                <div className="mx-auto max-w-4xl px-6 py-10 lg:px-12 lg:py-16 bg-[#2a221a]">
+                <div className="mx-auto max-w-4xl bg-[#2a221a] px-6 py-10 lg:px-12 lg:py-16">
                     <div className="mb-8">
                         <h1 className="text-4xl font-bold tracking-tight text-white">Regulamin</h1>
                         <p className="mt-2 text-zinc-500">Ostatnia aktualizacja: 16 Grudnia 2025</p>
@@ -169,7 +169,7 @@ export default function TermsPage() {
                     <div className="mt-16 flex justify-center border-t border-zinc-800 pt-8">
                         <button
                             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                            className="flex items-center gap-2 text-sm text-zinc-500 transition hover:text-primary"
+                            className="hover:text-primary flex items-center gap-2 text-sm text-zinc-500 transition"
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"

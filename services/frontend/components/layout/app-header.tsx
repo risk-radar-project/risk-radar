@@ -21,59 +21,42 @@ export function AppHeader() {
     const permissions = user?.permissions || []
     const roles = user?.roles || []
 
-    const isAdmin = permissions.includes("*:*") ||
+    const isAdmin =
+        permissions.includes("*:*") ||
         permissions.includes("system:admin") ||
         permissions.includes("PERM_SYSTEM_ADMIN") ||
         roles.includes("ROLE_ADMIN")
 
-
-    const canValidate = isAdmin ||
-        permissions.includes("reports:validate") ||
-        permissions.includes("PERM_REPORTS_VALIDATE")
+    const canValidate = isAdmin || permissions.includes("reports:validate") || permissions.includes("PERM_REPORTS_VALIDATE")
 
     return (
-        <header className="bg-[#362c20]/90 backdrop-blur-sm border-b border-[#e0dcd7]/10">
-            <div className="px-6 h-16 flex items-center justify-between">
-                <Link href="/" className="text-xl font-bold text-[#e0dcd7] hover:text-[#d97706] transition-colors">
+        <header className="border-b border-[#e0dcd7]/10 bg-[#362c20]/90 backdrop-blur-sm">
+            <div className="flex h-16 items-center justify-between px-6">
+                <Link href="/" className="text-xl font-bold text-[#e0dcd7] transition-colors hover:text-[#d97706]">
                     RiskRadar
                 </Link>
 
                 <nav className="flex items-center gap-6 text-sm">
-                    <a
-                        href="/"
-                        className="text-[#e0dcd7] hover:text-[#d97706] transition-colors font-medium"
-                    >
+                    <Link href="/" className="font-medium text-[#e0dcd7] transition-colors hover:text-[#d97706]">
                         Mapa
-                    </a>
+                    </Link>
 
                     {canValidate && (
-                        <Link
-                            href="/reports"
-                            className="text-[#e0dcd7] hover:text-[#d97706] transition-colors font-medium"
-                        >
+                        <Link href="/reports" className="font-medium text-[#e0dcd7] transition-colors hover:text-[#d97706]">
                             Weryfikacja
                         </Link>
                     )}
 
-                    <Link
-                        href="/profile"
-                        className="text-[#e0dcd7] hover:text-[#d97706] transition-colors font-medium"
-                    >
+                    <Link href="/profile" className="font-medium text-[#e0dcd7] transition-colors hover:text-[#d97706]">
                         Profil
                     </Link>
 
-                    <Link
-                        href="/my-reports"
-                        className="text-[#e0dcd7] hover:text-[#d97706] transition-colors font-medium"
-                    >
+                    <Link href="/my-reports" className="font-medium text-[#e0dcd7] transition-colors hover:text-[#d97706]">
                         Moje zgłoszenia
                     </Link>
 
                     {isAdmin && (
-                        <Link
-                            href="/admin"
-                            className="text-[#e0dcd7] hover:text-[#d97706] transition-colors font-medium"
-                        >
+                        <Link href="/admin" className="font-medium text-[#e0dcd7] transition-colors hover:text-[#d97706]">
                             Admin
                         </Link>
                     )}
@@ -81,7 +64,7 @@ export function AppHeader() {
                     {!user ? (
                         <Link
                             href="/login"
-                            className="px-4 py-2 rounded-lg bg-[#d97706] hover:bg-[#d97706]/80 text-white font-semibold transition-colors"
+                            className="rounded-lg bg-[#d97706] px-4 py-2 font-semibold text-white transition-colors hover:bg-[#d97706]/80"
                         >
                             Zaloguj
                         </Link>
@@ -96,9 +79,9 @@ export function AppHeader() {
                                         fetch("http://localhost:8090/api/users/logout", {
                                             method: "POST",
                                             headers: {
-                                                "Authorization": `Bearer ${token}`
+                                                Authorization: `Bearer ${token}`
                                             }
-                                        }).catch(err => console.warn("Backend logout failed:", err))
+                                        }).catch((err) => console.warn("Backend logout failed:", err))
                                     }
                                 } finally {
                                     // Always clear local storage and redirect
@@ -108,7 +91,7 @@ export function AppHeader() {
                                     window.location.replace("/login")
                                 }
                             }}
-                            className="px-4 py-2 rounded-lg bg-transparent border border-[#d97706] text-[#d97706] hover:bg-[#d97706]/20 font-semibold transition-colors"
+                            className="rounded-lg border border-[#d97706] bg-transparent px-4 py-2 font-semibold text-[#d97706] transition-colors hover:bg-[#d97706]/20"
                         >
                             Wyloguj
                         </button>

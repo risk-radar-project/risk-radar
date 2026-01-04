@@ -1,10 +1,20 @@
 import { defineConfig, globalIgnores } from "eslint/config"
 import nextVitals from "eslint-config-next/core-web-vitals"
 import nextTs from "eslint-config-next/typescript"
+import prettierRecommended from "eslint-plugin-prettier/recommended"
 
 const eslintConfig = defineConfig([
     ...nextVitals,
     ...nextTs,
+    prettierRecommended,
+    {
+        rules: {
+            "no-unused-vars": "off",
+            "@typescript-eslint/no-unused-vars": "warn",
+            "@next/next/no-img-element": "off",
+            "react-hooks/exhaustive-deps": "warn"
+        }
+    },
     // Override default ignores of eslint-config-next.
     globalIgnores([
         // Default ignores of eslint-config-next:
