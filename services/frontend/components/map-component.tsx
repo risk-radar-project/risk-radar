@@ -9,7 +9,7 @@ import "leaflet.markercluster/dist/MarkerCluster.Default.css"
 import "leaflet.markercluster"
 import { parseJwt } from "@/lib/auth/jwt-utils"
 
-const MEDIA_SERVICE_BASE_URL = "http://localhost:8084/media/"
+const MEDIA_SERVICE_BASE_URL = "/api/image/"
 
 const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
     VANDALISM: "Wandalizm",
@@ -230,8 +230,8 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                 let imageHtml = `<div class="report-image-container">`
 
                 imageIds.forEach((imageId) => {
-                    const thumbImageUrl = `${MEDIA_SERVICE_BASE_URL}${imageId}/thumb`
-                    const fullImageUrl = `${MEDIA_SERVICE_BASE_URL}${imageId}/preview`
+                    const thumbImageUrl = `${MEDIA_SERVICE_BASE_URL}${imageId}?variant=thumb`
+                    const fullImageUrl = `${MEDIA_SERVICE_BASE_URL}${imageId}?variant=preview`
 
                     imageHtml += `
                         <img

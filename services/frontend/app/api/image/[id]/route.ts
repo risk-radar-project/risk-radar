@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
-    // Docker internal URL for media-service
-    const MEDIA_SERVICE_INTERNAL_URL = "http://media-service:8080/media"
+    // Use env var or default to internal service URL (direct access fallback)
+    const MEDIA_SERVICE_URL = process.env.MEDIA_SERVICE_URL || "http://media-service:8080"
 
     const { searchParams } = new URL(request.url)
     const variant = searchParams.get("variant")
 
     // Construct URL based on variant (thumb, preview, or default/master)
-    let fetchUrl = `${MEDIA_SERVICE_INTERNAL_URL}/${id}`
+    // Note: We append /media because MEDIA_SERVICE_URL is expected to be the base (e.g. gateway root or service root)
+    let fetchUrl = `${MEDIA_SERVICE_URL}/media/${id}`
     if (variant === "thumb") {
         fetchUrl += "/thumb"
     } else if (variant === "preview") {
@@ -17,11 +18,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     try {
+        const authHeader = request.headers.get("Authorization")
         const res = await fetch(fetchUrl, {
             cache: "no-store",
             headers: {
-                // Use a system/admin ID to bypass visibility checks for unverified reports
-                "X-User-ID": "00000000-0000-0000-0000-000000000000"
+                ...(authHeader ? { Authorization: authHeader } : {})
             }
         })
 

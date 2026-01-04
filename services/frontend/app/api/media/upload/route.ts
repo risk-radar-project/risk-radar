@@ -13,8 +13,6 @@ export async function POST(request: NextRequest) {
         const response = await fetch(`${MEDIA_SERVICE_URL}/media`, {
             method: "POST",
             headers: {
-                // Media-service requires X-User-ID header (401 Unauthorized without it)
-                "X-User-ID": "ea2698bc-9348-44f5-b64b-0b973da92da7", // Temporary UUID for development
                 ...(authHeader ? { Authorization: authHeader } : {})
             },
             body: formData
