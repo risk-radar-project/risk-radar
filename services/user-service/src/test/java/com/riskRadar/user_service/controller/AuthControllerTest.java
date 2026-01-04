@@ -6,6 +6,7 @@ import com.riskRadar.user_service.dto.*;
 import com.riskRadar.user_service.entity.CustomUserDetails;
 import com.riskRadar.user_service.entity.User;
 import com.riskRadar.user_service.exception.UserAlreadyExistsException;
+import com.riskRadar.user_service.exception.GlobalExceptionHandler;
 import com.riskRadar.user_service.service.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,7 +61,9 @@ class AuthControllerTest {
                 auditLogClient
         );
 
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+            .setControllerAdvice(new GlobalExceptionHandler())
+            .build();
 
         testUser = new User();
         testUser.setId(UUID.randomUUID());

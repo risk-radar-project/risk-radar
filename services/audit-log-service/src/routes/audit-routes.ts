@@ -7,6 +7,7 @@ import {
     getLogByIdSchema,
     anonymizeLogsSchema,
     anonymizeQuerySchema,
+    loginHistoryQuerySchema,
 } from '../validation/schemas';
 
 const router = Router();
@@ -23,12 +24,6 @@ router.get('/logs',
     auditController.getLogs
 );
 
-// GET /logs/:id - Get audit log by ID
-router.get('/logs/:id',
-    validateRequest({ params: getLogByIdSchema }),
-    auditController.getLogById
-);
-
 // POST /logs/anonymize - Anonymize logs for a specific actor
 router.post('/logs/anonymize',
     validateRequest({
@@ -36,6 +31,18 @@ router.post('/logs/anonymize',
         query: anonymizeQuerySchema
     }),
     auditController.anonymizeLogs
+);
+
+// GET /logs/login-history - recent successful login events for a user
+router.get('/logs/login-history',
+    validateRequest({ query: loginHistoryQuerySchema }),
+    auditController.getLoginHistory
+);
+
+// GET /logs/:id - Get audit log by ID
+router.get('/logs/:id',
+    validateRequest({ params: getLogByIdSchema }),
+    auditController.getLogById
 );
 
 export default router;

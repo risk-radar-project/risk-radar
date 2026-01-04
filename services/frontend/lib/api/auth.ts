@@ -1,5 +1,5 @@
-import { apiFetch } from "./fetcher"
 import type { ApiResponse, User } from "./types"
+import { getUserProfile } from "./user"
 
 // Placeholder: authenticate user
 export async function login(input: { email: string; password: string }): Promise<ApiResponse<User>> {
@@ -11,7 +11,9 @@ export async function register(input: { email: string; password: string; usernam
     return { data: { id: "1", email: input.email, username: input.username, roles: ["user"] } }
 }
 
-// Placeholder: get the current user session
+// Get the current user session (decoded from JWT)
 export async function getCurrentUser(): Promise<ApiResponse<User | null>> {
-    return { data: null }
+    const profile = await getUserProfile()
+    if (profile.error) return { data: null, error: profile.error }
+    return { data: profile.data }
 }

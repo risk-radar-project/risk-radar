@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import { createServer } from 'http';
 import { config } from './config/config';
 import { logger } from './utils/logger';
@@ -25,7 +24,9 @@ class AuditLogServer {
     }
 
     private setupMiddleware(): void {
-        this.app.use(cors());
+        // Avoid conditional 304 responses on frequently polled endpoints.
+        this.app.disable('etag');
+        // CORS is handled at the API gateway; avoid adding duplicate headers here.
         this.app.use(express.json({ limit: '10mb' }));
         this.app.use(express.urlencoded({ extended: true }));
 

@@ -7,7 +7,8 @@ export const createLogSchema = Joi.object({
     actor: Joi.object({
         id: Joi.string().min(1).max(255).required(),
         type: Joi.string().valid('user', 'admin', 'system', 'service', 'unknown').required(),
-        ip: Joi.string().ip().optional(),
+        // Accept any string to avoid rejecting proxied/forwarded values.
+        ip: Joi.string().min(1).max(255).optional(),
     }).required(),
     target: Joi.object({
         id: Joi.string().min(1).max(255).optional(),
@@ -43,4 +44,9 @@ export const anonymizeLogsSchema = Joi.object({
 
 export const anonymizeQuerySchema = Joi.object({
     dry_run: Joi.string().valid('true', 'false').optional(),
+});
+
+export const loginHistoryQuerySchema = Joi.object({
+    actor_id: Joi.string().min(1).max(255).required(),
+    limit: Joi.number().integer().min(1).max(100).optional().default(10),
 });

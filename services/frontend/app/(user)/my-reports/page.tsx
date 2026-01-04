@@ -10,9 +10,7 @@ export default function MyReportsPage() {
             </PageHeader>
 
             <SectionCard>
-                <div className="text-muted-foreground">
-                    Brak zgłoszeń (placeholder)
-                </div>
+                <div className="text-muted-foreground">Brak zgłoszeń (placeholder)</div>
             </SectionCard>
         </>
     )

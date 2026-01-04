@@ -242,7 +242,7 @@ services:
             MAP_SERVICE_URL: http://map-service:8080
             REPORT_SERVICE_URL: http://report-service:8080
             USER_SERVICE_URL: http://user-service:8080
-            MEDIA_SERVICE_URL: http://media-service:8080
+            MEDIA_SERVICE_URL: http://api-gateway:8080/api/media
         networks:
             - backend
         ports:

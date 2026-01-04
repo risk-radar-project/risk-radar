@@ -1,11 +1,13 @@
 "use client"
 
 import React from "react"
+import clsx from "clsx"
 
-export function PageTitle({ children }: { children: React.ReactNode }) {
-    return (
-        <h1 className="text-2xl font-bold tracking-tight">
-            {children}
-        </h1>
-    )
+type PageTitleProps = {
+    children: React.ReactNode
+    className?: string
+}
+
+export function PageTitle({ children, className }: PageTitleProps) {
+    return <h1 className={clsx("text-2xl font-bold tracking-tight text-[#f6eedf]", className)}>{children}</h1>
 }

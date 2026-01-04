@@ -6,6 +6,7 @@ import com.riskRadar.user_service.entity.User;
 import com.riskRadar.user_service.exception.UserAlreadyExistsException;
 import com.riskRadar.user_service.exception.UserOperationException;
 import com.riskRadar.user_service.service.*;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -41,8 +43,7 @@ public class AuthController {
 
         @PostMapping("/register")
         public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
-                String clientIp = Optional.ofNullable(httpRequest.getHeader("X-Forwarded-For"))
-                                .orElse(httpRequest.getRemoteAddr());
+                String clientIp = extractClientIp(httpRequest);
                 String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
 
                 try {
@@ -103,11 +104,10 @@ public class AuthController {
                 }
         }
 
-        @PostMapping("/login")
-        public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
-                String clientIp = Optional.ofNullable(httpRequest.getHeader("X-Forwarded-For"))
-                                .orElse(httpRequest.getRemoteAddr());
-                String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        String clientIp = extractClientIp(httpRequest);
+        String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
 
                 try {
                         if (userDetailsService.isUserBanned(request.username())) {
@@ -169,39 +169,46 @@ public class AuthController {
                         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
                         User user = userDetails.getUser();
 
-                        if (redisService.isUserBanned(user.getUsername())) {
-                                auditLogClient.logAction(Map.of(
-                                                "service", "user-service",
-                                                "action", "login",
-                                                "actor", Map.of(
-                                                                "id", request.username(),
-                                                                "type", "user",
-                                                                "ip", clientIp),
-                                                "status", "failure",
-                                                "log_type", "SECURITY",
-                                                "metadata", Map.of(
-                                                                "description", "User is banned",
-                                                                "user_agent", userAgent)));
-                                throw new UserOperationException("User is banned",
-                                                UserOperationException.ErrorType.USER_BANNED);
-                        }
+            if (redisService.isUserBanned(user.getUsername())) {
+                auditLogClient.logAction(Map.of(
+                        "service", "user-service",
+                        "action", "login",
+                        "actor", Map.of(
+                                "id", user.getId() != null ? user.getId().toString() : request.username(),
+                                "type", "user",
+                                "ip", clientIp
+                        ),
+                        "status", "failure",
+                        "log_type", "SECURITY",
+                        "metadata", Map.of(
+                                "description", "User is banned",
+                                "user_agent", userAgent
+                        )
+                ));
+                throw new UserOperationException("User is banned",
+                    UserOperationException.ErrorType.USER_BANNED);
+            }
 
                         Map<String, Object> claims = extractClaims(user);
                         String oldToken = extractTokenFromCookies(httpRequest);
                         JwtResponse jwtResponse = generateTokens(user, claims, oldToken);
 
-                        auditLogClient.logAction(Map.of(
-                                        "service", "user-service",
-                                        "action", "login",
-                                        "actor", Map.of(
-                                                        "id", request.username(),
-                                                        "type", "user",
-                                                        "ip", clientIp),
-                                        "status", "success",
-                                        "log_type", "ACTION",
-                                        "metadata", Map.of(
-                                                        "description", "User logged in successfully",
-                                                        "user_agent", userAgent)));
+            auditLogClient.logAction(Map.of(
+                    "service", "user-service",
+                    "action", "login",
+                    "actor", Map.of(
+                            "id", user.getId().toString(),
+                            "type", "user",
+                            "ip", clientIp
+                    ),
+                    "status", "success",
+                    "log_type", "ACTION",
+                    "metadata", Map.of(
+                            "description", "User logged in successfully",
+                            "user_agent", userAgent,
+                            "username", user.getUsername()
+                    )
+            ));
 
                         return ResponseEntity.ok(jwtResponse);
 
@@ -226,11 +233,10 @@ public class AuthController {
                 }
         }
 
-        @PostMapping("/logout")
+    @PostMapping("/logout")
         public ResponseEntity<?> logout(HttpServletRequest httpRequest) {
-                String clientIp = Optional.ofNullable(httpRequest.getHeader("X-Forwarded-For"))
-                                .orElse(httpRequest.getRemoteAddr());
-                String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
+                String clientIp = extractClientIp(httpRequest);
+        String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
 
                 String authHeader = httpRequest.getHeader(HttpHeaders.AUTHORIZATION);
                 if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -320,12 +326,11 @@ public class AuthController {
                 }
         }
 
-        @PostMapping("/refresh")
-        public ResponseEntity<?> refresh(@RequestBody RefreshRequest request, HttpServletRequest httpRequest) {
-                String clientIp = Optional.ofNullable(httpRequest.getHeader("X-Forwarded-For"))
-                                .orElse(httpRequest.getRemoteAddr());
-                String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
-                String refreshToken = request.refreshToken();
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@RequestBody RefreshRequest request, HttpServletRequest httpRequest) {
+        String clientIp = extractClientIp(httpRequest);
+        String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
+        String refreshToken = request.refreshToken();
 
                 try {
                         // First check if token is syntactically valid and not expired
@@ -417,40 +422,91 @@ public class AuthController {
                         redisService.revokeRefreshToken(username);
                         redisService.storeRefreshToken(username, newRefreshToken);
 
-                        auditLogClient.logAction(Map.of(
-                                        "service", "user-service",
-                                        "action", "refresh",
-                                        "actor", Map.of(
-                                                        "id", username,
-                                                        "type", "user",
-                                                        "ip", clientIp),
-                                        "status", "success",
-                                        "log_type", "ACTION",
-                                        "metadata", Map.of(
-                                                        "description", "Token successfully renewed",
-                                                        "user_agent", userAgent)));
+            auditLogClient.logAction(Map.of(
+                    "service", "user-service",
+                    "action", "refresh",
+                    "actor", Map.of(
+                                                "id", user.getId() != null ? user.getId().toString() : username,
+                        "type", "user",
+                        "ip", clientIp
+                    ),
+                    "status", "success",
+                    "log_type", "ACTION",
+                    "metadata", Map.of(
+                            "description", "Token successfully renewed",
+                            "user_agent", userAgent
+                    )
+            ));
 
                         return ResponseEntity.ok(new JwtResponse(newAccessToken, newRefreshToken));
 
-                } catch (UserOperationException e) {
-                        throw e;
-                } catch (Exception e) {
-                        log.error("Token refresh failed", e);
-                        auditLogClient.logAction(Map.of(
-                                        "service", "user-service",
-                                        "action", "refresh",
-                                        "actor", Map.of(
-                                                        "id", "unknown",
-                                                        "type", "user",
-                                                        "ip", clientIp),
-                                        "status", "failure",
-                                        "log_type", "ERROR",
-                                        "metadata", Map.of(
-                                                        "description", "Token refresh failed due to unexpected error",
-                                                        "user_agent", userAgent)));
-                        throw new UserOperationException("Token refresh failed",
-                                        UserOperationException.ErrorType.OPERATION_FAILED, e);
+        } catch (UserOperationException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Token refresh failed", e);
+            auditLogClient.logAction(Map.of(
+                    "service", "user-service",
+                    "action", "refresh",
+                    "actor", Map.of(
+                        "id", "unknown",
+                        "type", "user",
+                        "ip", clientIp
+                    ),
+                    "status", "failure",
+                    "log_type", "ERROR",
+                    "metadata", Map.of(
+                            "description", "Token refresh failed due to unexpected error",
+                            "user_agent", userAgent
+                    )
+            ));
+            throw new UserOperationException("Token refresh failed",
+                UserOperationException.ErrorType.OPERATION_FAILED, e);
+        }
+    }
+
+        @GetMapping("/me")
+        public ResponseEntity<?> me(HttpServletRequest httpRequest) {
+                String authHeader = httpRequest.getHeader(HttpHeaders.AUTHORIZATION);
+
+                if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "No token provided"));
                 }
+
+                String token = authHeader.substring(7);
+
+                try {
+                        if (!jwtService.isAccessTokenValid(token)) {
+                                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid or expired token"));
+                        }
+
+                        Claims claims = jwtService.extractAllAccessClaims(token);
+                        String username = jwtService.extractAccessUsername(token);
+
+                        User user = userService.getUserByUsernameOrEmail(username);
+
+                        List<String> roles = claims.get("roles", List.class);
+                        List<String> permissions = claims.get("permissions", List.class);
+
+                        return ResponseEntity.ok(Map.of(
+                                        "id", user.getId().toString(),
+                                        "username", user.getUsername(),
+                                        "email", user.getEmail(),
+                                        "roles", roles != null ? roles : List.of(),
+                                        "permissions", permissions != null ? permissions : List.of()
+                        ));
+                } catch (Exception e) {
+                        log.error("Failed to fetch current user", e);
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unable to fetch user info"));
+                }
+        }
+
+        private String extractClientIp(HttpServletRequest request) {
+                String forwardedFor = request.getHeader("X-Forwarded-For");
+                if (forwardedFor != null && !forwardedFor.isBlank()) {
+                        // Take the first IP in the X-Forwarded-For chain
+                        return forwardedFor.split(",")[0].trim();
+                }
+                return Optional.ofNullable(request.getRemoteAddr()).orElse("unknown");
         }
 
         private String extractTokenFromCookies(HttpServletRequest request) {
