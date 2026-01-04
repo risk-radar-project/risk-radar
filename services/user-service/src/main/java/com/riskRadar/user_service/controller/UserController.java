@@ -1,18 +1,18 @@
 package com.riskRadar.user_service.controller;
 
 import com.riskRadar.user_service.dto.BanUserRequest;
+import com.riskRadar.user_service.dto.UpdateRoleRequest;
 import com.riskRadar.user_service.service.CustomUserDetailsService;
 import com.riskRadar.user_service.service.RedisService;
 import com.riskRadar.user_service.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -23,7 +23,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/banUser")
-    @PreAuthorize("hasAuthority('PERM_USERS:BAN')")
+    @PreAuthorize("hasAuthority('PERM_USERS:BAN') or hasAuthority('PERM_*:*')")
     public ResponseEntity<?> banUser(@RequestBody BanUserRequest request) {
         if (request.username() == null || request.username().trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Username is required"));
@@ -38,6 +38,43 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @PostMapping("/users/{id}/unban")
+    @PreAuthorize("hasAuthority('PERM_USERS:BAN') or hasAuthority('PERM_*:*')")
+    public ResponseEntity<?> unbanUser(@PathVariable UUID id) {
+        try {
+            var user = userService.getUserById(id);
+            userDetailsService.unbanUser(user.username());
+            redisService.unbanUser(user.username());
+
+            return ResponseEntity.ok(Map.of("message", "User unbanned successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/users/{id}/roles")
+    @PreAuthorize("hasAuthority('PERM_USERS:EDIT') or hasAuthority('PERM_*:*')")
+    public ResponseEntity<?> updateUserRole(@PathVariable UUID id, @RequestBody UpdateRoleRequest request) {
+        try {
+            userService.updateUserRole(id, request.roleName());
+            return ResponseEntity.ok(Map.of("message", "User role updated successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/users")
+    @PreAuthorize("hasAuthority('PERM_USERS:VIEW') or hasAuthority('PERM_*:*')")
+    public ResponseEntity<?> getAllUsers(Pageable pageable) {
+        return ResponseEntity.ok(userService.getAllUsers(pageable));
+    }
+
+    @GetMapping("/users/{id}")
+    @PreAuthorize("hasAuthority('PERM_USERS:VIEW') or hasAuthority('PERM_*:*')")
+    public ResponseEntity<?> getUserById(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.getUserById(id));
     }
 
     @GetMapping("/users/stats")

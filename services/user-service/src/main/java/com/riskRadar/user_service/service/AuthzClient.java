@@ -18,6 +18,7 @@ import java.util.UUID;
 public class AuthzClient {
 
         private final WebClient webClient;
+        private static final String SYSTEM_USER_ID = "11111111-1111-1111-1111-111111111111";
 
         private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(3);
         private static final int MAX_RETRIES = 3;
@@ -100,7 +101,7 @@ public class AuthzClient {
                 try {
                         webClient.post()
                                         .uri("/users/{userId}/roles", userId)
-                                        .header("X-User-ID", "11111111-1111-1111-1111-111111111111")
+                                        .header("X-User-ID", SYSTEM_USER_ID)
                                         .bodyValue(Map.of("role_id", roleId))
                                         .retrieve()
                                         .bodyToMono(Void.class)
@@ -117,6 +118,7 @@ public class AuthzClient {
                 executeWithRetry(
                                 webClient.post()
                                                 .uri("/roles/revoke?userId={id}", userId)
+                                                .header("X-User-ID", SYSTEM_USER_ID)
                                                 .retrieve()
                                                 .bodyToMono(Void.class),
                                 "revokeRoles " + userId);

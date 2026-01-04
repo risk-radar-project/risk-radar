@@ -13,6 +13,7 @@ import report_service.entity.Report;
 import report_service.entity.ReportStatus;
 import report_service.service.AuditLogClient;
 import report_service.service.ReportService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.security.Principal;
 import java.util.List;
@@ -98,6 +99,7 @@ public class ReportController {
         }
 
         @PatchMapping("/report/{id}/status")
+        @PreAuthorize("hasAuthority('PERM_REPORTS:EDIT') or hasAuthority('PERM_*:*')")
         public ResponseEntity<?> updateReportStatus(
                         @PathVariable UUID id,
                         @RequestParam ReportStatus status,
@@ -196,6 +198,7 @@ public class ReportController {
         }
 
         @GetMapping("/reports/pending")
+        @PreAuthorize("hasAuthority('PERM_REPORTS:VIEW') or hasAuthority('PERM_*:*')")
         public ResponseEntity<?> getPendingReports() {
                 try {
                         List<Report> reports = reportService.getPendingReports();
@@ -235,6 +238,7 @@ public class ReportController {
         }
 
         @GetMapping("/reports/stats")
+        @PreAuthorize("hasAuthority('PERM_STATS:VIEW') or hasAuthority('PERM_REPORTS:VIEW') or hasAuthority('PERM_*:*')")
         public ResponseEntity<?> getReportStats() {
                 try {
                         return ResponseEntity.ok(reportService.getReportStats());
