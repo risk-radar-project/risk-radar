@@ -1,5 +1,5 @@
-import type { ReactNode } from "react"
+import type { ComponentProps, ReactNode } from "react"
 
-export function TableRow({ children }: { children: ReactNode }) {
-    return <tr className="border-b border-zinc-800">{children}</tr>
+export function TableRow({ children, className, ...props }: { children: ReactNode } & ComponentProps<"tr">) {
+    return <tr className={`border-b border-zinc-800 ${className || ""}`} {...props}>{children}</tr>
 }

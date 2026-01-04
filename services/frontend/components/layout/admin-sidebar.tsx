@@ -15,17 +15,10 @@ interface NavItem {
 
 const navItems: NavItem[] = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-<<<<<<< HEAD
     { href: "/admin/verification", label: "Weryfikacja", icon: CheckSquare, requiredPermissions: ["reports:validate", "reports:*", "*:*"] },
     { href: "/admin/reports", label: "Zgłoszenia", icon: FileText, requiredPermissions: ["reports:edit", "reports:delete", "reports:*", "*:*"] },
     { href: "/admin/users", label: "Użytkownicy", icon: Users, requiredPermissions: ["users:view", "users:ban", "users:*", "*:*"] },
     { href: "/admin/stats", label: "Statystyki", icon: BarChart3, requiredPermissions: ["stats:view", "stats:*", "*:*"] },
-=======
-    { href: "/admin/verification", label: "Weryfikacja", icon: CheckSquare },
-    { href: "/admin/reports", label: "Zgłoszenia", icon: FileText },
-    { href: "/admin/users", label: "Użytkownicy", icon: Users },
-    { href: "/admin/stats", label: "Statystyki", icon: BarChart3 }
->>>>>>> main
 ]
 
 export function AdminSidebar() {
@@ -81,31 +74,18 @@ export function AdminSidebar() {
                 <span className="font-bold text-zinc-100">Admin Panel</span>
             </div>
             <nav className="flex flex-col space-y-1">
-<<<<<<< HEAD
                 {navItems.filter(item => hasPermission(item.requiredPermissions)).map((item) => {
                     const isActive = pathname === item.href ||
                         (item.href !== "/admin" && pathname.startsWith(item.href))
-=======
-                {navItems.map((item) => {
-                    const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href))
->>>>>>> main
                     const Icon = item.icon
                     return (
                         <Link
                             key={item.href}
                             href={item.href}
-<<<<<<< HEAD
                             className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive
                                 ? 'bg-blue-500/20 text-blue-400'
                                 : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50'
                                 }`}
-=======
-                            className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
-                                isActive
-                                    ? "bg-blue-500/20 text-blue-400"
-                                    : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100"
-                            }`}
->>>>>>> main
                         >
                             <Icon className="h-4 w-4" />
                             <span className="text-sm font-medium">{item.label}</span>

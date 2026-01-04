@@ -372,11 +372,11 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
         try {
             const response = await fetch(
                 `https://nominatim.openstreetmap.org/search?` +
-                    `q=${encodeURIComponent(query)}&` +
-                    `format=json&` +
-                    `countrycodes=pl&` +
-                    `limit=5&` +
-                    `addressdetails=1`,
+                `q=${encodeURIComponent(query)}&` +
+                `format=json&` +
+                `countrycodes=pl&` +
+                `limit=5&` +
+                `addressdetails=1`,
                 {
                     headers: {
                         "User-Agent": "RiskRadar-Map-Application"
@@ -599,163 +599,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
         }
     }
 
-    // AI Assistant - analyze nearby threats
-    const handleAIAnalysis = async () => {
-        if (aiLoading) return
 
-        setAiLoading(true)
-        setAiResponse(null)
-
-        // First, get user's location
-        if (!navigator.geolocation) {
-            alert("Geolokalizacja nie jest wspierana przez Twoją przeglądarkę")
-            setAiLoading(false)
-            return
-        }
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const lat = position.coords.latitude
-                const lng = position.coords.longitude
-
-                setUserLocation({ lat, lng })
-
-                // Add user location marker to the map
-                if (mapRef.current) {
-                    // Remove previous user location marker and circle
-                    if (userLocationMarkerRef.current) {
-                        mapRef.current.removeLayer(userLocationMarkerRef.current)
-                        userLocationMarkerRef.current = null
-                    }
-                    if (userLocationCircleRef.current) {
-                        mapRef.current.removeLayer(userLocationCircleRef.current)
-                        userLocationCircleRef.current = null
-                    }
-
-                    // Add circle showing 1km radius
-                    const circle = L.circle([lat, lng], {
-                        color: "#3b82f6",
-                        fillColor: "#3b82f6",
-                        fillOpacity: 0.1,
-                        radius: 1000, // 1km in meters
-                        weight: 2,
-                        dashArray: "5, 10"
-                    }).addTo(mapRef.current)
-                    userLocationCircleRef.current = circle
-
-                    // Add user location marker (blue pulsing dot)
-                    const marker = L.marker([lat, lng], {
-                        icon: createUserLocationIcon(),
-                        zIndexOffset: 1000 // Make sure it's on top
-                    }).addTo(mapRef.current).bindPopup(`
-                            <div class="text-center">
-                                <b>📍 Twoja lokalizacja</b><br>
-                                <span class="text-xs text-gray-500">
-                                    ${lat.toFixed(6)}, ${lng.toFixed(6)}
-                                </span>
-                            </div>
-                        `)
-                    userLocationMarkerRef.current = marker
-
-                    // Center map on user location
-                    mapRef.current.flyTo([lat, lng], 14, { duration: 1.5 })
-                }
-
-                try {
-                    // Call AI Assistant API
-                    const response = await fetch("/api/ai-assistant/nearby-threats", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            latitude: lat,
-                            longitude: lng,
-                            radius_km: 1.0
-                        })
-                    })
-
-                    if (!response.ok) {
-                        throw new Error("AI analysis failed")
-                    }
-
-                    const data = await response.json()
-
-                    setAiResponse({
-                        visible: true,
-                        dangerLevel: data.danger_level,
-                        dangerScore: data.danger_score,
-                        summary: data.ai_summary,
-                        reportsCount: data.reports_count
-                    })
-                } catch (error) {
-                    console.error("AI analysis error:", error)
-                    setAiResponse({
-                        visible: true,
-                        dangerLevel: "Błąd",
-                        dangerScore: 0,
-                        summary: "Nie udało się pobrać analizy. Spróbuj ponownie później.",
-                        reportsCount: 0
-                    })
-                } finally {
-                    setAiLoading(false)
-                }
-            },
-            (error) => {
-                console.error("Geolocation error:", error)
-                alert("Nie można pobrać Twojej lokalizacji: " + error.message)
-                setAiLoading(false)
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
-        )
-    }
-
-    // Get danger level color
-    const getDangerColor = (level: string) => {
-        switch (level) {
-            case "Bardzo niski":
-                return "bg-green-500"
-            case "Niski":
-                return "bg-green-400"
-            case "Umiarkowany":
-                return "bg-yellow-500"
-            case "Wysoki":
-                return "bg-orange-500"
-            case "Bardzo wysoki":
-                return "bg-red-500"
-            default:
-                return "bg-gray-500"
-        }
-    }
-
-    // Get danger level emoji
-    const getDangerEmoji = (level: string) => {
-        switch (level) {
-            case "Bardzo niski":
-                return "🌟"
-            case "Niski":
-                return "✅"
-            case "Umiarkowany":
-                return "⚠️"
-            case "Wysoki":
-                return "🔶"
-            case "Bardzo wysoki":
-                return "🚨"
-            default:
-                return "❓"
-        }
-    }
-
-    // Close AI response and remove only the circle (keep marker visible)
-    const handleCloseAIResponse = () => {
-        setAiResponse(null)
-
-        // Remove only the circle from map, keep the marker
-        if (mapRef.current) {
-            if (userLocationCircleRef.current) {
-                mapRef.current.removeLayer(userLocationCircleRef.current)
-                userLocationCircleRef.current = null
-            }
-        }
-    }
 
     return (
         <>
@@ -910,11 +754,10 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                         <button
                             onClick={handleAIAnalysis}
                             disabled={aiLoading}
-                            className={`flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg ${
-                                aiLoading
+                            className={`flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg ${aiLoading
                                     ? "cursor-wait bg-[#d97706]/70"
                                     : "bg-gradient-to-r from-[#d97706] to-[#ea580c] hover:from-[#ea580c] hover:to-[#dc2626]"
-                            } font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-xl`}
+                                } font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-xl`}
                             title="Sprawdź bezpieczeństwo okolicy z AI"
                         >
                             {aiLoading ? (
@@ -1034,7 +877,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                         >
                             <span className="text-xl font-bold">✕</span>
                         </span>
-                        {}
+                        { }
                         <img
                             src={lightboxImage}
                             alt="Pełnowymiarowe zdjęcie"

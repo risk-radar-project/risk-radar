@@ -1,5 +1,5 @@
-import type { ReactNode } from "react"
+import type { ComponentProps, ReactNode } from "react"
 
-export function TableCell({ children }: { children: ReactNode }) {
-    return <td className="px-3 py-2">{children}</td>
+export function TableCell({ children, className, ...props }: { children: ReactNode } & ComponentProps<"td">) {
+    return <td className={`px-3 py-2 ${className || ""}`} {...props}>{children}</td>
 }
