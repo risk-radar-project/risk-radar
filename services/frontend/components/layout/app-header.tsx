@@ -21,15 +21,11 @@ export function AppHeader() {
     const permissions = user?.permissions || []
     const roles = user?.roles || []
 
-    const isAdmin = permissions.includes("*:*") ||
-        permissions.includes("system:admin") ||
-        permissions.includes("PERM_SYSTEM_ADMIN") ||
-        roles.includes("ROLE_ADMIN")
+    // In JWT: roles are "ROLE_ADMIN", permissions are "PERM_*:*"
+    const isAdmin = roles.includes("ROLE_ADMIN") ||
+        permissions.includes("PERM_*:*") ||
+        permissions.includes("PERM_SYSTEM:ADMIN")
 
-
-    const canValidate = isAdmin ||
-        permissions.includes("reports:validate") ||
-        permissions.includes("PERM_REPORTS_VALIDATE")
 
     return (
         <header className="bg-[#362c20]/90 backdrop-blur-sm border-b border-[#e0dcd7]/10">
@@ -45,15 +41,6 @@ export function AppHeader() {
                     >
                         Mapa
                     </a>
-
-                    {canValidate && (
-                        <Link
-                            href="/reports"
-                            className="text-[#e0dcd7] hover:text-[#d97706] transition-colors font-medium"
-                        >
-                            Weryfikacja
-                        </Link>
-                    )}
 
                     <Link
                         href="/profile"
