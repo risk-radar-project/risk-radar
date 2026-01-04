@@ -61,6 +61,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     const [showResults, setShowResults] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
     const [isAdmin, setIsAdmin] = useState(false)
+    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
 
     useEffect(() => {
         const token = localStorage.getItem("access_token")
@@ -600,7 +601,6 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     }
 
 
-
     return (
         <>
             {/* Styles moved to globals.css */}
@@ -755,8 +755,8 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                             onClick={handleAIAnalysis}
                             disabled={aiLoading}
                             className={`flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg ${aiLoading
-                                    ? "cursor-wait bg-[#d97706]/70"
-                                    : "bg-gradient-to-r from-[#d97706] to-[#ea580c] hover:from-[#ea580c] hover:to-[#dc2626]"
+                                ? "cursor-wait bg-[#d97706]/70"
+                                : "bg-gradient-to-r from-[#d97706] to-[#ea580c] hover:from-[#ea580c] hover:to-[#dc2626]"
                                 } font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-xl`}
                             title="Sprawdź bezpieczeństwo okolicy z AI"
                         >
