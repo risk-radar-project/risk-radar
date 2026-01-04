@@ -38,7 +38,7 @@ export function ReportCard({ report }: { report: Report }) {
     const [isPending, startTransition] = useTransition()
     const [isExpanded, setIsExpanded] = useState(false)
     const [showSuccessAnimation, setShowSuccessAnimation] = useState(false)
-    
+
     const hasImages = report.imageIds && report.imageIds.length > 0
     const MEDIA_SERVICE_BASE_URL = 'http://localhost:8084/media/'
 
@@ -104,7 +104,7 @@ export function ReportCard({ report }: { report: Report }) {
     }
 
     return (
-        <SectionCard className="bg-[#362c20] border-[#e0dcd7]/10 relative overflow-hidden">
+        <SectionCard className="bg-zinc-900 border-zinc-800 relative overflow-hidden">
             {/* Success Animation Overlay */}
             {showSuccessAnimation && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-green-500/20 backdrop-blur-sm animate-fadeIn">
@@ -114,16 +114,16 @@ export function ReportCard({ report }: { report: Report }) {
                     </div>
                 </div>
             )}
-            
+
             <div className="space-y-3">
                 {/* Header */}
                 <div className="flex items-start justify-between">
                     <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-[#e0dcd7]">
+                        <h3 className="text-lg font-semibold text-zinc-100">
                             {report.title}
                         </h3>
                         <div className="flex items-center gap-2 mt-1">
-                            <p className="text-sm text-[#d97706]">
+                            <p className="text-sm text-yellow-500">
                                 {CATEGORY_DISPLAY_NAMES[report.category] || report.category}
                             </p>
                             {/* AI Sparkle Animation */}
@@ -153,56 +153,53 @@ export function ReportCard({ report }: { report: Report }) {
 
                 {/* Description */}
                 {report.description && (
-                    <p className="text-[#e0dcd7]/80 text-sm">
+                    <p className="text-zinc-400 text-sm">
                         {report.description}
                     </p>
                 )}
 
                 {/* AI Verification Results */}
                 {aiStatus.show && (
-                    <div className="p-3 rounded-lg bg-black/20 border border-[#e0dcd7]/10">
+                    <div className="p-3 rounded-lg bg-black/20 border border-zinc-800">
                         <div className="flex items-center gap-2 mb-2">
                             <span className="material-symbols-outlined text-sm text-blue-400">psychology</span>
                             <span className="text-xs font-semibold text-blue-400">Szczegóły analizy AI</span>
                         </div>
                         <div className="space-y-2 text-xs">
                             <div className="flex justify-between items-center">
-                                <span className="text-[#e0dcd7]/70">Wynik:</span>
-                                <span className={`px-2 py-1 rounded font-medium ${
-                                    aiStatus.isFake 
-                                        ? 'bg-red-500/20 text-red-400' 
+                                <span className="text-zinc-500">Wynik:</span>
+                                <span className={`px-2 py-1 rounded font-medium ${aiStatus.isFake
+                                        ? 'bg-red-500/20 text-red-400'
                                         : 'bg-green-500/20 text-green-400'
-                                }`}>
+                                    }`}>
                                     {aiStatus.isFake ? '✗ Podejrzane' : '✓ Autentyczne'}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="text-[#e0dcd7]/70">Prawdopodobieństwo:</span>
+                                <span className="text-zinc-500">Prawdopodobieństwo:</span>
                                 <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 font-medium">
                                     {(aiStatus.probability! * 100).toFixed(1)}%
                                 </span>
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="text-[#e0dcd7]/70">Pewność AI:</span>
-                                <span className={`px-2 py-1 rounded font-medium ${
-                                    aiStatus.confidence === 'Wysoka pewność' ? 'bg-green-500/20 text-green-400' :
-                                    aiStatus.confidence === 'Średnia pewność' ? 'bg-yellow-500/20 text-yellow-400' :
-                                    'bg-orange-500/20 text-orange-400'
-                                }`}>
+                                <span className="text-zinc-500">Pewność AI:</span>
+                                <span className={`px-2 py-1 rounded font-medium ${aiStatus.confidence === 'Wysoka pewność' ? 'bg-green-500/20 text-green-400' :
+                                        aiStatus.confidence === 'Średnia pewność' ? 'bg-yellow-500/20 text-yellow-400' :
+                                            'bg-orange-500/20 text-orange-400'
+                                    }`}>
                                     {aiStatus.confidence}
                                 </span>
                             </div>
-                            <div className="flex justify-between items-center pt-1 border-t border-[#e0dcd7]/10">
-                                <span className="text-[#e0dcd7]/70">Status:</span>
-                                <span className={`px-2 py-1 rounded font-medium ${
-                                    aiStatus.isFake 
-                                        ? 'bg-orange-500/20 text-orange-400' 
+                            <div className="flex justify-between items-center pt-1 border-t border-zinc-800">
+                                <span className="text-zinc-500">Status:</span>
+                                <span className={`px-2 py-1 rounded font-medium ${aiStatus.isFake
+                                        ? 'bg-orange-500/20 text-orange-400'
                                         : 'bg-green-500/20 text-green-400'
-                                }`}>
+                                    }`}>
                                     {aiStatus.message}
                                 </span>
                             </div>
-                            <div className="text-[#e0dcd7]/60 text-[11px] italic mt-2">
+                            <div className="text-zinc-500 text-[11px] italic mt-2">
                                 💡 {aiStatus.description}
                             </div>
                         </div>
@@ -239,7 +236,7 @@ export function ReportCard({ report }: { report: Report }) {
                 )}
 
                 {/* Action buttons */}
-                <div className="flex gap-3 pt-2 border-t border-[#e0dcd7]/10">
+                <div className="flex gap-3 pt-2 border-t border-zinc-800">
                     <button
                         onClick={handleVerify}
                         disabled={isPending}
@@ -258,14 +255,14 @@ export function ReportCard({ report }: { report: Report }) {
                     {hasImages ? (
                         <button
                             onClick={() => setIsExpanded(!isExpanded)}
-                            className="px-4 py-2 rounded-lg bg-[#362c20] hover:bg-[#362c20]/80 text-[#e0dcd7] text-sm font-medium transition-colors border border-[#e0dcd7]/20"
+                            className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors border border-zinc-700"
                         >
                             {isExpanded ? 'Ukryj zdjęcia' : 'Pokaż zdjęcia'}
                         </button>
                     ) : (
                         <button
                             disabled
-                            className="px-4 py-2 rounded-lg bg-transparent text-[#e0dcd7]/30 text-sm font-medium border border-[#e0dcd7]/10 cursor-not-allowed"
+                            className="px-4 py-2 rounded-lg bg-transparent text-zinc-600 text-sm font-medium border border-zinc-800 cursor-not-allowed"
                         >
                             Brak zdjęć
                         </button>

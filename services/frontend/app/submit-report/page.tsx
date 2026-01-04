@@ -254,6 +254,8 @@ export default function SubmitReportPage() {
             const createdReport = await response.json()
             const reportId = createdReport.id || `report-${Date.now()}`
 
+            // AI Verification commented out - auto-acceptance disabled
+            /* 
             // Step 2: AI Verification - check if report is valid/fake
             const verificationResult = await submitAndVerifyReport(
                 reportId,
@@ -281,6 +283,20 @@ export default function SubmitReportPage() {
                 // Rejected - show error
                 setError(verificationResult.message)
             }
+            */
+
+            // Manual success fallback
+            setSuccess(true)
+            setSubmissionResult({
+                accepted: true,
+                requiresReview: true,
+                message: 'Zgłoszenie zostało wysłane i trafiło do weryfikacji.',
+                verification: null,
+                reportId: reportId
+            })
+            setTimeout(() => {
+                window.location.href = '/'
+            }, 2500)
 
         } catch (err: any) {
             setError(err.message || 'Wystąpił błąd podczas tworzenia zgłoszenia')
@@ -308,11 +324,10 @@ export default function SubmitReportPage() {
                         <div className="bg-[#2a221a] rounded-lg p-3 mb-4 text-left">
                             <p className="text-xs text-[#e0dcd7]/50 mb-1">Wynik weryfikacji AI:</p>
                             <p className="text-sm text-[#e0dcd7]">
-                                Pewność: <span className={`font-semibold ${
-                                    submissionResult.verification.confidence === 'high' ? 'text-green-400' :
+                                Pewność: <span className={`font-semibold ${submissionResult.verification.confidence === 'high' ? 'text-green-400' :
                                     submissionResult.verification.confidence === 'medium' ? 'text-yellow-400' :
-                                    'text-gray-400'
-                                }`}>{submissionResult.verification.confidence}</span>
+                                        'text-gray-400'
+                                    }`}>{submissionResult.verification.confidence}</span>
                             </p>
                         </div>
                     )}
@@ -481,12 +496,12 @@ export default function SubmitReportPage() {
                         className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-[#d97706] hover:bg-[#d97706]/80 text-white rounded-lg font-bold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <span className="material-symbols-outlined">send</span>
-                        {isSubmitting ? 'Weryfikowanie i wysyłanie...' : 'Wyślij Zgłoszenie'}
+                        {isSubmitting ? 'Wysyłanie...' : 'Wyślij Zgłoszenie'}
                     </button>
 
                     {isSubmitting && (
                         <p className="text-center text-[#e0dcd7]/60 text-sm">
-                            Twoje zgłoszenie jest weryfikowane przez AI...
+                            Wysyłanie zgłoszenia...
                         </p>
                     )}
                 </form>

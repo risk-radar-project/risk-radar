@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import report_service.entity.Report;
-import report_service.entity.ReportStatus;
+
 import report_service.repository.ReportRepository;
 
 import java.time.LocalDateTime;
@@ -38,8 +38,8 @@ public class VerificationEventConsumer {
                 boolean isFake = event.get("is_fake").asBoolean();
                 double fakeProbability = event.get("fake_probability").asDouble();
                 String confidence = event.get("confidence").asText();
-                
-                log.info("Processing verification for report {}: isFake={}, probability={}, confidence={}", 
+
+                log.info("Processing verification for report {}: isFake={}, probability={}, confidence={}",
                         reportId, isFake, fakeProbability, confidence);
 
                 Report report = reportRepository.findById(UUID.fromString(reportId))
@@ -51,15 +51,17 @@ public class VerificationEventConsumer {
                     report.setAiFakeProbability(fakeProbability);
                     report.setAiConfidence(confidence);
                     report.setAiVerifiedAt(LocalDateTime.now());
-                    
-                    // Update status based on verification result
-                    if (isFake) {
-                        report.setStatus(ReportStatus.REJECTED);
-                        log.info("Report {} marked as REJECTED (fake detected)", reportId);
-                    } else {
-                        report.setStatus(ReportStatus.VERIFIED);
-                        log.info("Report {} marked as VERIFIED (authentic)", reportId);
-                    }
+
+                    // Update status based on verification result - DISABLED (Auto-Verification OFF)
+                    /*
+                     * if (isFake) {
+                     * report.setStatus(ReportStatus.REJECTED);
+                     * log.info("Report {} marked as REJECTED (fake detected)", reportId);
+                     * } else {
+                     * report.setStatus(ReportStatus.VERIFIED);
+                     * log.info("Report {} marked as VERIFIED (authentic)", reportId);
+                     * }
+                     */
                     reportRepository.save(report);
                 } else {
                     log.warn("Report {} not found in database", reportId);
