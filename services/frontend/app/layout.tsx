@@ -9,8 +9,7 @@ import { QueryClientWrapper } from "@/components/providers/query-client-provider
 import { ClientSessionHydrator } from "@/components/providers/client-session-hydrator"
 import { loadSession } from "@/lib/auth/load-session"
 import AuthGuard from "@/components/auth-guard"
-import { AppHeader } from "@/components/layout/app-header"
-import { AppFooter } from "@/components/layout/app-footer"
+import { PathAwareShell } from "@/components/layout/path-aware-shell"
 
 const fontSans = Geist({
     variable: "--font-geist-sans",
@@ -35,10 +34,6 @@ export default async function RootLayout({
     const session = await loadSession()
     const serializedSession = JSON.stringify(session ?? null).replace(/</g, "\\u003c")
 
-    const headersList = await headers()
-    const pathname = headersList.get("x-pathname") || ""
-    const isMapPage = pathname === "/" || pathname === ""
-
     return (
         <html lang="en">
             <head>
@@ -62,9 +57,7 @@ export default async function RootLayout({
                 <ClientSessionHydrator />
                 <QueryClientWrapper>
                     <AuthGuard>
-                        {!isMapPage && <AppHeader />}
-                        <main className={isMapPage ? "h-screen" : "flex-1"}>{children}</main>
-                        {!isMapPage && <AppFooter />}
+                        <PathAwareShell>{children}</PathAwareShell>
                         <Toaster />
                     </AuthGuard>
                 </QueryClientWrapper>
