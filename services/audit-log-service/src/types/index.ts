@@ -36,6 +36,11 @@ export interface AuditLogFilters {
     end_date?: string;
 }
 
+export interface LoginHistoryQuery {
+    actor_id: string;
+    limit?: number;
+}
+
 export interface AnonymizeRequest {
     actor_id: string;
 }

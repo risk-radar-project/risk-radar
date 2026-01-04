@@ -3,8 +3,6 @@ export async function checkAdminPermission(): Promise<boolean> {
     return false
 }
 
-export async function checkUserPermission(
-    _permission: string
-): Promise<boolean> {
+export async function checkUserPermission(): Promise<boolean> {
     return false
 }

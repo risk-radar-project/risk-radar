@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import { categorizeReport, submitAndVerifyReport, type CategorizationResponse, type SubmissionResult } from '@/lib/api/ai'
 
 // Dynamically import map component (client-side only)
-const LocationPickerMap = dynamic(() => import('@/components/location-picker-map'), {
+const LocationPickerMap = dynamic(() => import("@/components/location-picker-map"), {
     ssr: false,
     loading: () => (
         <div className="w-full h-[400px] rounded-lg bg-[#362c20] flex items-center justify-center">
@@ -16,15 +16,15 @@ const LocationPickerMap = dynamic(() => import('@/components/location-picker-map
 })
 
 type ReportCategory =
-    | 'VANDALISM'
-    | 'INFRASTRUCTURE'
-    | 'DANGEROUS_SITUATION'
-    | 'TRAFFIC_ACCIDENT'
-    | 'PARTICIPANT_BEHAVIOR'
-    | 'PARTICIPANT_HAZARD'
-    | 'WASTE_ILLEGAL_DUMPING'
-    | 'BIOLOGICAL_HAZARD'
-    | 'OTHER'
+    | "VANDALISM"
+    | "INFRASTRUCTURE"
+    | "DANGEROUS_SITUATION"
+    | "TRAFFIC_ACCIDENT"
+    | "PARTICIPANT_BEHAVIOR"
+    | "PARTICIPANT_HAZARD"
+    | "WASTE_ILLEGAL_DUMPING"
+    | "BIOLOGICAL_HAZARD"
+    | "OTHER"
 
 interface CategoryOption {
     value: ReportCategory
@@ -74,7 +74,6 @@ function mapAICategoryToValue(aiCategory: string): ReportCategory {
 }
 
 export default function SubmitReportPage() {
-    const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
@@ -86,11 +85,11 @@ export default function SubmitReportPage() {
     const categorizationDebounceRef = useRef<NodeJS.Timeout | null>(null)
 
     const [formData, setFormData] = useState({
-        title: '',
-        description: '',
+        title: "",
+        description: "",
         latitude: null as number | null,
         longitude: null as number | null,
-        category: 'OTHER' as ReportCategory,
+        category: "OTHER" as ReportCategory,
         images: [] as File[]
     })
 
@@ -150,12 +149,12 @@ export default function SubmitReportPage() {
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            setFormData(prev => ({ ...prev, images: Array.from(e.target.files || []) }))
+            setFormData((prev) => ({ ...prev, images: Array.from(e.target.files || []) }))
         }
     }
 
     const handleLocationSelect = (lat: number, lng: number) => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
             latitude: lat,
             longitude: lng
@@ -178,7 +177,7 @@ export default function SubmitReportPage() {
 
         // Validate location
         if (formData.latitude === null || formData.longitude === null) {
-            setError('Proszę wybrać lokalizację na mapie')
+            setError("Proszę wybrać lokalizację na mapie")
             setIsSubmitting(false)
             return
         }
@@ -191,7 +190,7 @@ export default function SubmitReportPage() {
             if (formData.images.length > 0) {
                 for (const image of formData.images) {
                     const imageFormData = new FormData()
-                    imageFormData.append('file', image)
+                    imageFormData.append("file", image)
 
                     const imageResponse = await fetch('/api/media/upload', {
                         method: 'POST',
@@ -202,7 +201,7 @@ export default function SubmitReportPage() {
                     })
 
                     if (!imageResponse.ok) {
-                        throw new Error('Nie udało się przesłać zdjęć')
+                        throw new Error("Nie udało się przesłać zdjęć")
                     }
 
                     const imageData = await imageResponse.json()
@@ -237,8 +236,8 @@ export default function SubmitReportPage() {
                 userId: userId
             }
 
-            const response = await fetch('/api/reports/create', {
-                method: 'POST',
+            const response = await fetch("/api/reports/create", {
+                method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${accessToken}`
@@ -248,7 +247,7 @@ export default function SubmitReportPage() {
 
             if (!response.ok) {
                 const errorData = await response.json()
-                throw new Error(errorData.error || 'Nie udało się utworzyć zgłoszenia')
+                throw new Error(errorData.error || "Nie udało się utworzyć zgłoszenia")
             }
 
             const createdReport = await response.json()
@@ -327,24 +326,20 @@ export default function SubmitReportPage() {
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
-                    <a
+                    <Link
                         href="/"
                         className="inline-flex items-center gap-2 text-[#e0dcd7] hover:text-[#d97706] transition-colors mb-4"
                     >
                         <span className="material-symbols-outlined">arrow_back</span>
                         <span>Powrót do mapy</span>
-                    </a>
+                    </Link>
                     <h1 className="text-4xl font-bold text-[#e0dcd7] mb-2">Zgłoś Nowe Zdarzenie</h1>
                     <p className="text-[#e0dcd7]/70">Wypełnij formularz, aby zgłosić nowe zdarzenie w Twojej okolicy</p>
                 </div>
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="bg-[#362c20] rounded-xl p-6 space-y-6">
-                    {error && (
-                        <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 text-red-200">
-                            {error}
-                        </div>
-                    )}
+                    {error && <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 text-red-200">{error}</div>}
 
                     {/* Title */}
                     <div>
@@ -442,10 +437,9 @@ export default function SubmitReportPage() {
                     {/* Location Map */}
                     <div>
                         <label className="block text-[#e0dcd7] font-semibold mb-2">
-                            Lokalizacja * {formData.latitude && formData.longitude && (
-                                <span className="text-[#d97706] text-sm font-normal ml-2">
-                                    ✓ Wybrano
-                                </span>
+                            Lokalizacja *{" "}
+                            {formData.latitude && formData.longitude && (
+                                <span className="text-[#d97706] text-sm font-normal ml-2">✓ Wybrano</span>
                             )}
                         </label>
                         <p className="text-[#e0dcd7]/60 text-sm mb-3">
@@ -469,7 +463,7 @@ export default function SubmitReportPage() {
                         />
                         {formData.images.length > 0 && (
                             <p className="text-[#e0dcd7]/70 text-sm mt-2">
-                                Wybrano {formData.images.length} {formData.images.length === 1 ? 'zdjęcie' : 'zdjęć'}
+                                Wybrano {formData.images.length} {formData.images.length === 1 ? "zdjęcie" : "zdjęć"}
                             </p>
                         )}
                     </div>

@@ -1,11 +1,11 @@
-'use client'
+"use client"
 
-import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic'
-import { Report } from './map-component'
+import { usePathname } from "next/navigation"
+import { useMemo } from "react"
+import dynamic from "next/dynamic"
+import { Report } from "./map-component"
 
-const MapComponent = dynamic(() => import('./map-component'), {
+const MapComponent = dynamic(() => import("./map-component"), {
     ssr: false,
     loading: () => (
         <div className="flex items-center justify-center h-screen bg-[#2a221a]">
@@ -20,16 +20,7 @@ interface MapWrapperProps {
 
 export default function MapWrapper({ initialReports }: MapWrapperProps) {
     const pathname = usePathname()
-    const [mounted, setMounted] = useState(false)
-
-    // Force re-mount on navigation by using pathname + timestamp
-    useEffect(() => {
-        setMounted(true)
-        return () => setMounted(false)
-    }, [pathname])
-
-    // Create unique key based on mount state to force re-render
-    const mapKey = `map-${pathname}-${mounted ? Date.now() : 0}`
+    const mapKey = useMemo(() => `map-${pathname}`, [pathname])
 
     return (
         <div className="h-screen w-full">

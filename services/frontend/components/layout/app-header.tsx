@@ -34,9 +34,9 @@ export function AppHeader() {
     return (
         <header className="bg-[#362c20]/90 backdrop-blur-sm border-b border-[#e0dcd7]/10">
             <div className="px-6 h-16 flex items-center justify-between">
-                <a href="/" className="text-xl font-bold text-[#e0dcd7] hover:text-[#d97706] transition-colors">
+                <Link href="/" className="text-xl font-bold text-[#e0dcd7] hover:text-[#d97706] transition-colors">
                     RiskRadar
-                </a>
+                </Link>
 
                 <nav className="flex items-center gap-6 text-sm">
                     <a
