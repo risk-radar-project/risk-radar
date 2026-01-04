@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+
 @Slf4j
 @Service
 public class ReportService {
@@ -33,7 +34,6 @@ public class ReportService {
         this.reportRepository = reportRepository;
         this.kafkaTemplate = kafkaTemplate;
     }
-
 
     public void createReport(ReportRequest request) {
         Report report = new Report();
@@ -58,7 +58,6 @@ public class ReportService {
         kafkaTemplate.send(reportTopic, payload);
     }
 
-    // ----------------- Aktualizacja statusu raportu -----------------
     public void updateReportStatus(UUID id, ReportStatus status) {
         Optional<Report> reportOpt = reportRepository.findById(id);
         if (reportOpt.isPresent()) {
@@ -70,26 +69,28 @@ public class ReportService {
         }
     }
 
-    // ----------------- Pobranie raportów z paginacją i sortowaniem -----------------
     public Page<Report> getReports(Pageable pageable) {
         return reportRepository.findAll(pageable);
     }
+
     public Report getReportById(UUID id) {
         return reportRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Report not found"));
     }
+
     public List<Report> getVerifiedReports() {
         return reportRepository.findByStatus(ReportStatus.VERIFIED);
     }
+
     public List<Report> getPendingReports() {
         return reportRepository.findByStatus(ReportStatus.PENDING);
     }
+
     private Map<String, String> reportToPayload(Report report) {
         return Map.of(
                 "id", report.getId().toString(),
                 "title", report.getTitle(),
-                "description", report.getDescription()
-        );
+                "description", report.getDescription());
     }
 
 }
