@@ -3,6 +3,7 @@ import { NextFunction, Request, Response } from 'express';
 import { writePaginated } from '../utils/http-utils';
 import { auditLogService } from '../services/audit-log-service';
 import { getWebSocketHandler } from '../websocket/websocket-handler';
+import { LoginHistoryQuery } from '../types';
 
 // Create Audit Log
 export async function createLog(
@@ -111,6 +112,21 @@ export async function anonymizeLogs(
             message: 'Logs anonymized successfully',
             affected_rows: affected,
         });
+    } catch (err) {
+        next(err);
+    }
+}
+
+// Get recent login events for a user
+export async function getLoginHistory(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+): Promise<void> {
+    try {
+        const { actor_id, limit } = req.query as unknown as LoginHistoryQuery;
+        const history = await auditLogService.getLoginHistory(actor_id, limit || 10);
+        res.status(200).json(history);
     } catch (err) {
         next(err);
     }

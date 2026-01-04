@@ -2,6 +2,9 @@
 import { io, Socket } from 'socket.io-client';
 import request from 'supertest';
 
+// Increase timeout to account for server spin-up and WS handshake in CI/containers
+jest.setTimeout(20000);
+
 // Mock noisy or external modules
 jest.mock('../../src/utils/logger', () => ({
     logger: {

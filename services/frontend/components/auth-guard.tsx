@@ -1,11 +1,11 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { isTokenExpired, parseJwt } from "@/lib/auth/jwt-utils";
-import { refreshAccessToken } from "@/lib/auth/auth-service";
+import { useEffect, useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
+import { isTokenExpired, parseJwt } from "@/lib/auth/jwt-utils"
+import { refreshAccessToken } from "@/lib/auth/auth-service"
 
-const PUBLIC_PATHS = ["/", "/login", "/register", "/terms"];
+const PUBLIC_PATHS = ["/", "/login", "/register", "/terms"]
 
 // Map paths to required permissions
 const ROUTE_PERMISSIONS: Record<string, string[]> = {
@@ -14,153 +14,155 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
     "/audit": ["audit:view", "PERM_AUDIT_VIEW"],
     "/users": ["users:view", "PERM_USERS_VIEW"],
     "/reports": ["reports:validate", "PERM_REPORTS_VALIDATE"],
-    "/submit-report": ["reports:create", "PERM_REPORTS_CREATE", "ROLE_USER"],
-};
-
+    "/submit-report": ["reports:create", "PERM_REPORTS_CREATE", "ROLE_USER"]
+}
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-    const router = useRouter();
-    const pathname = usePathname();
-    const [authorized, setAuthorized] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const [accessDenied, setAccessDenied] = useState(false);
-    const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false);
+    const router = useRouter()
+    const pathname = usePathname()
+    const [authorized, setAuthorized] = useState(false)
+    const [loading, setLoading] = useState(true)
+    const [accessDenied, setAccessDenied] = useState(false)
+    const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false)
 
     // console.log("AuthGuard RENDER:", pathname, "| Loading:", loading, "| Authorized:", authorized);
 
     useEffect(() => {
         const checkAuth = async () => {
-            setAccessDenied(false);
+            setAccessDenied(false)
             // Normalize path
-            const normalizedPath = pathname.endsWith("/") && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
+            const normalizedPath = pathname.endsWith("/") && pathname.length > 1 ? pathname.slice(0, -1) : pathname
 
-            const accessToken = localStorage.getItem("access_token");
+            const accessToken = localStorage.getItem("access_token")
 
             // Redirect logged-in users away from auth pages
             if (accessToken && !isTokenExpired(accessToken)) {
                 if (["/login", "/register"].includes(normalizedPath)) {
-                    setAlreadyLoggedIn(true);
-                    setLoading(false);
-                    setTimeout(() => router.push("/"), 2000);
-                    return;
+                    setAlreadyLoggedIn(true)
+                    setLoading(false)
+                    setTimeout(() => router.push("/"), 2000)
+                    return
                 }
             }
 
             // Check if it's a public path
-            const isPublicPath = PUBLIC_PATHS.includes(normalizedPath) ||
+            const isPublicPath =
+                PUBLIC_PATHS.includes(normalizedPath) ||
                 normalizedPath.startsWith("/_next") ||
                 normalizedPath.startsWith("/static") ||
-                normalizedPath.startsWith("/api");
+                normalizedPath.startsWith("/api")
 
             if (isPublicPath) {
-                setAuthorized(true);
-                setLoading(false);
-                return;
+                setAuthorized(true)
+                setLoading(false)
+                return
             }
 
-            const refreshToken = localStorage.getItem("refresh_token");
+            const refreshToken = localStorage.getItem("refresh_token")
 
             if (!accessToken) {
-                console.log("AuthGuard: Missing access token -> Redirect to login");
-                setAuthorized(false);
-                setLoading(false);
-                router.push("/login");
-                return;
+                console.log("AuthGuard: Missing access token -> Redirect to login")
+                setAuthorized(false)
+                setLoading(false)
+                router.push("/login")
+                return
             }
 
-            let currentToken = accessToken;
+            let currentToken = accessToken
 
             if (isTokenExpired(accessToken)) {
-                console.log("AuthGuard: Access token expired. Attempting refresh...");
+                console.log("AuthGuard: Access token expired. Attempting refresh...")
 
                 if (!refreshToken) {
-                    console.log("AuthGuard: No refresh token -> Redirect to login");
-                    setAuthorized(false);
-                    setLoading(false);
-                    router.push("/login");
-                    return;
+                    console.log("AuthGuard: No refresh token -> Redirect to login")
+                    setAuthorized(false)
+                    setLoading(false)
+                    router.push("/login")
+                    return
                 }
 
-                const newTokens = await refreshAccessToken(refreshToken);
+                const newTokens = await refreshAccessToken(refreshToken)
 
                 if (newTokens) {
-                    console.log("AuthGuard: Token refresh successful");
-                    localStorage.setItem("access_token", newTokens.accessToken);
-                    localStorage.setItem("refresh_token", newTokens.refreshToken);
-                    currentToken = newTokens.accessToken;
+                    console.log("AuthGuard: Token refresh successful")
+                    localStorage.setItem("access_token", newTokens.accessToken)
+                    localStorage.setItem("refresh_token", newTokens.refreshToken)
+                    currentToken = newTokens.accessToken
                 } else {
-                    console.log("AuthGuard: Token refresh failed -> Redirect to login");
-                    localStorage.removeItem("access_token");
-                    localStorage.removeItem("refresh_token");
-                    setAuthorized(false);
-                    setLoading(false);
-                    router.push("/login");
-                    return;
+                    console.log("AuthGuard: Token refresh failed -> Redirect to login")
+                    localStorage.removeItem("access_token")
+                    localStorage.removeItem("refresh_token")
+                    setAuthorized(false)
+                    setLoading(false)
+                    router.push("/login")
+                    return
                 }
             }
 
             // --- CHECK PERMISSIONS (RBAC) ---
-            const user = parseJwt(currentToken);
+            const user = parseJwt(currentToken)
             if (!user) {
-                console.log("AuthGuard: Failed to parse token");
-                setAuthorized(false);
-                setLoading(false);
-                router.push("/login");
-                return;
+                console.log("AuthGuard: Failed to parse token")
+                setAuthorized(false)
+                setLoading(false)
+                router.push("/login")
+                return
             }
 
             // Check if path requires special permissions
             const requiredPermissions = Object.entries(ROUTE_PERMISSIONS).find(([path]) =>
                 normalizedPath.startsWith(path)
-            )?.[1];
+            )?.[1]
 
             if (requiredPermissions) {
-                const userPermissions = user.permissions || [];
-                const userRoles = user.roles || [];
+                const userPermissions = user.permissions || []
+                const userRoles = user.roles || []
 
                 // Admin has access to everything
-                const isAdmin = userPermissions.includes("*:*") ||
+                const isAdmin =
+                    userPermissions.includes("*:*") ||
                     userPermissions.includes("system:admin") ||
-                    userRoles.includes("ROLE_ADMIN");
+                    userRoles.includes("ROLE_ADMIN")
 
                 if (isAdmin) {
-                    setAuthorized(true);
-                    setLoading(false);
-                    return;
+                    setAuthorized(true)
+                    setLoading(false)
+                    return
                 }
 
                 // Check if user has required permission
-                const hasPermission = requiredPermissions.some(req => {
-                    const reqUpper = req.toUpperCase();
+                const hasPermission = requiredPermissions.some((req) => {
+                    const reqUpper = req.toUpperCase()
                     // Check permissions
-                    if (userPermissions.includes(req) ||
+                    if (
+                        userPermissions.includes(req) ||
                         userPermissions.includes(`PERM_${reqUpper}`) ||
-                        userPermissions.some(p => p === req)) {
-                        return true;
+                        userPermissions.some((p) => p === req)
+                    ) {
+                        return true
                     }
                     // Check roles
-                    if (userRoles.includes(req) ||
-                        userRoles.includes(`ROLE_${reqUpper}`)) {
-                        return true;
+                    if (userRoles.includes(req) || userRoles.includes(`ROLE_${reqUpper}`)) {
+                        return true
                     }
-                    return false;
-                });
+                    return false
+                })
 
                 if (!hasPermission) {
-                    console.log(`AuthGuard: Access Denied to ${normalizedPath}. Missing permissions: ${requiredPermissions}`);
-                    setAccessDenied(true);
-                    setLoading(false);
-                    return;
+                    console.log(`AuthGuard: Access Denied to ${normalizedPath}. Missing permissions: ${requiredPermissions}`)
+                    setAccessDenied(true)
+                    setLoading(false)
+                    return
                 }
             }
 
             // Token valid & Permissions OK
-            setAuthorized(true);
-            setLoading(false);
-        };
+            setAuthorized(true)
+            setLoading(false)
+        }
 
-        checkAuth();
-    }, [pathname, router]);
+        checkAuth()
+    }, [pathname, router])
 
     // Prevent flash of unauthorized content
     if (alreadyLoggedIn) {
@@ -170,7 +172,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                 <p className="text-[#baab9c]">Przekierowywanie na stronę główną...</p>
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#d97706]"></div>
             </div>
-        );
+        )
     }
 
     if (loading) {
@@ -179,16 +181,16 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                 <p>Przekierowywanie do logowania...</p>
                 <button
                     onClick={() => {
-                        localStorage.removeItem("access_token");
-                        localStorage.removeItem("refresh_token");
-                        window.location.href = "/login";
+                        localStorage.removeItem("access_token")
+                        localStorage.removeItem("refresh_token")
+                        window.location.href = "/login"
                     }}
                     className="text-sm text-red-400 hover:text-red-300 underline"
                 >
                     Wymuś wylogowanie
                 </button>
             </div>
-        );
+        )
     }
 
     if (accessDenied) {
@@ -198,33 +200,31 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                 <p className="text-[#baab9c]">Nie masz wystarczających uprawnień, aby wyświetlić tę stronę.</p>
                 <button
                     onClick={() => {
-                        localStorage.removeItem("access_token");
-                        localStorage.removeItem("refresh_token");
-                        window.location.href = "/login";
+                        localStorage.removeItem("access_token")
+                        localStorage.removeItem("refresh_token")
+                        window.location.href = "/login"
                     }}
                     className="px-6 py-2 rounded-lg bg-[#d97706] hover:bg-[#d97706]/80 text-white font-semibold transition-colors"
                 >
                     Wyloguj i zaloguj ponownie
                 </button>
-                <button
-                    onClick={() => router.push("/")}
-                    className="text-sm text-[#baab9c] hover:text-white underline"
-                >
+                <button onClick={() => router.push("/")} className="text-sm text-[#baab9c] hover:text-white underline">
                     Wróć na stronę główną
                 </button>
             </div>
-        );
+        )
     }
 
-    const normalizedPath = pathname.endsWith("/") && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
-    const isPublicPath = PUBLIC_PATHS.includes(normalizedPath) ||
+    const normalizedPath = pathname.endsWith("/") && pathname.length > 1 ? pathname.slice(0, -1) : pathname
+    const isPublicPath =
+        PUBLIC_PATHS.includes(normalizedPath) ||
         normalizedPath.startsWith("/_next") ||
         normalizedPath.startsWith("/static") ||
-        normalizedPath.startsWith("/api");
+        normalizedPath.startsWith("/api")
 
     if (isPublicPath) {
-        return <>{children}</>;
+        return <>{children}</>
     }
 
-    return authorized ? <>{children}</> : null;
+    return authorized ? <>{children}</> : null
 }

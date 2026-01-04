@@ -197,6 +197,27 @@ export class AuditLogService {
         }
     }
 
+    async getLoginHistory(actorId: string, limit = 10): Promise<AuditLogEntry[]> {
+        try {
+            const safeLimit = Math.max(1, Math.min(limit, config.maxPageSize));
+            const query = `
+                SELECT * FROM audit_logs
+                WHERE actor->>'id' = $1
+                  AND service = 'user-service'
+                  AND action = 'login'
+                  AND status = 'success'
+                ORDER BY timestamp DESC
+                LIMIT $2
+            `;
+
+            const result = await database.query(query, [actorId, safeLimit]);
+            return result.rows.map(this.mapDbRowToLogEntry);
+        } catch (error) {
+            logger.error('Failed to get login history', { actorId, error });
+            throw error;
+        }
+    }
+
     async getAnonymizationCount(actorId: string): Promise<number> {
         try {
             const query = `

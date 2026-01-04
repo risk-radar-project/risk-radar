@@ -1,46 +1,41 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { parseJwt, JwtPayload } from "@/lib/auth/jwt-utils";
+import { useState } from "react"
+import { parseJwt, JwtPayload } from "@/lib/auth/jwt-utils"
 
 interface UseAuthReturn {
-    user: JwtPayload | null;
-    roles: string[];
-    permissions: string[];
-    isAuthenticated: boolean;
-    hasRole: (role: string) => boolean;
-    hasPermission: (permission: string) => boolean;
-    loading: boolean;
+    user: JwtPayload | null
+    roles: string[]
+    permissions: string[]
+    isAuthenticated: boolean
+    hasRole: (role: string) => boolean
+    hasPermission: (permission: string) => boolean
+    loading: boolean
 }
 
 export function useAuth(): UseAuthReturn {
-    const [user, setUser] = useState<JwtPayload | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [user] = useState<JwtPayload | null>(() => {
+        if (typeof window === "undefined") return null
+        const token = localStorage.getItem("access_token")
+        return token ? parseJwt(token) : null
+    })
+    const [loading] = useState(false)
 
-    useEffect(() => {
-        const token = localStorage.getItem("access_token");
-        if (token) {
-            const decoded = parseJwt(token);
-            setUser(decoded);
-        }
-        setLoading(false);
-    }, []);
-
-    const roles = user?.roles || [];
-    const permissions = user?.permissions || [];
-    const isAuthenticated = !!user;
+    const roles = user?.roles || []
+    const permissions = user?.permissions || []
+    const isAuthenticated = !!user
 
     const hasRole = (role: string) => {
-        if (!roles) return false;
+        if (!roles) return false
         // Check exact match or with ROLE_ prefix
-        return roles.includes(role) || roles.includes(`ROLE_${role.toUpperCase()}`);
-    };
+        return roles.includes(role) || roles.includes(`ROLE_${role.toUpperCase()}`)
+    }
 
     const hasPermission = (permission: string) => {
-        if (!permissions) return false;
+        if (!permissions) return false
         // Check exact match or with PERM_ prefix
-        return permissions.includes(permission) || permissions.includes(`PERM_${permission.toUpperCase()}`);
-    };
+        return permissions.includes(permission) || permissions.includes(`PERM_${permission.toUpperCase()}`)
+    }
 
     return {
         user,
@@ -50,5 +45,5 @@ export function useAuth(): UseAuthReturn {
         hasRole,
         hasPermission,
         loading
-    };
+    }
 }

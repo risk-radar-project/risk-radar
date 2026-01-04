@@ -4,9 +4,7 @@ import { TableRow } from "@/components/ui/table/table-row"
 import { TableCell } from "@/components/ui/table/table-cell"
 
 export default function AdminReportsPage() {
-    const reports = [
-        { id: "r1", title: "Zgłoszenie testowe", status: "pending" }
-    ]
+    const reports = [{ id: "r1", title: "Zgłoszenie testowe", status: "pending" }]
 
     return (
         <div>

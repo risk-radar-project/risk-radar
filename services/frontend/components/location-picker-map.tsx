@@ -1,8 +1,8 @@
-'use client'
+"use client"
 
-import { useEffect, useRef, useState } from 'react'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import { useEffect, useRef, useState } from "react"
+import L from "leaflet"
+import "leaflet/dist/leaflet.css"
 
 interface LocationPickerMapProps {
     onLocationSelect: (lat: number, lng: number) => void
@@ -38,10 +38,9 @@ export default function LocationPickerMap({
     const mapRef = useRef<L.Map | null>(null)
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const markerRef = useRef<L.Marker | null>(null)
-    const [mapLoaded, setMapLoaded] = useState(false)
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
     const [isLocating, setIsLocating] = useState(false)
-    const [searchQuery, setSearchQuery] = useState('')
+    const [searchQuery, setSearchQuery] = useState("")
     const [isSearching, setIsSearching] = useState(false)
 
     // Search for locations using Nominatim API
@@ -79,7 +78,7 @@ export default function LocationPickerMap({
                 onLocationSelect(lat, lng)
             }
         } catch (error) {
-            console.error('Search error:', error)
+            console.error("Search error:", error)
         } finally {
             setIsSearching(false)
         }
@@ -87,9 +86,9 @@ export default function LocationPickerMap({
 
     // Load Leaflet CSS
     useEffect(() => {
-        const link = document.createElement('link')
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-        link.rel = 'stylesheet'
+        const link = document.createElement("link")
+        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        link.rel = "stylesheet"
         document.head.appendChild(link)
 
         return () => {
@@ -107,14 +106,13 @@ export default function LocationPickerMap({
         }).setView([initialLat, initialLng], 13)
         mapRef.current = map
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
             maxZoom: 19
         }).addTo(map)
 
         // Fix map rendering issues - invalidate size after initialization
         setTimeout(() => {
             map.invalidateSize()
-            setMapLoaded(true)
         }, 100)
 
         // Additional invalidation after tiles load
@@ -125,12 +123,12 @@ export default function LocationPickerMap({
         })
 
         // Listen for tile loading to ensure proper rendering
-        map.on('load', () => {
+        map.on("load", () => {
             map.invalidateSize()
         })
 
         // Add click handler to map
-        map.on('click', (e: L.LeafletMouseEvent) => {
+        map.on("click", (e: L.LeafletMouseEvent) => {
             const { lat, lng } = e.latlng
 
             // Remove existing marker if any
@@ -153,9 +151,8 @@ export default function LocationPickerMap({
         return () => {
             map.remove()
             mapRef.current = null
-            setMapLoaded(false)
         }
-    }, [])
+    }, [initialLat, initialLng, onLocationSelect])
 
     const handleUseMyLocation = () => {
         setIsLocating(true)
@@ -186,13 +183,13 @@ export default function LocationPickerMap({
                     setIsLocating(false)
                 },
                 (error) => {
-                    console.error('Geolocation error:', error)
-                    alert('Nie można pobrać Twojej lokalizacji: ' + error.message)
+                    console.error("Geolocation error:", error)
+                    alert("Nie można pobrać Twojej lokalizacji: " + error.message)
                     setIsLocating(false)
                 }
             )
         } else {
-            alert('Geolokalizacja nie jest wspierana przez twoją przeglądarkę')
+            alert("Geolokalizacja nie jest wspierana przez twoją przeglądarkę")
             setIsLocating(false)
         }
     }
@@ -216,7 +213,7 @@ export default function LocationPickerMap({
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                     placeholder="Wyszukaj lokalizację..."
                     className="px-4 py-2 bg-[#362c20]/95 backdrop-blur-sm text-[#e0dcd7] rounded-lg border border-[#e0dcd7]/20 focus:border-[#d97706] focus:outline-none transition-colors placeholder:text-[#e0dcd7]/50 w-64"
                 />
@@ -227,7 +224,7 @@ export default function LocationPickerMap({
                     className="px-4 py-2 bg-[#d97706] hover:bg-[#d97706]/80 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                     <span className="material-symbols-outlined text-sm">search</span>
-                    {isSearching ? 'Szukam...' : 'Szukaj'}
+                    {isSearching ? "Szukam..." : "Szukaj"}
                 </button>
             </div>
 
@@ -245,7 +242,8 @@ export default function LocationPickerMap({
             {selectedLocation && (
                 <div className="absolute top-4 left-4 z-[1000] bg-[#362c20]/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg">
                     <p className="text-[#e0dcd7] text-xs">
-                        <span className="font-semibold text-[#d97706]">Współrzędne:</span><br />
+                        <span className="font-semibold text-[#d97706]">Współrzędne:</span>
+                        <br />
                         {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
                     </p>
                 </div>
@@ -282,7 +280,7 @@ export default function LocationPickerMap({
                     title="Użyj mojej lokalizacji"
                 >
                     <span className="material-symbols-outlined text-white">
-                        {isLocating ? 'progress_activity' : 'my_location'}
+                        {isLocating ? "progress_activity" : "my_location"}
                     </span>
                 </button>
             </div>

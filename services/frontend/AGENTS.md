@@ -73,13 +73,13 @@ services/frontend/
 
 ## 3. Routing & Layout Standards
 
-| Area   | Routes (must exist)                          | Layout                            |
-|--------|----------------------------------------------|-----------------------------------|
-| Public | `/` (map placeholder)                        | `app/(public)/layout.tsx`         |
-| Auth   | `/login`, `/register`                        | `app/(auth)/layout.tsx`           |
-| User   | `/profile`, `/settings`, `/my-reports`       | `app/(user)/layout.tsx`           |
-| Admin  | `/admin`, `/admin/users`, `/admin/reports`, `/admin/stats` | `app/(admin)/layout.tsx` with sidebar |
-| Standalone | `/map`, `/reports` (and future domain-specific routes) | `app/layout.tsx` defaults        |
+| Area       | Routes (must exist)                                        | Layout                                |
+| ---------- | ---------------------------------------------------------- | ------------------------------------- |
+| Public     | `/` (map placeholder)                                      | `app/(public)/layout.tsx`             |
+| Auth       | `/login`, `/register`                                      | `app/(auth)/layout.tsx`               |
+| User       | `/profile`, `/settings`, `/my-reports`                     | `app/(user)/layout.tsx`               |
+| Admin      | `/admin`, `/admin/users`, `/admin/reports`, `/admin/stats` | `app/(admin)/layout.tsx` with sidebar |
+| Standalone | `/map`, `/reports` (and future domain-specific routes)     | `app/layout.tsx` defaults             |
 
 Agents MUST NOT rename or relocate these segments without instruction. When adding new pages, pick the correct segment based on access level (public/auth/user/admin).
 
@@ -94,6 +94,7 @@ Agents MUST NOT rename or relocate these segments without instruction. When addi
 - Use ASCII unless the targeted file already contains diacritics.
 
 **Example UX import**
+
 ```ts
 import { Loader, Spinner, EmptyState, Badge, ModalConfirm, Skeleton } from "@/components/ui/ux"
 ```
@@ -116,6 +117,7 @@ import { Loader, Spinner, EmptyState, Badge, ModalConfirm, Skeleton } from "@/co
 - `User object` → authenticated session. Guards allow access.
 
 ### Never do this
+
 - Replace Zustand with another store.
 - Bypass hydration (e.g., calling `loadSession()` in a client component).
 - Hardcode permissions directly in components – always use guards/stores.
@@ -128,14 +130,14 @@ import { Loader, Spinner, EmptyState, Badge, ModalConfirm, Skeleton } from "@/co
 - API domain files to extend: `lib/api/auth.ts`, `user.ts`, `admin.ts`, `reports.ts`, `media.ts`, etc.
 - Placeholder responses are fine; keep them obvious (fake IDs, sample arrays).
 - React Query hooks must return `data` only (see `hooks/use-api.ts`). Example:
-  ```ts
-  export function useCurrentUser() {
-      return useQuery({
-          queryKey: ["current-user"],
-          queryFn: async () => (await getCurrentUser()).data
-      })
-  }
-  ```
+    ```ts
+    export function useCurrentUser() {
+        return useQuery({
+            queryKey: ["current-user"],
+            queryFn: async () => (await getCurrentUser()).data
+        })
+    }
+    ```
 - No real endpoint URLs until the API gateway is ready. Prepare for quick swaps by isolating fetch logic inside `lib/api/*`.
 
 **API hooks must flatten responses**
@@ -154,6 +156,7 @@ import { Loader, Spinner, EmptyState, Badge, ModalConfirm, Skeleton } from "@/co
 - Error handling stays visual (e.g., `FormMessage`). Do not add business logic or side effects for errors yet.
 
 Workflow:
+
 1. Define schema (Zod) under `lib/validation/feature.ts`.
 2. Use `useForm({ resolver: zodResolver(schema) })`.
 3. Compose UI with shared `Form`, `FormField`, `TextField`, etc.
@@ -178,12 +181,11 @@ Workflow:
 4. **Edit safely** – use `create_file`, `apply_patch`, or notebooks; avoid direct terminal editing of source files.
 5. **Follow conventions** – shared components, Tailwind, placeholders, no custom architecture.
 6. **Format, lint, build** – every iteration ends with:
-  1. `npm run format`
-  2. `npm run lint`
-  3. `npm run build`
+7. `npm run format`
+8. `npm run lint`
+9. `npm run build`
 
-  Fix issues and rerun until all three succeed (the known middleware warning during build is acceptable). No change is complete without these steps.
-7. **Report clearly** – describe changes, list tests (format/lint/build), mention warnings, and outline next steps if needed.
+Fix issues and rerun until all three succeed (the known middleware warning during build is acceptable). No change is complete without these steps. 7. **Report clearly** – describe changes, list tests (format/lint/build), mention warnings, and outline next steps if needed.
 
 ---
 
