@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 
 class KafkaClient:
     def __init__(self):
-        self.bootstrap_servers = os.getenv("KAFKA_BROKERS", "localhost:9092")
+        self.bootstrap_servers = os.getenv("KAFKA_BROKERS", "kafka:9092")
+        self.client_id = os.getenv("KAFKA_CLIENT_ID", "ai-verification-duplication-service")
         self.producer: Optional[AIOKafkaProducer] = None
         self.consumer: Optional[AIOKafkaConsumer] = None
         self.enabled = os.getenv("KAFKA_ENABLED", "true").lower() == "true"

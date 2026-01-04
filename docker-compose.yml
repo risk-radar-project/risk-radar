@@ -116,7 +116,9 @@ services:
             KAFKA_ENABLED: "true"
             AUDIT_SERVICE_URL: http://audit-log-service:8080
             AUDIT_ENABLED: "true"
-            GOOGLE_API_KEY: "AIzaSyCv9EswwXxuQ0LDNxA3etKIsXmmdc9t0CA"
+            GOOGLE_API_KEY: "${GOOGLE_API_KEY:-AIzaSyCpALEeCV33HfxBGo4K9ozRWYJwMEH9_TE}"
+            GOOGLE_AI_MODEL: "${GOOGLE_AI_MODEL:-models/gemini-2.5-flash}"
+            REPORT_SERVICE_URL: http://report-service:8080
         ports:
             - "8088:8080"
         networks:

@@ -11,17 +11,16 @@ export function middleware(req: NextRequest) {
     const response = NextResponse.next()
     response.headers.set("x-pathname", pathname)
 
+    // TODO: Add admin protection later
     // Protect /admin/*
-    if (pathname.startsWith("/admin")) {
-        // Placeholder session
-        const isAdmin = false // later read from cookie / gateway token
-
-        if (!isAdmin) {
-            const url = new URL("/login", req.url)
-            url.searchParams.set("redirect", pathname)
-            return NextResponse.redirect(url)
-        }
-    }
+    // if (pathname.startsWith("/admin")) {
+    //     const isAdmin = false // later read from cookie / gateway token
+    //     if (!isAdmin) {
+    //         const url = new URL("/login", req.url)
+    //         url.searchParams.set("redirect", pathname)
+    //         return NextResponse.redirect(url)
+    //     }
+    // }
 
     return response
 }

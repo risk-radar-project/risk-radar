@@ -209,6 +209,31 @@ public class ReportController {
                 }
         }
 
+        /**
+         * Get reports within a specified radius from the given location
+         * Used for AI Assistant threat analysis
+         */
+        @GetMapping("/reports/nearby")
+        public ResponseEntity<?> getReportsNearby(
+                        @RequestParam Double latitude,
+                        @RequestParam Double longitude,
+                        @RequestParam(defaultValue = "1.0") Double radiusKm) {
+                try {
+                        List<Report> reports = reportService.getReportsWithinRadius(latitude, longitude, radiusKm);
+                        return ResponseEntity.ok(Map.of(
+                                        "location", Map.of("lat", latitude, "lng", longitude),
+                                        "radiusKm", radiusKm,
+                                        "count", reports.size(),
+                                        "reports", reports));
+                } catch (Exception e) {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                                        Map.of(
+                                                        "message", "Failed to fetch nearby reports",
+                                                        "status", "failure",
+                                                        "error", e.getMessage()));
+                }
+        }
+
         private Map<String, Object> getActor(Principal principal, HttpServletRequest request) {
                 String actorId = (principal != null) ? principal.getName() : "anonymous";
                 String actorType = (principal != null) ? "user" : "system";
