@@ -9,5 +9,7 @@ WORKDIR /app
 
 COPY --from=build /app/target/*.jar app.jar
 
+ENV JAVA_TOOL_OPTIONS="-Xms256m -Xmx512m"
+
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
