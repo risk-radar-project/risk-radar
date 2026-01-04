@@ -1,5 +1,10 @@
-import type { ReactNode } from "react"
+import type { TdHTMLAttributes } from "react"
+import { cn } from "@/lib/utils"
 
-export function TableCell({ children }: { children: ReactNode }) {
-    return <td className="px-3 py-2">{children}</td>
+export function TableCell({ className, children, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
+    return (
+        <td className={cn("px-3 py-2", className)} {...props}>
+            {children}
+        </td>
+    )
 }

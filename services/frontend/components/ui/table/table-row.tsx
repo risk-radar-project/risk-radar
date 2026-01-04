@@ -1,5 +1,10 @@
-import type { ReactNode } from "react"
+import type { HTMLAttributes } from "react"
+import { cn } from "@/lib/utils"
 
-export function TableRow({ children }: { children: ReactNode }) {
-    return <tr className="border-b border-zinc-800">{children}</tr>
+export function TableRow({ className, children, ...props }: HTMLAttributes<HTMLTableRowElement>) {
+    return (
+        <tr className={cn("border-b border-zinc-800", className)} {...props}>
+            {children}
+        </tr>
+    )
 }
