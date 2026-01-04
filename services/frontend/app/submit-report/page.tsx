@@ -118,6 +118,20 @@ export default function SubmitReportPage() {
                 }
             }
 
+            // Get userId from JWT token
+            let userId = 'ea2698bc-9348-44f5-b64b-0b973da92da7'; // Fallback
+            if (accessToken) {
+                try {
+                    const { parseJwt } = await import('@/lib/auth/jwt-utils');
+                    const decoded = parseJwt(accessToken);
+                    if (decoded?.userId) {
+                        userId = decoded.userId;
+                    }
+                } catch (err) {
+                    console.warn('Failed to parse JWT, using fallback userId');
+                }
+            }
+
             // Then submit the report
             const reportData = {
                 title: formData.title,
@@ -126,7 +140,7 @@ export default function SubmitReportPage() {
                 longitude: formData.longitude,
                 reportCategory: formData.category,
                 imageIds: imageIds.length > 0 ? imageIds : undefined,
-                userId: 'ea2698bc-9348-44f5-b64b-0b973da92da7' // Temporary UUID for development (same as media uploads)
+                userId: userId
             }
 
             const response = await fetch('/api/reports/create', {

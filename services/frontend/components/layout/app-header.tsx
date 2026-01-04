@@ -88,22 +88,25 @@ export function AppHeader() {
                     ) : (
                         <button
                             onClick={async () => {
-                                const token = localStorage.getItem("access_token")
-                                if (token) {
-                                    try {
-                                        await fetch("http://localhost:8090/api/users/logout", {
+                                try {
+                                    const token = localStorage.getItem("access_token")
+
+                                    // Try to call backend logout (don't await to avoid delays)
+                                    if (token) {
+                                        fetch("http://localhost:8090/api/users/logout", {
                                             method: "POST",
                                             headers: {
                                                 "Authorization": `Bearer ${token}`
                                             }
-                                        })
-                                    } catch (err) {
-                                        console.error("Logout failed", err)
+                                        }).catch(err => console.warn("Backend logout failed:", err))
                                     }
+                                } finally {
+                                    // Always clear local storage and redirect
+                                    localStorage.removeItem("access_token")
+                                    localStorage.removeItem("refresh_token")
+                                    // Use replace to prevent back button issues
+                                    window.location.replace("/login")
                                 }
-                                localStorage.removeItem("access_token")
-                                localStorage.removeItem("refresh_token")
-                                window.location.href = "/login"
                             }}
                             className="px-4 py-2 rounded-lg bg-transparent border border-[#d97706] text-[#d97706] hover:bg-[#d97706]/20 font-semibold transition-colors"
                         >

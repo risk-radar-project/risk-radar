@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function RegisterPage() {
@@ -27,6 +27,28 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const checkToken = async () => {
+      const token = localStorage.getItem("access_token");
+      if (token) {
+        try {
+          const { isTokenExpired } = await import("@/lib/auth/jwt-utils");
+          if (!isTokenExpired(token)) {
+            setIsAlreadyLoggedIn(true);
+          } else {
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
+          }
+        } catch (e) {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+        }
+      }
+    };
+    checkToken();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -137,7 +159,7 @@ export default function RegisterPage() {
             </p>
           </Link>
           <Link
-            className="flex flex-col items-center justify-center border-b-[3px] border-b-primary text-white pb-[13px] pt-4 flex-1"
+            className={`flex flex-col items-center justify-center border-b-[3px] border-b-primary text-white pb-[13px] pt-4 flex-1 ${isAlreadyLoggedIn ? 'pointer-events-none opacity-50' : ''}`}
             href="/register"
           >
             <p className="text-white text-sm font-bold leading-normal tracking-[0.015em]">
@@ -284,7 +306,7 @@ export default function RegisterPage() {
         <Button
           onClick={handleSubmit}
           className="flex h-14 w-full items-center justify-center rounded-lg bg-primary px-6 text-base font-bold text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-dark"
-          disabled={isLoading}
+          disabled={isLoading || isAlreadyLoggedIn}
         >
           {isLoading ? (
             <div className="flex items-center gap-2">

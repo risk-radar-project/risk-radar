@@ -13,7 +13,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<{ access
         if (response.ok) {
             const data = await response.json();
             // Handle both camelCase and snake_case just in case
-            const newAccessToken = data.accessToken || data.access_token;
+            const newAccessToken = data.accessToken || data.access_token || data.token;
             const newRefreshToken = data.refreshToken || data.refresh_token;
 
             return { accessToken: newAccessToken, refreshToken: newRefreshToken };

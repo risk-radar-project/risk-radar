@@ -28,10 +28,28 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      setIsAlreadyLoggedIn(true);
-    }
+    // Import isTokenExpired dynamically to avoid issues
+    const checkToken = async () => {
+      const token = localStorage.getItem("access_token");
+      if (token) {
+        // Check if token is valid by trying to parse it
+        try {
+          const { isTokenExpired } = await import("@/lib/auth/jwt-utils");
+          if (!isTokenExpired(token)) {
+            setIsAlreadyLoggedIn(true);
+          } else {
+            // Token is expired, clear it so user can log in
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
+          }
+        } catch (e) {
+          // If there's an error parsing, clear the token
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+        }
+      }
+    };
+    checkToken();
   }, []);
 
   useEffect(() => {

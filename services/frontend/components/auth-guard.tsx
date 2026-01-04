@@ -26,6 +26,16 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     const [accessDenied, setAccessDenied] = useState(false);
     const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false);
 
+    // Helper function to clear tokens and redirect to login
+    const clearAndRedirect = (reason: string) => {
+        console.log(`AuthGuard: ${reason} -> Clearing tokens and redirecting to login`);
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        setAuthorized(false);
+        setLoading(false);
+        router.push("/login");
+    };
+
     // console.log("AuthGuard RENDER:", pathname, "| Loading:", loading, "| Authorized:", authorized);
 
     useEffect(() => {
@@ -41,7 +51,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                 if (["/login", "/register"].includes(normalizedPath)) {
                     setAlreadyLoggedIn(true);
                     setLoading(false);
-                    setTimeout(() => router.push("/"), 2000);
+                    setTimeout(() => router.push("/"), 1500);
                     return;
                 }
             }
@@ -62,6 +72,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
             if (!accessToken) {
                 console.log("AuthGuard: Missing access token -> Redirect to login");
+                // Clear any stale refresh tokens
+                localStorage.removeItem("refresh_token");
                 setAuthorized(false);
                 setLoading(false);
                 router.push("/login");
@@ -74,10 +86,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                 console.log("AuthGuard: Access token expired. Attempting refresh...");
 
                 if (!refreshToken) {
-                    console.log("AuthGuard: No refresh token -> Redirect to login");
-                    setAuthorized(false);
-                    setLoading(false);
-                    router.push("/login");
+                    clearAndRedirect("No refresh token available");
                     return;
                 }
 
@@ -89,12 +98,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                     localStorage.setItem("refresh_token", newTokens.refreshToken);
                     currentToken = newTokens.accessToken;
                 } else {
-                    console.log("AuthGuard: Token refresh failed -> Redirect to login");
-                    localStorage.removeItem("access_token");
-                    localStorage.removeItem("refresh_token");
-                    setAuthorized(false);
-                    setLoading(false);
-                    router.push("/login");
+                    clearAndRedirect("Token refresh failed");
                     return;
                 }
             }
@@ -102,7 +106,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
             // --- CHECK PERMISSIONS (RBAC) ---
             const user = parseJwt(currentToken);
             if (!user) {
-                console.log("AuthGuard: Failed to parse token");
+                console.log("AuthGuard: Failed to parse token -> Clear and redirect");
+                localStorage.removeItem("access_token");
+                localStorage.removeItem("refresh_token");
                 setAuthorized(false);
                 setLoading(false);
                 router.push("/login");
@@ -169,6 +175,16 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                 <h1 className="text-xl font-bold text-[#d97706]">Jesteś już zalogowany</h1>
                 <p className="text-[#baab9c]">Przekierowywanie na stronę główną...</p>
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#d97706]"></div>
+                <button
+                    onClick={() => {
+                        localStorage.removeItem("access_token");
+                        localStorage.removeItem("refresh_token");
+                        window.location.href = "/login";
+                    }}
+                    className="mt-4 text-sm text-red-500 hover:text-red-400 underline z-50 cursor-pointer"
+                >
+                    Nie przekierowuje? Wyloguj się
+                </button>
             </div>
         );
     }

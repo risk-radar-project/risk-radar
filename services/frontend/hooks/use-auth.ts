@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { parseJwt, JwtPayload } from "@/lib/auth/jwt-utils";
+import { parseJwt, isTokenExpired, JwtPayload } from "@/lib/auth/jwt-utils";
 
 interface UseAuthReturn {
     user: JwtPayload | null;
@@ -20,8 +20,17 @@ export function useAuth(): UseAuthReturn {
     useEffect(() => {
         const token = localStorage.getItem("access_token");
         if (token) {
-            const decoded = parseJwt(token);
-            setUser(decoded);
+            // Check if token is expired before using it
+            if (!isTokenExpired(token)) {
+                const decoded = parseJwt(token);
+                setUser(decoded);
+            } else {
+                // Token is expired, clear it
+                console.log("useAuth: Token expired, clearing...");
+                localStorage.removeItem("access_token");
+                localStorage.removeItem("refresh_token");
+                setUser(null);
+            }
         }
         setLoading(false);
     }, []);
