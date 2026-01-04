@@ -48,14 +48,14 @@ const CATEGORIES: CategoryOption[] = [
 // Map AI category names to our category values
 function mapAICategoryToValue(aiCategory: string): ReportCategory {
     const normalizedAI = aiCategory.toLowerCase().trim()
-    
+
     for (const cat of CATEGORIES) {
         if (cat.aiLabel?.toLowerCase().includes(normalizedAI.split('/')[0].trim()) ||
             normalizedAI.includes(cat.label.toLowerCase().split('/')[0].trim())) {
             return cat.value
         }
     }
-    
+
     // Specific mappings for common AI outputs
     if (normalizedAI.includes('infrastruktura') || normalizedAI.includes('drog') || normalizedAI.includes('chodnik')) {
         return 'INFRASTRUCTURE'
@@ -69,7 +69,7 @@ function mapAICategoryToValue(aiCategory: string): ReportCategory {
     if (normalizedAI.includes('zieleń') || normalizedAI.includes('drzew')) {
         return 'OTHER' // Could add a specific category
     }
-    
+
     return 'OTHER'
 }
 
@@ -78,7 +78,7 @@ export default function SubmitReportPage() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
-    
+
     // AI Integration States
     const [isCategorizing, setIsCategorizing] = useState(false)
     const [aiSuggestedCategory, setAiSuggestedCategory] = useState<CategorizationResponse | null>(null)
@@ -106,7 +106,7 @@ export default function SubmitReportPage() {
         try {
             const result = await categorizeReport(title, description)
             setAiSuggestedCategory(result)
-            
+
             // Auto-select AI suggested category if confidence is high enough
             if (result.confidence >= 0.7) {
                 const mappedCategory = mapAICategoryToValue(result.category)
@@ -130,7 +130,7 @@ export default function SubmitReportPage() {
             if (categorizationDebounceRef.current) {
                 clearTimeout(categorizationDebounceRef.current)
             }
-            
+
             categorizationDebounceRef.current = setTimeout(() => {
                 const newTitle = name === 'title' ? value : formData.title
                 const newDescription = name === 'description' ? value : formData.description
@@ -183,6 +183,8 @@ export default function SubmitReportPage() {
             return
         }
 
+        const accessToken = localStorage.getItem('access_token')
+
         try {
             // First, upload images if any
             let imageIds: string[] = []
@@ -193,7 +195,10 @@ export default function SubmitReportPage() {
 
                     const imageResponse = await fetch('/api/media/upload', {
                         method: 'POST',
-                        body: imageFormData
+                        body: imageFormData,
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`
+                        }
                     })
 
                     if (!imageResponse.ok) {
@@ -207,7 +212,21 @@ export default function SubmitReportPage() {
                 }
             }
 
-            // Submit the report to report-service
+            // Get userId from JWT token
+            let userId = 'ea2698bc-9348-44f5-b64b-0b973da92da7'; // Fallback
+            if (accessToken) {
+                try {
+                    const { parseJwt } = await import('@/lib/auth/jwt-utils');
+                    const decoded = parseJwt(accessToken);
+                    if (decoded?.userId) {
+                        userId = decoded.userId;
+                    }
+                } catch (err) {
+                    console.warn('Failed to parse JWT, using fallback userId');
+                }
+            }
+
+            // Then submit the report
             const reportData = {
                 title: formData.title,
                 description: formData.description,
@@ -215,13 +234,14 @@ export default function SubmitReportPage() {
                 longitude: formData.longitude,
                 reportCategory: formData.category,
                 imageIds: imageIds.length > 0 ? imageIds : undefined,
-                userId: 'ea2698bc-9348-44f5-b64b-0b973da92da7' // Temporary UUID for development
+                userId: userId
             }
 
             const response = await fetch('/api/reports/create', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
                 },
                 body: JSON.stringify(reportData)
             })
@@ -353,7 +373,7 @@ export default function SubmitReportPage() {
                                 </span>
                             )}
                         </label>
-                        
+
                         {/* AI Suggestion Badge */}
                         {aiSuggestedCategory && !isCategorizing && (
                             <div className="mb-3 bg-[#d97706]/10 border border-[#d97706]/30 rounded-lg p-3">
@@ -463,7 +483,7 @@ export default function SubmitReportPage() {
                         <span className="material-symbols-outlined">send</span>
                         {isSubmitting ? 'Weryfikowanie i wysyłanie...' : 'Wyślij Zgłoszenie'}
                     </button>
-                    
+
                     {isSubmitting && (
                         <p className="text-center text-[#e0dcd7]/60 text-sm">
                             Twoje zgłoszenie jest weryfikowane przez AI...

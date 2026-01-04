@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet.markercluster'
+import { JwtPayload, parseJwt } from '@/lib/auth/jwt-utils'
 
 const MEDIA_SERVICE_BASE_URL = 'http://localhost:8084/media/'
 
@@ -58,7 +59,26 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     const [searchResults, setSearchResults] = useState<SearchResult[]>([])
     const [showResults, setShowResults] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
-    
+    const [isAdmin, setIsAdmin] = useState(false)
+
+    useEffect(() => {
+        const token = localStorage.getItem("access_token")
+        if (token) {
+            const user = parseJwt(token)
+            if (user) {
+                const permissions = user.permissions || []
+                const roles = user.roles || []
+
+                const hasAdminAccess = permissions.includes("*:*") ||
+                    permissions.includes("system:admin") ||
+                    permissions.includes("PERM_SYSTEM_ADMIN") ||
+                    roles.includes("ROLE_ADMIN")
+
+                setIsAdmin(hasAdminAccess)
+            }
+        }
+    }, [])
+
     // AI Assistant state
     const [aiLoading, setAiLoading] = useState(false)
     const [aiResponse, setAiResponse] = useState<{
@@ -82,7 +102,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
             </svg>
         `
         const iconDataUrl = `data:image/svg+xml;base64,${btoa(svgIcon)}`
-        
+
         return L.icon({
             iconUrl: iconDataUrl,
             iconSize: [40, 40],
@@ -425,24 +445,24 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     // AI Assistant - analyze nearby threats
     const handleAIAnalysis = async () => {
         if (aiLoading) return
-        
+
         setAiLoading(true)
         setAiResponse(null)
-        
+
         // First, get user's location
         if (!navigator.geolocation) {
             alert('Geolokalizacja nie jest wspierana przez Twoją przeglądarkę')
             setAiLoading(false)
             return
         }
-        
+
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 const lat = position.coords.latitude
                 const lng = position.coords.longitude
-                
+
                 setUserLocation({ lat, lng })
-                
+
                 // Add user location marker to the map
                 if (mapRef.current) {
                     // Remove previous user location marker and circle
@@ -454,7 +474,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                         mapRef.current.removeLayer(userLocationCircleRef.current)
                         userLocationCircleRef.current = null
                     }
-                    
+
                     // Add circle showing 1km radius
                     const circle = L.circle([lat, lng], {
                         color: '#3b82f6',
@@ -465,9 +485,9 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                         dashArray: '5, 10'
                     }).addTo(mapRef.current)
                     userLocationCircleRef.current = circle
-                    
+
                     // Add user location marker (blue pulsing dot)
-                    const marker = L.marker([lat, lng], { 
+                    const marker = L.marker([lat, lng], {
                         icon: createUserLocationIcon(),
                         zIndexOffset: 1000 // Make sure it's on top
                     })
@@ -481,11 +501,11 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                             </div>
                         `)
                     userLocationMarkerRef.current = marker
-                    
+
                     // Center map on user location
                     mapRef.current.flyTo([lat, lng], 14, { duration: 1.5 })
                 }
-                
+
                 try {
                     // Call AI Assistant API
                     const response = await fetch('/api/ai-assistant/nearby-threats', {
@@ -497,13 +517,13 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                             radius_km: 1.0
                         })
                     })
-                    
+
                     if (!response.ok) {
                         throw new Error('AI analysis failed')
                     }
-                    
+
                     const data = await response.json()
-                    
+
                     setAiResponse({
                         visible: true,
                         dangerLevel: data.danger_level,
@@ -560,7 +580,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     // Close AI response and remove only the circle (keep marker visible)
     const handleCloseAIResponse = () => {
         setAiResponse(null)
-        
+
         // Remove only the circle from map, keep the marker
         if (mapRef.current) {
             if (userLocationCircleRef.current) {
@@ -619,13 +639,17 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                             <p className="text-base leading-normal">Ustawienia</p>
                         </a>
 
-                        <div className="border-t border-[#e0dcd7]/10 my-2"></div>
+                        {isAdmin && (
+                            <>
+                                <div className="border-t border-[#e0dcd7]/10 my-2"></div>
 
-                        <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
-                            href="/admin">
-                            <span className="material-symbols-outlined">shield</span>
-                            <p className="text-base leading-normal">Panel administratora</p>
-                        </a>
+                                <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#e0dcd7] hover:bg-white/10 transition-colors"
+                                    href="/admin">
+                                    <span className="material-symbols-outlined">shield</span>
+                                    <p className="text-base leading-normal">Panel administratora</p>
+                                </a>
+                            </>
+                        )}
                     </div>
                 </aside>
 
@@ -745,7 +769,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                                         <span className="material-symbols-outlined">close</span>
                                     </button>
                                 </div>
-                                
+
                                 {/* Danger Score Badge */}
                                 <div className="px-4 py-2 bg-gray-50 flex items-center justify-between border-b border-gray-100">
                                     <span className="text-gray-600 text-sm font-medium">Poziom zagrożenia:</span>
@@ -761,14 +785,14 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                                         </span>
                                     </div>
                                 </div>
-                                
+
                                 {/* AI Summary */}
                                 <div className="px-4 py-4">
                                     <p className="text-gray-700 text-sm leading-relaxed">
                                         {aiResponse.summary}
                                     </p>
                                 </div>
-                                
+
                                 {/* Footer */}
                                 <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
                                     <span className="text-xs">🤖</span>
@@ -777,7 +801,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                                     </span>
                                 </div>
                             </div>
-                            
+
                             {/* Speech bubble arrow */}
                             <div className="absolute -bottom-2 left-8 w-4 h-4 bg-white border-r border-b border-gray-200 transform rotate-45"></div>
                         </div>

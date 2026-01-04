@@ -8,12 +8,15 @@ export async function POST(request: NextRequest) {
 
         console.log('API Route: Creating report with data:', body)
 
+        const authHeader = request.headers.get('Authorization')
+
         // Forward the request to report-service
         const response = await fetch(`${REPORT_SERVICE_URL}/createReport`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'User-Agent': request.headers.get('user-agent') || 'RiskRadar-Frontend'
+                'User-Agent': request.headers.get('user-agent') || 'RiskRadar-Frontend',
+                ...(authHeader ? { 'Authorization': authHeader } : {})
             },
             body: JSON.stringify(body)
         })

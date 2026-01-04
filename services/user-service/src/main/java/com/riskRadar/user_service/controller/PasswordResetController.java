@@ -31,7 +31,7 @@ public class PasswordResetController {
                         .body(Map.of("error", "Email is required"));
             }
 
-            // Generuj token ale nie zwracaj go bezpośrednio - luka bezpieczeństwa
+            // Generate token but don't return it directly - security vulnerability
             String token = passwordResetService.generatePasswordResetToken(request.email());
 
             if (token == null) {
@@ -39,16 +39,15 @@ public class PasswordResetController {
                         .body(Map.of("error", "Failed to generate reset token"));
             }
 
-            // TODO: Integracja z zewnętrznym serwisem mailowym
+            // TODO: Integration with external mail service
             // externalEmailService.sendPasswordResetEmail(request.email(), token);
 
             logger.info("Password reset token generated for email: {}", request.email());
 
-            // Bezpieczna odpowiedź - nie ujawniamy czy email istnieje
+            // Secure response - don't reveal if email exists
             return ResponseEntity.ok(Map.of(
                     "message", "If the email address exists in our system, password reset instructions have been sent",
-                    "status", "success"
-            ));
+                    "status", "success"));
 
         } catch (Exception e) {
             logger.error("Error processing password reset request for email: {}", request.email(), e);
@@ -83,8 +82,7 @@ public class PasswordResetController {
 
             return ResponseEntity.ok(Map.of(
                     "message", "Password successfully reset",
-                    "status", "success"
-            ));
+                    "status", "success"));
 
         } catch (Exception e) {
             logger.error("Error processing password reset confirmation", e);

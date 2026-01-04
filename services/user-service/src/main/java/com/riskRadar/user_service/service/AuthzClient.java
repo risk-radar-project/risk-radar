@@ -17,104 +17,108 @@ import java.util.UUID;
 @Slf4j
 public class AuthzClient {
 
-    private final WebClient webClient;
+        private final WebClient webClient;
 
-    private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(3);
-    private static final int MAX_RETRIES = 3;
-    private static final Duration RETRY_BACKOFF = Duration.ofSeconds(1);
+        private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(3);
+        private static final int MAX_RETRIES = 3;
+        private static final Duration RETRY_BACKOFF = Duration.ofSeconds(1);
 
-    public AuthzClient(WebClient.Builder builder) {
-        this.webClient = builder
-                .baseUrl("http://authz-service:8080")
-                .build();
-    }
-
-    private <T> T getWithRetry(Mono<T> mono, T fallback, String logContext) {
-        try {
-            return mono
-                    .timeout(RESPONSE_TIMEOUT)
-                    .retryWhen(Retry.backoff(MAX_RETRIES, RETRY_BACKOFF)
-                            .filter(ex -> ex instanceof RuntimeException))
-                    .doOnError(ex -> log.error("Error during call to authz-service [{}]", logContext, ex))
-                    .onErrorReturn(fallback)
-                    .block();
-        } catch (Exception e) {
-            log.error("Final fallback triggered for [{}]", logContext, e);
-            return fallback;
+        public AuthzClient(WebClient.Builder builder) {
+                this.webClient = builder
+                                .baseUrl("http://authz-service:8080")
+                                .build();
         }
-    }
 
-    private void executeWithRetry(Mono<Void> mono, String logContext) {
-        try {
-            mono.timeout(RESPONSE_TIMEOUT)
-                    .retryWhen(Retry.backoff(MAX_RETRIES, RETRY_BACKOFF)
-                            .filter(ex -> ex instanceof RuntimeException))
-                    .doOnError(ex -> log.error("Error during call to authz-service [{}]", logContext, ex))
-                    .onErrorResume(ex -> {
-                        log.warn("Fallback triggered for void call [{}]", logContext);
-                        return Mono.empty();
-                    })
-                    .block();
-        } catch (Exception e) {
-            log.error("Final fallback triggered for void call [{}]", logContext, e);
+        private <T> T getWithRetry(Mono<T> mono, T fallback, String logContext) {
+                try {
+                        return mono
+                                        .timeout(RESPONSE_TIMEOUT)
+                                        .retryWhen(Retry.backoff(MAX_RETRIES, RETRY_BACKOFF)
+                                                        .filter(ex -> ex instanceof RuntimeException))
+                                        .doOnError(ex -> log.error("Error during call to authz-service [{}]",
+                                                        logContext, ex))
+                                        .onErrorReturn(fallback)
+                                        .block();
+                } catch (Exception e) {
+                        log.error("Final fallback triggered for [{}]", logContext, e);
+                        return fallback;
+                }
         }
-    }
 
-    public RoleAndPermissionResponse[] getAllRoles() {
-        return getWithRetry(
-                webClient.get()
-                        .uri("/roles")
-                        .retrieve()
-                        .bodyToMono(RoleAndPermissionResponse[].class),
-                new RoleAndPermissionResponse[0],
-                "getAllRoles"
-        );
-    }
+        private void executeWithRetry(Mono<Void> mono, String logContext) {
+                try {
+                        mono.timeout(RESPONSE_TIMEOUT)
+                                        .retryWhen(Retry.backoff(MAX_RETRIES, RETRY_BACKOFF)
+                                                        .filter(ex -> ex instanceof RuntimeException))
+                                        .doOnError(ex -> log.error("Error during call to authz-service [{}]",
+                                                        logContext, ex))
+                                        .onErrorResume(ex -> {
+                                                log.warn("Fallback triggered for void call [{}]", logContext);
+                                                return Mono.empty();
+                                        })
+                                        .block();
+                } catch (Exception e) {
+                        log.error("Final fallback triggered for void call [{}]", logContext, e);
+                }
+        }
 
-    public Role[] getRolesByUserId(UUID userId) {
-        return getWithRetry(
-                webClient.get()
-                        .uri("/users/{userId}/roles", userId)
-                        .retrieve()
-                        .onStatus(status -> status.value() == 404, response -> Mono.empty())
-                        .bodyToMono(Role[].class)
-                        .defaultIfEmpty(new Role[0]),
-                new Role[0],
-                "getRolesByUserId " + userId
-        );
-    }
+        public RoleAndPermissionResponse[] getAllRoles() {
+                return getWithRetry(
+                                webClient.get()
+                                                .uri("/roles")
+                                                .retrieve()
+                                                .bodyToMono(RoleAndPermissionResponse[].class),
+                                new RoleAndPermissionResponse[0],
+                                "getAllRoles");
+        }
 
-    public Permission[] getPermissionsByUserId(UUID userId) {
-        return getWithRetry(
-                webClient.get()
-                        .uri("/users/{userId}/permissions", userId)
-                        .retrieve()
-                        .onStatus(status -> status.value() == 404, response -> Mono.empty())
-                        .bodyToMono(Permission[].class)
-                        .defaultIfEmpty(new Permission[0]),
-                new Permission[0],
-                "getPermissionsByUserId " + userId
-        );
-    }
+        public Role[] getRolesByUserId(UUID userId) {
+                return getWithRetry(
+                                webClient.get()
+                                                .uri("/users/{userId}/roles", userId)
+                                                .retrieve()
+                                                .onStatus(status -> status.value() == 404, response -> Mono.empty())
+                                                .bodyToMono(Role[].class)
+                                                .defaultIfEmpty(new Role[0]),
+                                new Role[0],
+                                "getRolesByUserId " + userId);
+        }
 
-    public void assignRole(UUID userId, String roleId) {
-        executeWithRetry(
-                webClient.post()
-                        .uri("/users/{userId}/roles", userId)
-                        .bodyValue(Map.of("role_id", roleId))
-                        .retrieve()
-                        .bodyToMono(Void.class),
-                "assignRole " + userId + " -> " + roleId
-        );
-    }
+        public Permission[] getPermissionsByUserId(UUID userId) {
+                return getWithRetry(
+                                webClient.get()
+                                                .uri("/users/{userId}/permissions", userId)
+                                                .retrieve()
+                                                .onStatus(status -> status.value() == 404, response -> Mono.empty())
+                                                .bodyToMono(Permission[].class)
+                                                .defaultIfEmpty(new Permission[0]),
+                                new Permission[0],
+                                "getPermissionsByUserId " + userId);
+        }
 
-    public void revokeRoles(UUID userId) {
-        executeWithRetry(
-                webClient.post()
-                        .uri("/roles/revoke?userId={id}", userId)
-                        .retrieve()
-                        .bodyToMono(Void.class),
-                "revokeRoles " + userId
-        );
-    }
+        public void assignRole(UUID userId, String roleId) {
+                try {
+                        webClient.post()
+                                        .uri("/users/{userId}/roles", userId)
+                                        .header("X-User-ID", "11111111-1111-1111-1111-111111111111")
+                                        .bodyValue(Map.of("role_id", roleId))
+                                        .retrieve()
+                                        .bodyToMono(Void.class)
+                                        .timeout(RESPONSE_TIMEOUT)
+                                        .retryWhen(Retry.backoff(MAX_RETRIES, RETRY_BACKOFF))
+                                        .block();
+                } catch (Exception e) {
+                        log.error("Failed to assign role {} to user {}. Propagating error.", roleId, userId, e);
+                        throw new RuntimeException("Failed to assign role", e);
+                }
+        }
+
+        public void revokeRoles(UUID userId) {
+                executeWithRetry(
+                                webClient.post()
+                                                .uri("/roles/revoke?userId={id}", userId)
+                                                .retrieve()
+                                                .bodyToMono(Void.class),
+                                "revokeRoles " + userId);
+        }
 }

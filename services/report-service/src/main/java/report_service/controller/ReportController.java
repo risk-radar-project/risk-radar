@@ -27,8 +27,6 @@ public class ReportController {
         private final ReportService reportService;
         private final AuditLogClient auditLogClient;
 
-        // ----------------- Tworzenie nowego raportu -----------------
-
         @PostMapping("/createReport")
         public ResponseEntity<?> createReport(@RequestBody ReportRequest request,
                         HttpServletRequest httpRequest, Principal principal) {
@@ -99,7 +97,6 @@ public class ReportController {
                 }
         }
 
-        // ----------------- Zmiana statusu raportu -----------------
         @PatchMapping("/report/{id}/status")
         public ResponseEntity<?> updateReportStatus(
                         @PathVariable UUID id,
@@ -142,7 +139,6 @@ public class ReportController {
                 }
         }
 
-        // ----------------- Pobieranie raportów z paginacją -----------------
         @GetMapping("/reports")
         public ResponseEntity<?> getReports(
                         @RequestParam(defaultValue = "0") int page,
