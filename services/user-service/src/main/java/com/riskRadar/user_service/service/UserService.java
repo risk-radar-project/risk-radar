@@ -1,5 +1,6 @@
 package com.riskRadar.user_service.service;
 
+import com.riskRadar.user_service.exception.UserAlreadyExistsException;
 import com.riskRadar.user_service.entity.User;
 import com.riskRadar.user_service.repository.UserRepository;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -27,6 +28,17 @@ public class UserService {
     public void updatePassword(String email, String newPassword) {
         User user = getUserByUsernameOrEmail(email);
         user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void changeEmail(String username, String newEmail) {
+        if (userRepository.findByEmail(newEmail).isPresent()) {
+            throw new UserAlreadyExistsException("Email already in use: " + newEmail);
+        }
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+        user.setEmail(newEmail);
         userRepository.save(user);
     }
 }
