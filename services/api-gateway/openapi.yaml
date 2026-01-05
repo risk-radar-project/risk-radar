@@ -253,6 +253,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiSuccess'
         '400': { $ref: '#/components/responses/Error' }
+  /api/users/change-email:
+    post:
+      summary: Change user email
+      tags: [users]
+      operationId: postUsersChangeEmail
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                newEmail: { type: string, format: email }
+              required: [newEmail]
+      responses:
+        '200':
+          description: Email changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
   /api/users/me:
     get:
       summary: Get current user profile
