@@ -1,0 +1,44 @@
+# Version Control
+.git
+.gitignore
+
+# Dependencies
+node_modules
+**/node_modules
+venv
+**/venv
+__pycache__
+**/__pycache__
+.cache
+**/.cache
+
+# Build Outputs
+dist
+**/dist
+build
+**/build
+target
+**/target
+coverage
+**/coverage
+
+# Logs & Data
+logs
+**/logs
+*.log
+**/*.log
+docker-data
+**/docker-data
+
+# Environment & Secrets
+.env
+**/.env
+
+# Docker
+Dockerfile.old
+**/Dockerfile.old
+dockerlogs.log
+
+# IDEs
+.idea
+.vscode
