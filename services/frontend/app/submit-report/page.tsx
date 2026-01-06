@@ -311,19 +311,19 @@ export default function SubmitReportPage() {
     useEffect(() => {
         if (success) {
             const timer = setInterval(() => {
-                setCountdown((prev) => {
-                    if (prev <= 1) {
-                        clearInterval(timer)
-                        router.push("/")
-                        return 0
-                    }
-                    return prev - 1
-                })
+                setCountdown((prev) => prev - 1)
             }, 1000)
 
             return () => clearInterval(timer)
         }
-    }, [success, router])
+    }, [success])
+
+    // Handle redirect when countdown reaches 0
+    useEffect(() => {
+        if (success && countdown === 0) {
+            router.push("/")
+        }
+    }, [success, countdown, router])
 
     if (success && submissionResult) {
         const isVerified = !submissionResult.requiresReview
@@ -348,7 +348,7 @@ export default function SubmitReportPage() {
                             <div className="relative">
                                 <div className="absolute inset-0 animate-pulse rounded-full bg-yellow-500/30"></div>
                                 <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-yellow-500/20 ring-4 ring-yellow-500/50">
-                                    <span className="material-symbols-outlined animate-spin text-6xl text-yellow-500" style={{ animationDuration: '2s' }}>
+                                    <span className="material-symbols-outlined slow-spin text-6xl text-yellow-500">
                                         schedule
                                     </span>
                                 </div>

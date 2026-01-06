@@ -199,3 +199,17 @@ select,
     font-size: 10px;
     color: #555;
 }
+
+/* Custom animations for report submission */
+@keyframes slow-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.slow-spin {
+    animation: slow-spin 2s linear infinite;
+}
