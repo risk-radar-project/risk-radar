@@ -25,6 +25,7 @@ frontend/
 │   ├── (auth)/              # Strony autoryzacji (login, register)
 │   ├── (public)/            # Strony publiczne
 │   ├── (user)/              # Strony użytkownika (chronione)
+│   │   └── my-reports/      # Lista zgłoszeń użytkownika
 │   ├── api/                 # API Routes (proxy do backend services)
 │   │   ├── media/
 │   │   │   └── upload/     # Upload zdjęć do media-service
@@ -176,7 +177,22 @@ Response: {
 }
 ```
 
-### 3. Sidebar Navigation
+### 3. Moje zgłoszenia (`/my-reports`)
+
+**Lokalizacja**: `app/(user)/my-reports/page.tsx`, `app/(user)/my-reports/my-reports-client.tsx`
+
+Strona pozwalająca użytkownikowi zarządzać własnymi zgłoszeniami.
+
+**Funkcjonalności**:
+- **Lista zgłoszeń**: Tabela wyświetlająca zgłoszenia użytkownika z paginacją.
+- **Filtrowanie**:
+  - Po statusie (Oczekujące, Zweryfikowane, Odrzucone).
+  - Po kategorii zgłoszenia.
+- **Sortowanie**: Po dacie utworzenia, dacie aktualizacji, kategorii i statusie.
+- **Akcje**:
+  - Usuwanie zgłoszeń (z potwierdzeniem w modalu).
+
+### 4. Sidebar Navigation
 
 Dostępny na stronie mapy, zawiera linki do:
 
@@ -185,7 +201,7 @@ Dostępny na stronie mapy, zawiera linki do:
 - **Logowanie** - autoryzacja
 - **Panel administratora** - dla użytkowników z uprawnieniami admin
 
-### 4. API Routes (Proxy Layer)
+### 5. API Routes (Proxy Layer)
 
 Frontend działa jako proxy między klientem a backend services, zapewniając:
 

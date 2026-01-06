@@ -11,7 +11,7 @@ async function getUnverifiedReports(): Promise<Report[]> {
 
     try {
         // Fetch unverified reports from report-service
-        const res = await fetch(`${REPORT_SERVICE_URL}/reports/pending`, {
+        const res = await fetch(`${REPORT_SERVICE_URL}/pending`, {
             cache: "no-store"
         })
 

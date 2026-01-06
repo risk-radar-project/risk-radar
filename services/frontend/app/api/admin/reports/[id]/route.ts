@@ -5,7 +5,7 @@ const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || "http://127.0.0.1:8
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await params
-        const url = `${REPORT_SERVICE_URL}/report/${id}`
+        const url = `${REPORT_SERVICE_URL}/${id}`
         console.log(`Admin API Route: Deleting report ${id}`)
 
         const response = await fetch(url, {
@@ -30,7 +30,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     try {
         const { id } = await params
         const body = await request.json()
-        const url = `${REPORT_SERVICE_URL}/report/${id}`
+        const url = `${REPORT_SERVICE_URL}/${id}`
         console.log(`Admin API Route: Updating report ${id}`)
 
         const response = await fetch(url, {
@@ -66,7 +66,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             return NextResponse.json({ error: "Status parameter is required" }, { status: 400 })
         }
 
-        const url = `${REPORT_SERVICE_URL}/report/${id}/status?status=${status}`
+        const url = `${REPORT_SERVICE_URL}/${id}/status?status=${status}`
         console.log(`Admin API Route: Changing status of report ${id} to ${status}`)
 
         const response = await fetch(url, {

@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/shared/page-header"
 import { PageTitle } from "@/components/shared/page-title"
 import { SectionCard } from "@/components/shared/section-card"
+import { MyReportsClient } from "./my-reports-client"
 
 export default function MyReportsPage() {
     return (
@@ -9,8 +10,8 @@ export default function MyReportsPage() {
                 <PageTitle>Moje zgłoszenia</PageTitle>
             </PageHeader>
 
-            <SectionCard>
-                <div className="text-muted-foreground">Brak zgłoszeń (placeholder)</div>
+            <SectionCard className="border-zinc-800 bg-zinc-900 text-zinc-100">
+                <MyReportsClient />
             </SectionCard>
         </>
     )

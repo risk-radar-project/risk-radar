@@ -61,7 +61,6 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     const [showResults, setShowResults] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
     const [isAdmin, setIsAdmin] = useState(false)
-    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
 
     useEffect(() => {
         const token = localStorage.getItem("access_token")
@@ -460,8 +459,6 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
             async (position) => {
                 const lat = position.coords.latitude
                 const lng = position.coords.longitude
-
-                setUserLocation({ lat, lng })
 
                 // Add user location marker to the map
                 if (mapRef.current) {

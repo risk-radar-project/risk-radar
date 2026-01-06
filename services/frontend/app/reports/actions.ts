@@ -7,7 +7,7 @@ const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || "http://report-serv
 export async function verifyReport(reportId: string) {
     console.log(`Verifying report ${reportId}...`)
     try {
-        const res = await fetch(`${REPORT_SERVICE_URL}/report/${reportId}/status?status=VERIFIED`, {
+        const res = await fetch(`${REPORT_SERVICE_URL}/${reportId}/status?status=VERIFIED`, {
             method: "PATCH"
         })
 
@@ -28,7 +28,7 @@ export async function verifyReport(reportId: string) {
 export async function rejectReport(reportId: string) {
     console.log(`Rejecting report ${reportId}...`)
     try {
-        const res = await fetch(`${REPORT_SERVICE_URL}/report/${reportId}/status?status=REJECTED`, {
+        const res = await fetch(`${REPORT_SERVICE_URL}/${reportId}/status?status=REJECTED`, {
             method: "PATCH"
         })
 

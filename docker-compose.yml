@@ -264,6 +264,7 @@ services:
             - media-service
         environment:
             <<: *global-env
+            GATEWAY_URL: http://api-gateway:8080
             MAP_SERVICE_URL: http://map-service:8080
             REPORT_SERVICE_URL: http://report-service:8080
             MEDIA_SERVICE_URL: http://api-gateway:8080/api/media
