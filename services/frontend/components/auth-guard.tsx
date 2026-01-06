@@ -8,13 +8,15 @@ import { refreshAccessToken } from "@/lib/auth/auth-service"
 const PUBLIC_PATHS = ["/", "/login", "/register", "/terms"]
 
 // Map paths to required permissions
+// NOTE: More specific paths must come BEFORE generic ones (e.g., /admin/verification before /admin)
 const ROUTE_PERMISSIONS: Record<string, string[]> = {
-    "/admin": ["system:admin", "PERM_SYSTEM_ADMIN"],
-    "/stats": ["stats:view", "PERM_STATS_VIEW"],
-    "/audit": ["audit:view", "PERM_AUDIT_VIEW"],
-    "/users": ["users:view", "PERM_USERS_VIEW"],
-    "/reports": ["reports:validate", "PERM_REPORTS_VALIDATE"],
-    "/submit-report": ["reports:create", "PERM_REPORTS_CREATE", "ROLE_USER"]
+    "/admin/verification": ["PERM_REPORTS:VALIDATE", "PERM_*:*", "ROLE_ADMIN", "ROLE_MODERATOR", "ROLE_VOLUNTEER"],
+    "/admin": ["PERM_SYSTEM:ADMIN", "PERM_*:*", "ROLE_ADMIN"],
+    "/stats": ["PERM_STATS:VIEW", "PERM_*:*", "ROLE_ADMIN"],
+    "/audit": ["PERM_AUDIT:VIEW", "PERM_*:*", "ROLE_ADMIN"],
+    "/users": ["PERM_USERS:VIEW", "PERM_*:*", "ROLE_ADMIN"],
+    "/reports": ["PERM_REPORTS:VALIDATE", "PERM_*:*", "ROLE_ADMIN", "ROLE_MODERATOR", "ROLE_VOLUNTEER"],
+    "/submit-report": ["PERM_REPORTS:CREATE", "ROLE_USER", "ROLE_VOLUNTEER", "ROLE_MODERATOR", "ROLE_ADMIN"]
 }
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -119,9 +121,12 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
             }
 
             // Check if path requires special permissions
-            const requiredPermissions = Object.entries(ROUTE_PERMISSIONS).find(([path]) =>
-                normalizedPath.startsWith(path)
-            )?.[1]
+            // Find the longest (most specific) matching path
+            const matchingRoutes = Object.entries(ROUTE_PERMISSIONS)
+                .filter(([path]) => normalizedPath.startsWith(path))
+                .sort((a, b) => b[0].length - a[0].length) // Sort by path length descending
+
+            const requiredPermissions = matchingRoutes.length > 0 ? matchingRoutes[0][1] : undefined
 
             if (requiredPermissions) {
                 const userPermissions = user.permissions || []
@@ -129,8 +134,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
                 // Admin has access to everything
                 const isAdmin =
-                    userPermissions.includes("*:*") ||
-                    userPermissions.includes("system:admin") ||
+                    userPermissions.includes("PERM_*:*") ||
+                    userPermissions.includes("PERM_SYSTEM:ADMIN") ||
                     userRoles.includes("ROLE_ADMIN")
 
                 if (isAdmin) {
@@ -156,6 +161,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                     }
                     return false
                 })
+
+                console.log(`AuthGuard: Path=${normalizedPath}, Required=${requiredPermissions}, UserRoles=${userRoles}, UserPerms=${userPermissions}, HasPerm=${hasPermission}`)
 
                 if (!hasPermission) {
                     console.log(`AuthGuard: Access Denied to ${normalizedPath}. Missing permissions: ${requiredPermissions}`)

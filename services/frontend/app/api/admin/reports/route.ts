@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams
         const queryString = searchParams.toString()
+        const authHeader = request.headers.get("Authorization")
 
         const url = `${REPORT_SERVICE_URL}${queryString ? `?${queryString}` : ""}`
         console.log(`Admin API Route: Fetching reports from ${url}`)
@@ -13,7 +14,8 @@ export async function GET(request: NextRequest) {
         const response = await fetch(url, {
             cache: "no-store",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                ...(authHeader ? { Authorization: authHeader } : {})
             }
         })
 

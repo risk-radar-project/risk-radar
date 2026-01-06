@@ -22,12 +22,16 @@ export function AppHeader() {
     const roles = user?.roles || []
 
     const isAdmin =
-        permissions.includes("*:*") ||
-        permissions.includes("system:admin") ||
-        permissions.includes("PERM_SYSTEM_ADMIN") ||
+        permissions.includes("PERM_*:*") ||
+        permissions.includes("PERM_SYSTEM:ADMIN") ||
         roles.includes("ROLE_ADMIN")
 
-    const canValidate = isAdmin || permissions.includes("reports:validate") || permissions.includes("PERM_REPORTS_VALIDATE")
+    const isModerator = roles.includes("ROLE_MODERATOR")
+    const isVolunteer = roles.includes("ROLE_VOLUNTEER")
+
+    const canValidate = isAdmin || isModerator || isVolunteer ||
+        permissions.includes("PERM_REPORTS:VALIDATE") ||
+        permissions.includes("reports:validate")
 
     return (
         <header className="border-b border-[#e0dcd7]/10 bg-[#362c20]/90 backdrop-blur-sm">

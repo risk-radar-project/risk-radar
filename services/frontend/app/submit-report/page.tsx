@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
+import { useRouter } from "next/navigation"
 import { categorizeReport, submitAndVerifyReport, type CategorizationResponse, type SubmissionResult } from "@/lib/api/ai"
 
 // Dynamically import map component (client-side only)
@@ -96,9 +97,11 @@ function mapAICategoryToValue(aiCategory: string): ReportCategory {
 }
 
 export default function SubmitReportPage() {
+    const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
+    const [countdown, setCountdown] = useState(3)
 
     // AI Integration States
     const [isCategorizing, setIsCategorizing] = useState(false)
@@ -175,13 +178,13 @@ export default function SubmitReportPage() {
         }
     }
 
-    const handleLocationSelect = (lat: number, lng: number) => {
+    const handleLocationSelect = useCallback((lat: number, lng: number) => {
         setFormData((prev) => ({
             ...prev,
             latitude: lat,
             longitude: lng
         }))
-    }
+    }, [])
 
     // Accept AI suggested category
     const acceptAISuggestion = () => {
@@ -275,6 +278,8 @@ export default function SubmitReportPage() {
             const createdReport = await response.json()
             const reportId = createdReport.id || `report-${Date.now()}`
 
+            // AI Verification commented out - auto-acceptance disabled
+            /* 
             // Step 2: AI Verification - check if report is valid/fake
             const verificationResult = await submitAndVerifyReport(
                 reportId,
@@ -287,21 +292,30 @@ export default function SubmitReportPage() {
 
             // Show appropriate success message based on verification
             if (verificationResult.accepted && !verificationResult.requiresReview) {
-                // Fully accepted - redirect after showing success
+                // Fully accepted - redirect after showing success with countdown
                 setSuccess(true)
-                setTimeout(() => {
-                    window.location.href = "/"
-                }, 2500)
             } else if (verificationResult.requiresReview) {
-                // Needs review - show message but still "success"
+                // Needs review - show message with countdown
                 setSuccess(true)
-                setTimeout(() => {
-                    window.location.href = "/"
-                }, 3500)
             } else {
                 // Rejected - show error
                 setError(verificationResult.message)
             }
+            */
+
+            // Manual success fallback
+            setSuccess(true)
+            setSubmissionResult({
+                accepted: true,
+                requiresReview: true,
+                message: 'Zgłoszenie zostało wysłane i trafiło do weryfikacji.',
+                verification: null,
+                reportId: reportId
+            })
+            setTimeout(() => {
+                window.location.href = '/'
+            }, 2500)
+
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : "Wystąpił błąd podczas tworzenia zgłoszenia"
             setError(errorMessage)
@@ -310,41 +324,107 @@ export default function SubmitReportPage() {
         }
     }
 
+    // Countdown timer for redirect
+    useEffect(() => {
+        if (success) {
+            const timer = setInterval(() => {
+                setCountdown((prev) => prev - 1)
+            }, 1000)
+
+            return () => clearInterval(timer)
+        }
+    }, [success])
+
+    // Handle redirect when countdown reaches 0
+    useEffect(() => {
+        if (success && countdown === 0) {
+            router.push("/")
+        }
+    }, [success, countdown, router])
+
     if (success && submissionResult) {
+        const isVerified = !submissionResult.requiresReview
+
         return (
             <div className="flex min-h-screen items-center justify-center bg-[#2a221a] p-4">
                 <div className="w-full max-w-md rounded-xl bg-[#362c20] p-8 text-center">
-                    <div className="mb-4">
-                        {submissionResult.requiresReview ? (
-                            <span className="material-symbols-outlined text-6xl text-yellow-500">pending</span>
+                    {/* Animated Icon */}
+                    <div className="mb-6 flex justify-center">
+                        {isVerified ? (
+                            // Success Animation - Checkmark
+                            <div className="relative">
+                                <div className="absolute inset-0 animate-ping rounded-full bg-green-500/30"></div>
+                                <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-green-500/20 ring-4 ring-green-500/50">
+                                    <span className="material-symbols-outlined animate-bounce text-6xl text-green-500">
+                                        check_circle
+                                    </span>
+                                </div>
+                            </div>
                         ) : (
-                            <span className="material-symbols-outlined text-6xl text-green-500">check_circle</span>
+                            // Pending Animation - Clock
+                            <div className="relative">
+                                <div className="absolute inset-0 animate-pulse rounded-full bg-yellow-500/30"></div>
+                                <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-yellow-500/20 ring-4 ring-yellow-500/50">
+                                    <span className="material-symbols-outlined slow-spin text-6xl text-yellow-500">
+                                        schedule
+                                    </span>
+                                </div>
+                            </div>
                         )}
                     </div>
-                    <h2 className="mb-2 text-2xl font-bold text-[#e0dcd7]">
-                        {submissionResult.requiresReview ? "Zgłoszenie przyjęte!" : "Zgłoszenie zaakceptowane!"}
+
+                    {/* Title */}
+                    <h2 className="mb-3 text-2xl font-bold text-[#e0dcd7]">
+                        {isVerified ? (
+                            <span className="animate-pulse">✅ Zgłoszenie zaakceptowane!</span>
+                        ) : (
+                            <span className="animate-pulse">⏳ Zgłoszenie przyjęte!</span>
+                        )}
                     </h2>
-                    <p className="mb-4 text-[#e0dcd7]/70">{submissionResult.message}</p>
-                    {submissionResult.verification && (
-                        <div className="mb-4 rounded-lg bg-[#2a221a] p-3 text-left">
-                            <p className="mb-1 text-xs text-[#e0dcd7]/50">Wynik weryfikacji AI:</p>
-                            <p className="text-sm text-[#e0dcd7]">
-                                Pewność:{" "}
-                                <span
-                                    className={`font-semibold ${
-                                        submissionResult.verification.confidence === "high"
-                                            ? "text-green-400"
-                                            : submissionResult.verification.confidence === "medium"
-                                              ? "text-yellow-400"
-                                              : "text-gray-400"
-                                    }`}
-                                >
-                                    {submissionResult.verification.confidence}
-                                </span>
-                            </p>
+
+                    {/* Message */}
+                    <p className="mb-6 text-base text-[#e0dcd7]/80">
+                        {isVerified ? (
+                            <>
+                                <span className="font-semibold text-green-400">AI zweryfikowało zgłoszenie jako autentyczne.</span>
+                                <br />
+                                Twoje zgłoszenie jest teraz widoczne na mapie.
+                            </>
+                        ) : (
+                            <>
+                                <span className="font-semibold text-yellow-400">Zgłoszenie oczekuje na sprawdzenie przez moderatora.</span>
+                                <br />
+                                Otrzymasz powiadomienie po weryfikacji.
+                            </>
+                        )}
+                    </p>
+
+                    {/* Countdown */}
+                    <div className="mb-4 rounded-lg bg-[#2a221a] p-4">
+                        <p className="mb-2 text-sm text-[#e0dcd7]/70">Przeniesienie do mapy nastąpi za:</p>
+                        <div className="flex items-center justify-center gap-2">
+                            <span className="text-5xl font-bold text-[#d97706] animate-pulse">
+                                {countdown}
+                            </span>
+                            <span className="text-2xl text-[#e0dcd7]/50">s</span>
                         </div>
-                    )}
-                    <p className="text-sm text-[#e0dcd7]/50">Przekierowywanie do mapy...</p>
+                    </div>
+
+                    {/* Loading Bar */}
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-[#2a221a]">
+                        <div
+                            className="h-full bg-gradient-to-r from-[#d97706] to-green-500 transition-all duration-1000 ease-linear"
+                            style={{ width: `${((3 - countdown) / 3) * 100}%` }}
+                        ></div>
+                    </div>
+
+                    {/* Skip button */}
+                    <button
+                        onClick={() => router.push("/")}
+                        className="mt-6 text-sm text-[#e0dcd7]/50 transition-colors hover:text-[#d97706] underline"
+                    >
+                        Pomiń i przejdź teraz
+                    </button>
                 </div>
             </div>
         )
@@ -502,12 +582,12 @@ export default function SubmitReportPage() {
                         className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#d97706] px-6 py-4 text-lg font-bold text-white transition-colors hover:bg-[#d97706]/80 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <span className="material-symbols-outlined">send</span>
-                        {isSubmitting ? "Weryfikowanie i wysyłanie..." : "Wyślij Zgłoszenie"}
+                        {isSubmitting ? 'Wysyłanie...' : 'Wyślij Zgłoszenie'}
                     </button>
 
                     {isSubmitting && (
-                        <p className="text-center text-sm text-[#e0dcd7]/60">
-                            Twoje zgłoszenie jest weryfikowane przez AI...
+                        <p className="text-center text-[#e0dcd7]/60 text-sm">
+                            Wysyłanie zgłoszenia...
                         </p>
                     )}
                 </form>

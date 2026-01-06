@@ -1,36 +1,65 @@
-// This is a Server Component
-// Force dynamic rendering - no caching
-export const dynamic = "force-dynamic"
-export const revalidate = 0
+"use client"
 
+import { useState, useEffect } from "react"
 import { SectionCard } from "@/components/shared/section-card"
 import { ReportCard, Report } from "@/components/reports/report-card"
 
-async function getUnverifiedReports(): Promise<Report[]> {
-    const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || "http://127.0.0.1:8085"
+export default function AdminVerificationPage() {
+    const [reports, setReports] = useState<Report[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
-    try {
-        // Fetch unverified reports from report-service
-        const res = await fetch(`${REPORT_SERVICE_URL}/pending`, {
-            cache: "no-store"
-        })
+    useEffect(() => {
+        async function fetchReports() {
+            try {
+                const token = localStorage.getItem("access_token")
+                const res = await fetch("/api/reports/pending", {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                })
 
-        if (!res.ok) {
-            console.error("Failed to fetch unverified reports:", res.status, await res.text())
-            return []
+                if (!res.ok) {
+                    const errorText = await res.text()
+                    console.error("Failed to fetch unverified reports:", res.status, errorText)
+                    setError(`Nie udało się pobrać zgłoszeń: ${res.status}`)
+                    return
+                }
+
+                const data = await res.json()
+                setReports(data)
+            } catch (err) {
+                console.error("Error fetching unverified reports:", err)
+                setError("Błąd połączenia z serwerem")
+            } finally {
+                setLoading(false)
+            }
         }
 
-        const data = await res.json()
-        console.log(`[Server] Fetched ${Array.isArray(data) ? data.length : 0} unverified reports`)
-        return data
-    } catch (error) {
-        console.error("Error fetching unverified reports:", error)
-        return []
-    }
-}
+        fetchReports()
+    }, [])
 
-export default async function AdminVerificationPage() {
-    const reports = await getUnverifiedReports()
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-600 border-t-zinc-300"></div>
+            </div>
+        )
+    }
+
+    if (error) {
+        return (
+            <SectionCard className="border-zinc-800 bg-zinc-900">
+                <div className="py-12 text-center">
+                    <p className="text-lg text-red-400">{error}</p>
+                </div>
+            </SectionCard>
+        )
+    }
+
+    const handleReportProcessed = (id: string) => {
+        setReports((prev) => prev.filter((r) => r.id !== id))
+    }
 
     return (
         <div>
@@ -48,7 +77,13 @@ export default async function AdminVerificationPage() {
                         </div>
                     </SectionCard>
                 ) : (
-                    reports.map((report) => <ReportCard key={report.id} report={report} />)
+                    reports.map((report) => (
+                        <ReportCard
+                            key={report.id}
+                            report={report}
+                            onProcessed={handleReportProcessed}
+                        />
+                    ))
                 )}
             </div>
         </div>

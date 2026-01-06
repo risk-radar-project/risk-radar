@@ -323,8 +323,10 @@ async def analyze_nearby_threats(request: NearbyThreatRequest):
         
         logger.info(f"📊 Found {len(nearby_reports)} reports from database")
         
-        # 2. If no reports, return safe status
+        # 2. If no reports, return safe status immediately (no AI call needed)
         if len(nearby_reports) == 0:
+            safe_message = f"🌟 Świetnie! W promieniu {request.radius_km:.0f}km od Ciebie nie ma żadnych zgłoszeń. Okolica wydaje się bezpieczna."
+            logger.info(f"✓ No reports found, returning safe status")
             return NearbyThreatResponse(
                 status="success",
                 location={"lat": request.latitude, "lon": request.longitude},
@@ -332,7 +334,7 @@ async def analyze_nearby_threats(request: NearbyThreatRequest):
                 reports_count=0,
                 danger_score=0.0,
                 danger_level="Bardzo niski",
-                ai_summary="🌟 Świetnie! W promieniu {:.0f}km od Ciebie nie ma żadnych zgłoszeń. Okolica wydaje się bezpieczna.".format(request.radius_km),
+                ai_summary=safe_message,
                 timestamp=datetime.utcnow().isoformat()
             )
         

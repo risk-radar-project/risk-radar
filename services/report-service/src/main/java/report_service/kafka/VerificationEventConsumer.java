@@ -8,6 +8,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import report_service.entity.Report;
 import report_service.entity.ReportStatus;
+
 import report_service.repository.ReportRepository;
 
 import java.time.LocalDateTime;
@@ -38,8 +39,8 @@ public class VerificationEventConsumer {
                 boolean isFake = event.get("is_fake").asBoolean();
                 double fakeProbability = event.get("fake_probability").asDouble();
                 String confidence = event.get("confidence").asText();
-                
-                log.info("Processing verification for report {}: isFake={}, probability={}, confidence={}", 
+
+                log.info("Processing verification for report {}: isFake={}, probability={}, confidence={}",
                         reportId, isFake, fakeProbability, confidence);
 
                 Report report = reportRepository.findById(UUID.fromString(reportId))
@@ -51,14 +52,18 @@ public class VerificationEventConsumer {
                     report.setAiFakeProbability(fakeProbability);
                     report.setAiConfidence(confidence);
                     report.setAiVerifiedAt(LocalDateTime.now());
-                    
-                    // Update status based on verification result
-                    if (isFake) {
-                        report.setStatus(ReportStatus.REJECTED);
-                        log.info("Report {} marked as REJECTED (fake detected)", reportId);
-                    } else {
+
+                    // AI NEVER auto-rejects - only human moderators can reject
+                    // If is_fake=true -> PENDING (needs manual review by moderator)
+                    // If is_fake=false -> VERIFIED (auto-accepted)
+                    if (!isFake) {
                         report.setStatus(ReportStatus.VERIFIED);
-                        log.info("Report {} marked as VERIFIED (authentic)", reportId);
+                        log.info("Report {} marked as VERIFIED (AI verified as authentic)", reportId);
+                    } else {
+                        // Suspicious report - keep as PENDING for human moderator to decide
+                        report.setStatus(ReportStatus.PENDING);
+                        log.info("Report {} remains PENDING (AI flagged as suspicious - needs moderator review)",
+                                reportId);
                     }
                     reportRepository.save(report);
                 } else {

@@ -61,6 +61,8 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     const [showResults, setShowResults] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
     const [isAdmin, setIsAdmin] = useState(false)
+    const [canValidate, setCanValidate] = useState(false)
+    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
 
     useEffect(() => {
         const token = localStorage.getItem("access_token")
@@ -71,12 +73,18 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                 const roles = user.roles || []
 
                 const hasAdminAccess =
-                    permissions.includes("*:*") ||
-                    permissions.includes("system:admin") ||
-                    permissions.includes("PERM_SYSTEM_ADMIN") ||
+                    permissions.includes("PERM_*:*") ||
+                    permissions.includes("PERM_SYSTEM:ADMIN") ||
                     roles.includes("ROLE_ADMIN")
 
+                const hasValidateAccess =
+                    hasAdminAccess ||
+                    roles.includes("ROLE_MODERATOR") ||
+                    roles.includes("ROLE_VOLUNTEER") ||
+                    permissions.includes("PERM_REPORTS:VALIDATE")
+
                 setIsAdmin(hasAdminAccess)
+                setCanValidate(hasValidateAccess)
             }
         }
     }, [])
@@ -372,11 +380,11 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
         try {
             const response = await fetch(
                 `https://nominatim.openstreetmap.org/search?` +
-                    `q=${encodeURIComponent(query)}&` +
-                    `format=json&` +
-                    `countrycodes=pl&` +
-                    `limit=5&` +
-                    `addressdetails=1`,
+                `q=${encodeURIComponent(query)}&` +
+                `format=json&` +
+                `countrycodes=pl&` +
+                `limit=5&` +
+                `addressdetails=1`,
                 {
                     headers: {
                         "User-Agent": "RiskRadar-Map-Application"
@@ -597,6 +605,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
         }
     }
 
+
     return (
         <>
             {/* Styles moved to globals.css */}
@@ -657,6 +666,20 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                             <span className="material-symbols-outlined">settings</span>
                             <p className="text-base leading-normal">Ustawienia</p>
                         </Link>
+
+                        {canValidate && (
+                            <>
+                                <div className="my-2 border-t border-[#e0dcd7]/10"></div>
+
+                                <Link
+                                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7] transition-colors hover:bg-white/10"
+                                    href="/reports"
+                                >
+                                    <span className="material-symbols-outlined">verified</span>
+                                    <p className="text-base leading-normal">Weryfikacja</p>
+                                </Link>
+                            </>
+                        )}
 
                         {isAdmin && (
                             <>
@@ -750,11 +773,10 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                         <button
                             onClick={handleAIAnalysis}
                             disabled={aiLoading}
-                            className={`flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg ${
-                                aiLoading
-                                    ? "cursor-wait bg-[#d97706]/70"
-                                    : "bg-gradient-to-r from-[#d97706] to-[#ea580c] hover:from-[#ea580c] hover:to-[#dc2626]"
-                            } font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-xl`}
+                            className={`flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg ${aiLoading
+                                ? "cursor-wait bg-[#d97706]/70"
+                                : "bg-gradient-to-r from-[#d97706] to-[#ea580c] hover:from-[#ea580c] hover:to-[#dc2626]"
+                                } font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-xl`}
                             title="Sprawdź bezpieczeństwo okolicy z AI"
                         >
                             {aiLoading ? (
@@ -874,7 +896,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                         >
                             <span className="text-xl font-bold">✕</span>
                         </span>
-                        {}
+                        { }
                         <img
                             src={lightboxImage}
                             alt="Pełnowymiarowe zdjęcie"

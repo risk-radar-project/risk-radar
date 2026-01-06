@@ -96,4 +96,15 @@ public class CustomUserDetailsService implements UserDetailsService {
             userRepository.save(user);
         }
     }
+
+    @Transactional
+    public void unbanUser(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+
+        if (user.isBanned()) {
+            user.setBanned(false);
+            userRepository.save(user);
+        }
+    }
 }
