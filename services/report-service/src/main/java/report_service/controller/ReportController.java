@@ -13,6 +13,7 @@ import report_service.entity.Report;
 import report_service.entity.ReportStatus;
 import report_service.service.AuditLogClient;
 import report_service.service.ReportService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.security.Principal;
 import java.util.List;
@@ -98,6 +99,7 @@ public class ReportController {
         }
 
         @PatchMapping("/report/{id}/status")
+        @PreAuthorize("hasAuthority('PERM_REPORTS:EDIT') or hasAuthority('PERM_*:*')")
         public ResponseEntity<?> updateReportStatus(
                         @PathVariable UUID id,
                         @RequestParam ReportStatus status,
@@ -144,11 +146,15 @@ public class ReportController {
                         @RequestParam(defaultValue = "0") int page,
                         @RequestParam(defaultValue = "10") int size,
                         @RequestParam(defaultValue = "createdAt") String sort,
-                        @RequestParam(defaultValue = "desc") String direction) {
+                        @RequestParam(defaultValue = "desc") String direction,
+                        @RequestParam(required = false) ReportStatus status,
+                        @RequestParam(required = false) String category) {
                 try {
                         Page<Report> reports = reportService.getReports(
                                         PageRequest.of(page, size,
-                                                        Sort.by(Sort.Direction.fromString(direction), sort)));
+                                                        Sort.by(Sort.Direction.fromString(direction), sort)),
+                                        status,
+                                        category);
                         return ResponseEntity.ok(reports);
                 } catch (Exception e) {
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
@@ -196,6 +202,7 @@ public class ReportController {
         }
 
         @GetMapping("/reports/pending")
+        @PreAuthorize("hasAuthority('PERM_REPORTS:VALIDATE') or hasAuthority('PERM_*:*')")
         public ResponseEntity<?> getPendingReports() {
                 try {
                         List<Report> reports = reportService.getPendingReports();
@@ -229,6 +236,20 @@ public class ReportController {
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                                         Map.of(
                                                         "message", "Failed to fetch nearby reports",
+                                                        "status", "failure",
+                                                        "error", e.getMessage()));
+                }
+        }
+
+        @GetMapping("/reports/stats")
+        @PreAuthorize("hasAuthority('PERM_STATS:VIEW') or hasAuthority('PERM_REPORTS:VIEW') or hasAuthority('PERM_*:*')")
+        public ResponseEntity<?> getReportStats() {
+                try {
+                        return ResponseEntity.ok(reportService.getReportStats());
+                } catch (Exception e) {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                                        Map.of(
+                                                        "message", "Failed to get report stats",
                                                         "status", "failure",
                                                         "error", e.getMessage()));
                 }

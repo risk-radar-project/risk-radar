@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Risk-Radar Mapa (Ładowanie Jednorazowe z Klastrowaniem)</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        h1 { position: absolute; top: 10px; left: 50px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; opacity: 0.8;}
+
+        .leaflet-popup-content .report-image-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .leaflet-popup-content .report-image {
+            max-width: 100%;
+            height: auto;
+            max-height: 150px;
+            object-fit: cover;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .leaflet-popup-content .report-image:hover {
+            transform: scale(1.02);
+        }
+        .leaflet-popup-content .image-placeholder {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            background-color: #f0f0f0;
+            border: 1px dashed #999;
+            text-align: center;
+            line-height: 50px;
+            font-size: 10px;
+            color: #555;
+        }
+
+        #lightbox-overlay {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+        }
+
+        #lightbox-content {
+            position: relative;
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 90%;
+            max-height: 90%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #lightbox-img {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
+            border-radius: 5px;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 10px;
+            right: 25px;
+            color: #aaa;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10000;
+        }
+
+        .lightbox-close:hover,
+        .lightbox-close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<h1>Risk-Radar Mapa Na Żywo (Ładowanie Jednorazowe z Klastrowaniem)</h1>
+<div id="map"></div>
+
+
+<div id="lightbox-overlay" onclick="closeLightbox()">
+    <div id="lightbox-content" onclick="event.stopPropagation()">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <img id="lightbox-img" src="" alt="Pełnowymiarowe zdjęcie">
+    </div>
+</div>
+
+<script>
+    const MEDIA_SERVICE_BASE_URL = 'http://localhost:8084/media/';
+    const X_USER_ID_HEADER = '00000000-0000-0000-0000-000000000001';
+
+    const CATEGORY_DISPLAY_NAMES = {
+        'VANDALISM': 'Wandalizm',
+        'INFRASTRUCTURE': 'Infrastruktura drogowa/chodników',
+        'DANGEROUS_SITUATION': 'Niebezpieczne sytuacje',
+        'TRAFFIC_ACCIDENT': 'Wypadki drogowe',
+        'PARTICIPANT_BEHAVIOR': 'Zachowania kierowców/pieszych',
+        'PARTICIPANT_HAZARD': 'Zagrożenia dla pieszych i rowerzystów i kierowców',
+        'WASTE_ILLEGAL_DUMPING': 'Śmieci/nielegalne zaśmiecanie/nielegalne wysypiska śmieci',
+        'BIOLOGICAL_HAZARD': 'Zagrożenia biologiczne',
+        'OTHER': 'Inne'
+    };
+
+    var map = L.map('map').setView([52.23, 21.01], 6);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+    }).addTo(map);
+
+    var markers = L.markerClusterGroup();
+    map.addLayer(markers);
+
+    const baseIconProps = {
+        iconSize: [32, 32],
+        iconAnchor: [12, 24],
+        popupAnchor: [0, -24]
+    };
+
+    const categoryIcons = {
+        'VANDALISM': L.icon({ iconUrl: '/icons/format_paint.png', ...baseIconProps }),
+        'INFRASTRUCTURE': L.icon({ iconUrl: '/icons/construction.png', ...baseIconProps }),
+        'DANGEROUS_SITUATION': L.icon({ iconUrl: '/icons/warning.png', ...baseIconProps }),
+        'TRAFFIC_ACCIDENT': L.icon({ iconUrl: '/icons/car_crash.png', ...baseIconProps }),
+        'PARTICIPANT_BEHAVIOR': L.icon({ iconUrl: '/icons/person_alert.png', ...baseIconProps }),
+        'PARTICIPANT_HAZARD': L.icon({ iconUrl: '/icons/brightness_alert.png', ...baseIconProps }),
+        'WASTE_ILLEGAL_DUMPING': L.icon({ iconUrl: '/icons/delete_sweep.png', ...baseIconProps }),
+        'BIOLOGICAL_HAZARD': L.icon({ iconUrl: '/icons/bug_report.png', ...baseIconProps }),
+        'OTHER': L.icon({ iconUrl: '/icons/help_outline.png', ...baseIconProps })
+    };
+    const defaultIcon = categoryIcons['OTHER'];
+
+    var displayedReportIds = new Set();
+
+    /**
+     * Otwiera lightbox z pełnowymiarowym obrazem.
+     * @param {string} fullImageUrl URL do pełnowymiarowego obrazu.
+     */
+    function openLightbox(fullImageUrl) {
+        document.getElementById('lightbox-img').src = fullImageUrl;
+        document.getElementById('lightbox-overlay').style.display = 'flex';
+    }
+
+    /**
+     * Zamyka lightbox.
+     */
+    function closeLightbox() {
+        document.getElementById('lightbox-overlay').style.display = 'none';
+        document.getElementById('lightbox-img').src = '';
+    }
+
+    /**
+     * @param {Object} report The report entity object.
+     * @returns {string} The HTML content for the Leaflet popup.
+     */
+    function createPopupContent(report) {
+        const categoryKey = report.category;
+        const polishCategoryName = CATEGORY_DISPLAY_NAMES[categoryKey] || 'Nieznana kategoria';
+
+        let content = `
+            <b>Kategoria: ${polishCategoryName}</b><br>
+            <b>${report.title}</b><br>
+            ${report.description || 'Brak opisu.'}
+        `;
+
+        const imageIds = report.imageIds || [];
+
+        if (imageIds.length > 0) {
+            let imageHtml = `<div class="report-image-container">`;
+
+            imageIds.forEach(imageId => {
+                const previewImageUrl = `${MEDIA_SERVICE_BASE_URL}${imageId}/preview`;
+                const fullImageUrl = `${MEDIA_SERVICE_BASE_URL}${imageId}`;
+
+                imageHtml += `
+                    <img
+                        src="${previewImageUrl}"
+                        class="report-image"
+                        alt="Evidence image for ${report.title}"
+                        title="Kliknij, aby zobaczyć pełne zdjęcie (ID: ${imageId})"
+                        onclick="openLightbox('${fullImageUrl}')"
+                        onerror="this.outerHTML='<span class=\\'image-placeholder\\'>Błąd Ładowania Obrazu</span>'"
+                    />
+                `;
+            });
+
+            imageHtml += `</div>`;
+            content += imageHtml;
+        }
+
+        return content;
+    }
+
+
+    function addMarkerToMap(report) {
+        if (!report || !report.latitude || !report.longitude) {
+            return;
+        }
+
+        if (displayedReportIds.has(report.id)) {
+            return;
+        }
+
+        const category = report.category;
+        const selectedIcon = categoryIcons[category] || defaultIcon;
+
+        console.log(`Dodaję NOWĄ pinezkę: ${report.title} (Kategoria: ${category})`);
+        displayedReportIds.add(report.id);
+
+        const popupContent = createPopupContent(report);
+
+        var marker = L.marker([report.latitude, report.longitude], { icon: selectedIcon })
+            .bindPopup(popupContent, {
+                maxWidth: 400
+            });
+
+        markers.addLayer(marker);
+    }
+
+    function fetchReports() {
+        fetch('/reports')
+            .then(response => response.json())
+            .then(reports => {
+                console.log(`Pobrano ${reports.length} raportów.`);
+                reports.forEach(report => addMarkerToMap(report));
+            })
+            .catch(error => console.error('Błąd pobierania raportów:', error));
+    }
+
+    fetchReports();
+
+</script>
+</body>
+</html>

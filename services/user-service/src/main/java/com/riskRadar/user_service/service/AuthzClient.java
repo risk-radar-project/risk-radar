@@ -18,6 +18,7 @@ import java.util.UUID;
 public class AuthzClient {
 
         private final WebClient webClient;
+        private static final String SYSTEM_USER_ID = "11111111-1111-1111-1111-111111111111";
 
         private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(3);
         private static final int MAX_RETRIES = 3;
@@ -100,7 +101,7 @@ public class AuthzClient {
                 try {
                         webClient.post()
                                         .uri("/users/{userId}/roles", userId)
-                                        .header("X-User-ID", "11111111-1111-1111-1111-111111111111")
+                                        .header("X-User-ID", SYSTEM_USER_ID)
                                         .bodyValue(Map.of("role_id", roleId))
                                         .retrieve()
                                         .bodyToMono(Void.class)
@@ -114,11 +115,35 @@ public class AuthzClient {
         }
 
         public void revokeRoles(UUID userId) {
-                executeWithRetry(
-                                webClient.post()
-                                                .uri("/roles/revoke?userId={id}", userId)
-                                                .retrieve()
-                                                .bodyToMono(Void.class),
-                                "revokeRoles " + userId);
+                try {
+                        // First get all roles for the user
+                        Role[] currentRoles = getRolesByUserId(userId);
+                        if (currentRoles == null || currentRoles.length == 0) {
+                                log.debug("No roles to revoke for user {}", userId);
+                                return;
+                        }
+
+                        // Delete each role assignment
+                        for (Role role : currentRoles) {
+                                if (role != null && role.id() != null) {
+                                        try {
+                                                webClient.delete()
+                                                                .uri("/users/{userId}/roles/{roleId}", userId,
+                                                                                role.id())
+                                                                .header("X-User-ID", SYSTEM_USER_ID)
+                                                                .retrieve()
+                                                                .bodyToMono(Void.class)
+                                                                .timeout(RESPONSE_TIMEOUT)
+                                                                .block();
+                                                log.debug("Revoked role {} from user {}", role.name(), userId);
+                                        } catch (Exception e) {
+                                                log.warn("Failed to revoke role {} from user {}: {}", role.name(),
+                                                                userId, e.getMessage());
+                                        }
+                                }
+                        }
+                } catch (Exception e) {
+                        log.error("Failed to revoke roles for user {}", userId, e);
+                }
         }
 }

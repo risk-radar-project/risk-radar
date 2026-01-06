@@ -178,13 +178,13 @@ export default function SubmitReportPage() {
         }
     }
 
-    const handleLocationSelect = (lat: number, lng: number) => {
+    const handleLocationSelect = useCallback((lat: number, lng: number) => {
         setFormData((prev) => ({
             ...prev,
             latitude: lat,
             longitude: lng
         }))
-    }
+    }, [])
 
     // Accept AI suggested category
     const acceptAISuggestion = () => {
@@ -278,6 +278,8 @@ export default function SubmitReportPage() {
             const createdReport = await response.json()
             const reportId = createdReport.id || `report-${Date.now()}`
 
+            // AI Verification commented out - auto-acceptance disabled
+            /* 
             // Step 2: AI Verification - check if report is valid/fake
             const verificationResult = await submitAndVerifyReport(
                 reportId,
@@ -299,6 +301,21 @@ export default function SubmitReportPage() {
                 // Rejected - show error
                 setError(verificationResult.message)
             }
+            */
+
+            // Manual success fallback
+            setSuccess(true)
+            setSubmissionResult({
+                accepted: true,
+                requiresReview: true,
+                message: 'Zgłoszenie zostało wysłane i trafiło do weryfikacji.',
+                verification: null,
+                reportId: reportId
+            })
+            setTimeout(() => {
+                window.location.href = '/'
+            }, 2500)
+
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : "Wystąpił błąd podczas tworzenia zgłoszenia"
             setError(errorMessage)
@@ -327,7 +344,7 @@ export default function SubmitReportPage() {
 
     if (success && submissionResult) {
         const isVerified = !submissionResult.requiresReview
-        
+
         return (
             <div className="flex min-h-screen items-center justify-center bg-[#2a221a] p-4">
                 <div className="w-full max-w-md rounded-xl bg-[#362c20] p-8 text-center">
@@ -395,7 +412,7 @@ export default function SubmitReportPage() {
 
                     {/* Loading Bar */}
                     <div className="h-2 w-full overflow-hidden rounded-full bg-[#2a221a]">
-                        <div 
+                        <div
                             className="h-full bg-gradient-to-r from-[#d97706] to-green-500 transition-all duration-1000 ease-linear"
                             style={{ width: `${((3 - countdown) / 3) * 100}%` }}
                         ></div>
@@ -565,12 +582,12 @@ export default function SubmitReportPage() {
                         className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#d97706] px-6 py-4 text-lg font-bold text-white transition-colors hover:bg-[#d97706]/80 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <span className="material-symbols-outlined">send</span>
-                        {isSubmitting ? "Weryfikowanie i wysyłanie..." : "Wyślij Zgłoszenie"}
+                        {isSubmitting ? 'Wysyłanie...' : 'Wyślij Zgłoszenie'}
                     </button>
 
                     {isSubmitting && (
-                        <p className="text-center text-sm text-[#e0dcd7]/60">
-                            Twoje zgłoszenie jest weryfikowane przez AI...
+                        <p className="text-center text-[#e0dcd7]/60 text-sm">
+                            Wysyłanie zgłoszenia...
                         </p>
                     )}
                 </form>

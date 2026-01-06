@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 import report_service.dto.ReportRequest;
 import report_service.entity.Report;
 import report_service.entity.ReportStatus;
+import report_service.entity.ReportCategory;
 import report_service.repository.ReportRepository;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -69,8 +71,23 @@ public class ReportService {
         }
     }
 
-    public Page<Report> getReports(Pageable pageable) {
-        return reportRepository.findAll(pageable);
+    public Page<Report> getReports(Pageable pageable, ReportStatus status, String categoryStr) {
+        Specification<Report> spec = Specification.where(null);
+
+        if (status != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
+        }
+
+        if (categoryStr != null && !categoryStr.isEmpty() && !"all".equalsIgnoreCase(categoryStr)) {
+            try {
+                ReportCategory category = ReportCategory.valueOf(categoryStr);
+                spec = spec.and((root, query, cb) -> cb.equal(root.get("category"), category));
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid category filter: " + categoryStr);
+            }
+        }
+
+        return reportRepository.findAll(spec, pageable);
     }
 
     public Report getReportById(UUID id) {
@@ -101,4 +118,23 @@ public class ReportService {
                 "description", report.getDescription());
     }
 
+    public Map<String, Object> getReportStats() {
+        long total = reportRepository.count();
+        long pending = reportRepository.countByStatus(ReportStatus.PENDING);
+        long verified = reportRepository.countByStatus(ReportStatus.VERIFIED);
+        long rejected = reportRepository.countByStatus(ReportStatus.REJECTED);
+
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        long today = reportRepository.countByCreatedAtAfter(startOfDay);
+
+        long thisWeek = reportRepository.countByCreatedAtAfter(startOfDay.minusDays(7));
+
+        return Map.of(
+                "totalReports", total,
+                "pendingReports", pending,
+                "verifiedReports", verified,
+                "rejectedReports", rejected,
+                "reportsToday", today,
+                "reportsThisWeek", thisWeek);
+    }
 }

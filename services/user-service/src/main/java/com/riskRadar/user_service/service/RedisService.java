@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
-
 @Service
 public class RedisService {
     private final RedisTemplate<String, String> redisTemplate;
@@ -26,6 +25,10 @@ public class RedisService {
     public void banUser(String username, String reason) {
         revokeRefreshToken(username);
         redisTemplate.opsForValue().set("bannedUser:" + username, reason, Duration.ofHours(PERMANENT_BAN_TTL));
+    }
+
+    public void unbanUser(String username) {
+        redisTemplate.delete("bannedUser:" + username);
     }
 
     public void storeRefreshToken(String username, String refreshToken) {
