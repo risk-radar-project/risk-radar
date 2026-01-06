@@ -167,9 +167,12 @@ export default function SubmitReportPage() {
         }
 
         if (name === "description") {
-            // No hard limit for description (TEXT field), but warn if very long
-            if (value.length > 5000) {
-                newFieldErrors.description = "Opis jest bardzo długi. Rozważ skrócenie dla lepszej czytelności."
+            // Backend limit is 10000 characters
+            if (value.length > 10000) {
+                newFieldErrors.description = "Opis nie może przekraczać 10000 znaków"
+            } else if (value.length > 8000) {
+                // Soft warning when approaching limit
+                newFieldErrors.description = `Opis jest bardzo długi. Pozostało ${10000 - value.length} znaków.`
             } else {
                 delete newFieldErrors.description
             }
@@ -231,6 +234,13 @@ export default function SubmitReportPage() {
         // Validate title length
         if (formData.title.length > 500) {
             setFieldErrors({ ...fieldErrors, title: "Tytuł nie może przekraczać 500 znaków" })
+            setIsSubmitting(false)
+            return
+        }
+
+        // Validate description length
+        if (formData.description.length > 10000) {
+            setFieldErrors({ ...fieldErrors, description: "Opis nie może przekraczać 10000 znaków" })
             setIsSubmitting(false)
             return
         }
@@ -576,13 +586,14 @@ export default function SubmitReportPage() {
                             Opis
                         </label>
                         <p className="mb-2 text-xs text-[#e0dcd7]/60">
-                            Możesz dodać szczegółowy opis (bez limitu znaków)
+                            Możesz dodać szczegółowy opis (maksymalnie 10000 znaków)
                         </p>
                         <textarea
                             id="description"
                             name="description"
                             value={formData.description}
                             onChange={handleInputChange}
+                            maxLength={10000}
                             rows={8}
                             className={`w-full resize-none rounded-lg border ${fieldErrors.description ? 'border-yellow-500' : 'border-[#e0dcd7]/20'} bg-[#2a221a] px-4 py-3 text-[#e0dcd7] transition-colors focus:border-[#d97706] focus:outline-none`}
                             placeholder="Opisz dokładnie problem..."
@@ -590,7 +601,7 @@ export default function SubmitReportPage() {
                         <div className="mt-1 flex items-center justify-between">
                             {formData.description.length > 0 && (
                                 <p className="text-xs text-[#e0dcd7]/50">
-                                    {formData.description.length} znaków
+                                    {formData.description.length}/10000 znaków
                                 </p>
                             )}
                             {fieldErrors.description && (

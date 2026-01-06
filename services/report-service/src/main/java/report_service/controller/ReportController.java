@@ -1,12 +1,14 @@
 package report_service.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import report_service.dto.ReportRequest;
 import report_service.entity.Report;
@@ -20,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -29,9 +32,33 @@ public class ReportController {
         private final AuditLogClient auditLogClient;
 
         @PostMapping("/createReport")
-        public ResponseEntity<?> createReport(@RequestBody ReportRequest request,
+        public ResponseEntity<?> createReport(@Valid @RequestBody ReportRequest request,
+                        BindingResult bindingResult,
                         HttpServletRequest httpRequest, Principal principal) {
                 String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
+
+                // Check for validation errors
+                if (bindingResult.hasErrors()) {
+                        String errorMessage = bindingResult.getFieldErrors().stream()
+                                        .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                                        .collect(Collectors.joining(", "));
+
+                        auditLogClient.logAction(Map.of(
+                                        "service", "report-service",
+                                        "action", "create_report",
+                                        "actor", getActor(principal, httpRequest),
+                                        "status", "failure",
+                                        "log_type", "ERROR",
+                                        "metadata", Map.of(
+                                                        "description", "Validation failed for create report",
+                                                        "error", errorMessage,
+                                                        "user_agent", userAgent)));
+
+                        return ResponseEntity.badRequest().body(Map.of(
+                                        "message", "Validation failed",
+                                        "status", "failure",
+                                        "error", errorMessage));
+                }
 
                 try {
                         // Extract User ID from header
