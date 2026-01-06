@@ -78,11 +78,7 @@ export default function AdminVerificationPage() {
                     </SectionCard>
                 ) : (
                     reports.map((report) => (
-                        <ReportCard
-                            key={report.id}
-                            report={report}
-                            onProcessed={handleReportProcessed}
-                        />
+                        <ReportCard key={report.id} report={report} onProcessed={handleReportProcessed} />
                     ))
                 )}
             </div>

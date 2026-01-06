@@ -170,7 +170,7 @@ public class ReportController {
                 }
         }
 
-        @GetMapping("")
+        @GetMapping({ "", "/reports" })
         public ResponseEntity<?> getReports(
                         @RequestParam(defaultValue = "0") int page,
                         @RequestParam(defaultValue = "10") int size,
@@ -216,7 +216,7 @@ public class ReportController {
                 }
         }
 
-        @GetMapping("/verified")
+        @GetMapping({ "/verified", "/reports/verified" })
         public ResponseEntity<?> getVerifiedReports() {
                 try {
                         List<Report> reports = reportService.getVerifiedReports();

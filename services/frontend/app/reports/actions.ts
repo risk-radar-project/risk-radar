@@ -10,7 +10,7 @@ export async function verifyReport(reportId: string, token: string) {
         const res = await fetch(`${REPORT_SERVICE_URL}/report/${reportId}/status?status=VERIFIED`, {
             method: "PATCH",
             headers: {
-                "Authorization": `Bearer ${token}`
+                Authorization: `Bearer ${token}`
             }
         })
 
@@ -38,7 +38,7 @@ export async function rejectReport(reportId: string, token: string) {
         const res = await fetch(`${REPORT_SERVICE_URL}/report/${reportId}/status?status=REJECTED`, {
             method: "PATCH",
             headers: {
-                "Authorization": `Bearer ${token}`
+                Authorization: `Bearer ${token}`
             }
         })
 

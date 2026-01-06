@@ -182,23 +182,29 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
                 {report.description && <p className="text-sm text-zinc-400">{report.description}</p>}
 
                 {/* AI Verification Results - Simplified feedback for user */}
-                {aiStatus.show && <div className={`rounded-lg border p-3 ${aiStatus.isAccepted
-                    ? "border-green-500/30 bg-green-500/10"
-                    : "border-red-500/30 bg-red-500/10"
-                    }`}>
-                    <div className="flex items-center gap-2">
-                        <span className={`text-lg ${aiStatus.isAccepted ? "text-green-400" : "text-red-400"}`}>
-                            {aiStatus.isAccepted ? "✓" : "✗"}
-                        </span>
-                        <div>
-                            <span className={`text-sm font-semibold ${aiStatus.isAccepted ? "text-green-400" : "text-red-400"
-                                }`}>
-                                {aiStatus.message}
+                {aiStatus.show && (
+                    <div
+                        className={`rounded-lg border p-3 ${
+                            aiStatus.isAccepted ? "border-green-500/30 bg-green-500/10" : "border-red-500/30 bg-red-500/10"
+                        }`}
+                    >
+                        <div className="flex items-center gap-2">
+                            <span className={`text-lg ${aiStatus.isAccepted ? "text-green-400" : "text-red-400"}`}>
+                                {aiStatus.isAccepted ? "✓" : "✗"}
                             </span>
-                            <p className="text-xs text-[#e0dcd7]/60">{aiStatus.description}</p>
+                            <div>
+                                <span
+                                    className={`text-sm font-semibold ${
+                                        aiStatus.isAccepted ? "text-green-400" : "text-red-400"
+                                    }`}
+                                >
+                                    {aiStatus.message}
+                                </span>
+                                <p className="text-xs text-[#e0dcd7]/60">{aiStatus.description}</p>
+                            </div>
                         </div>
                     </div>
-                </div>}
+                )}
 
                 {/* Location info */}
                 <div className="flex items-center gap-4 text-xs text-zinc-500">
