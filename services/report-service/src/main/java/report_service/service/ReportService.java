@@ -71,6 +71,27 @@ public class ReportService {
         }
     }
 
+    public Report updateReport(UUID id, ReportRequest request) {
+        Report report = reportRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Report not found with id: " + id));
+
+        // Update fields
+        report.setTitle(request.title());
+        report.setDescription(request.description());
+        report.setLatitude(request.latitude());
+        report.setLongitude(request.longitude());
+        report.setCategory(request.reportCategory());
+
+        return reportRepository.save(report);
+    }
+
+    public void deleteReport(UUID id) {
+        if (!reportRepository.existsById(id)) {
+            throw new RuntimeException("Report not found with id: " + id);
+        }
+        reportRepository.deleteById(id);
+    }
+
     public Page<Report> getReports(Pageable pageable, ReportStatus status, String categoryStr) {
         Specification<Report> spec = Specification.where(null);
 

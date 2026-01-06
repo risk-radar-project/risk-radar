@@ -282,6 +282,134 @@ public class ReportController {
                 }
         }
 
+        @PutMapping("/report/{id}")
+        @PreAuthorize("hasAuthority('PERM_REPORTS:EDIT') or hasAuthority('PERM_*:*')")
+        public ResponseEntity<?> updateReport(
+                        @PathVariable UUID id,
+                        @Valid @RequestBody ReportRequest request,
+                        BindingResult bindingResult,
+                        HttpServletRequest httpRequest, Principal principal) {
+                try {
+                        // Check for validation errors
+                        if (bindingResult.hasErrors()) {
+                                String errorMessage = bindingResult.getFieldErrors().stream()
+                                                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                                                .collect(Collectors.joining(", "));
+
+                                return ResponseEntity.badRequest().body(Map.of(
+                                                "message", "Validation failed",
+                                                "status", "failure",
+                                                "error", errorMessage));
+                        }
+
+                        Report updatedReport = reportService.updateReport(id, request);
+
+                        auditLogClient.logAction(Map.of(
+                                        "service", "report-service",
+                                        "action", "update_report",
+                                        "actor", getActor(principal, httpRequest),
+                                        "status", "success",
+                                        "log_type", "ACTION",
+                                        "metadata", Map.of(
+                                                        "description", "Report updated successfully for id: " + id,
+                                                        "user_agent", httpRequest.getHeader("User-Agent"))));
+
+                        return ResponseEntity.ok(updatedReport);
+                } catch (RuntimeException e) {
+                        auditLogClient.logAction(Map.of(
+                                        "service", "report-service",
+                                        "action", "update_report",
+                                        "actor", getActor(principal, httpRequest),
+                                        "status", "failure",
+                                        "log_type", "ERROR",
+                                        "metadata", Map.of(
+                                                        "description", "Failed to update report for id: " + id,
+                                                        "error", e.getMessage(),
+                                                        "user_agent", httpRequest.getHeader("User-Agent"))));
+
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                                        Map.of(
+                                                        "message", "Report not found",
+                                                        "status", "failure",
+                                                        "error", e.getMessage()));
+                } catch (Exception e) {
+                        auditLogClient.logAction(Map.of(
+                                        "service", "report-service",
+                                        "action", "update_report",
+                                        "actor", getActor(principal, httpRequest),
+                                        "status", "failure",
+                                        "log_type", "ERROR",
+                                        "metadata", Map.of(
+                                                        "description", "Failed to update report for id: " + id,
+                                                        "error", e.getMessage(),
+                                                        "user_agent", httpRequest.getHeader("User-Agent"))));
+
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                                        Map.of(
+                                                        "message", "Failed to update report",
+                                                        "status", "failure",
+                                                        "error", e.getMessage()));
+                }
+        }
+
+        @DeleteMapping("/report/{id}")
+        @PreAuthorize("hasAuthority('PERM_REPORTS:DELETE') or hasAuthority('PERM_*:*')")
+        public ResponseEntity<?> deleteReport(
+                        @PathVariable UUID id,
+                        HttpServletRequest httpRequest, Principal principal) {
+                try {
+                        reportService.deleteReport(id);
+
+                        auditLogClient.logAction(Map.of(
+                                        "service", "report-service",
+                                        "action", "delete_report",
+                                        "actor", getActor(principal, httpRequest),
+                                        "status", "success",
+                                        "log_type", "ACTION",
+                                        "metadata", Map.of(
+                                                        "description", "Report deleted successfully for id: " + id,
+                                                        "user_agent", httpRequest.getHeader("User-Agent"))));
+
+                        return ResponseEntity.ok(Map.of(
+                                        "message", "Report deleted successfully",
+                                        "status", "success"));
+                } catch (RuntimeException e) {
+                        auditLogClient.logAction(Map.of(
+                                        "service", "report-service",
+                                        "action", "delete_report",
+                                        "actor", getActor(principal, httpRequest),
+                                        "status", "failure",
+                                        "log_type", "ERROR",
+                                        "metadata", Map.of(
+                                                        "description", "Failed to delete report for id: " + id,
+                                                        "error", e.getMessage(),
+                                                        "user_agent", httpRequest.getHeader("User-Agent"))));
+
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                                        Map.of(
+                                                        "message", "Report not found",
+                                                        "status", "failure",
+                                                        "error", e.getMessage()));
+                } catch (Exception e) {
+                        auditLogClient.logAction(Map.of(
+                                        "service", "report-service",
+                                        "action", "delete_report",
+                                        "actor", getActor(principal, httpRequest),
+                                        "status", "failure",
+                                        "log_type", "ERROR",
+                                        "metadata", Map.of(
+                                                        "description", "Failed to delete report for id: " + id,
+                                                        "error", e.getMessage(),
+                                                        "user_agent", httpRequest.getHeader("User-Agent"))));
+
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                                        Map.of(
+                                                        "message", "Failed to delete report",
+                                                        "status", "failure",
+                                                        "error", e.getMessage()));
+                }
+        }
+
         private Map<String, Object> getActor(Principal principal, HttpServletRequest request) {
                 String actorId = (principal != null) ? principal.getName() : "anonymous";
                 String actorType = (principal != null) ? "user" : "system";
