@@ -15,19 +15,13 @@ export async function GET(request: NextRequest) {
         if (!res.ok) {
             const errorText = await res.text()
             console.error(`[API] Failed to fetch pending reports: ${res.status}`, errorText)
-            return NextResponse.json(
-                { error: "Failed to fetch pending reports" },
-                { status: res.status }
-            )
+            return NextResponse.json({ error: "Failed to fetch pending reports" }, { status: res.status })
         }
 
         const data = await res.json()
         return NextResponse.json(data)
     } catch (error) {
         console.error("[API] Error fetching pending reports:", error)
-        return NextResponse.json(
-            { error: "Internal server error" },
-            { status: 500 }
-        )
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     }
 }

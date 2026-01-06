@@ -103,6 +103,12 @@ export default function SubmitReportPage() {
     const [success, setSuccess] = useState(false)
     const [countdown, setCountdown] = useState(3)
 
+    // Field-level validation errors
+    const [fieldErrors, setFieldErrors] = useState<{
+        title?: string
+        description?: string
+    }>({})
+
     // AI Integration States
     const [isCategorizing, setIsCategorizing] = useState(false)
     const [aiSuggestedCategory, setAiSuggestedCategory] = useState<CategorizationResponse | null>(null)
@@ -148,6 +154,31 @@ export default function SubmitReportPage() {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target
         setFormData((prev) => ({ ...prev, [name]: value }))
+
+        // Client-side validation
+        const newFieldErrors = { ...fieldErrors }
+
+        if (name === "title") {
+            if (value.length > 500) {
+                newFieldErrors.title = "Tytuł nie może przekraczać 500 znaków"
+            } else {
+                delete newFieldErrors.title
+            }
+        }
+
+        if (name === "description") {
+            // Backend limit is 10000 characters
+            if (value.length > 10000) {
+                newFieldErrors.description = "Opis nie może przekraczać 10000 znaków"
+            } else if (value.length > 8000) {
+                // Soft warning when approaching limit
+                newFieldErrors.description = `Opis jest bardzo długi. Pozostało ${10000 - value.length} znaków.`
+            } else {
+                delete newFieldErrors.description
+            }
+        }
+
+        setFieldErrors(newFieldErrors)
 
         // Trigger categorization on title or description change (debounced)
         if (name === "title" || name === "description") {
@@ -199,6 +230,20 @@ export default function SubmitReportPage() {
         setIsSubmitting(true)
         setError(null)
         setSubmissionResult(null)
+
+        // Validate title length
+        if (formData.title.length > 500) {
+            setFieldErrors({ ...fieldErrors, title: "Tytuł nie może przekraczać 500 znaków" })
+            setIsSubmitting(false)
+            return
+        }
+
+        // Validate description length
+        if (formData.description.length > 10000) {
+            setFieldErrors({ ...fieldErrors, description: "Opis nie może przekraczać 10000 znaków" })
+            setIsSubmitting(false)
+            return
+        }
 
         // Validate location
         if (formData.latitude === null || formData.longitude === null) {
@@ -272,7 +317,69 @@ export default function SubmitReportPage() {
 
             if (!response.ok) {
                 const errorData = await response.json()
-                throw new Error(errorData.error || "Nie udało się utworzyć zgłoszenia")
+
+                // Check if it's a validation error from backend
+                if (errorData.error && typeof errorData.error === "string") {
+                    const errorStr = errorData.error
+                    const newFieldErrors: { title?: string; description?: string } = {}
+
+                    // Parse field-level errors (format: "field: message, field: message")
+                    // Looking for field names in both English and references in Polish messages
+                    if (errorStr.toLowerCase().includes("title:") || errorStr.toLowerCase().includes("tytuł")) {
+                        const titleMatch = errorStr.match(/title:\s*([^,]+)/i)
+                        if (titleMatch) {
+                            newFieldErrors.title = titleMatch[1].trim()
+                        } else {
+                            // Extract the message directly if it contains "tytuł"
+                            const parts = errorStr.split(",")
+                            for (const part of parts) {
+                                if (part.toLowerCase().includes("tytuł")) {
+                                    const colonIndex = part.indexOf(":")
+                                    const msg = colonIndex > 0 ? part.substring(colonIndex + 1) : part
+                                    newFieldErrors.title = msg.trim()
+                                    break
+                                }
+                            }
+                        }
+                    }
+
+                    if (errorStr.toLowerCase().includes("description:") || errorStr.toLowerCase().includes("opis")) {
+                        const descMatch = errorStr.match(/description:\s*([^,]+)/i)
+                        if (descMatch) {
+                            newFieldErrors.description = descMatch[1].trim()
+                        } else {
+                            // Extract the message directly if it contains "opis"
+                            const parts = errorStr.split(",")
+                            for (const part of parts) {
+                                if (part.toLowerCase().includes("opis")) {
+                                    const colonIndex = part.indexOf(":")
+                                    const msg = colonIndex > 0 ? part.substring(colonIndex + 1) : part
+                                    newFieldErrors.description = msg.trim()
+                                    break
+                                }
+                            }
+                        }
+                    }
+
+                    if (
+                        errorStr.toLowerCase().includes("latitude:") ||
+                        errorStr.toLowerCase().includes("longitude:") ||
+                        errorStr.toLowerCase().includes("szerokość") ||
+                        errorStr.toLowerCase().includes("długość")
+                    ) {
+                        setError("Nieprawidłowe współrzędne lokalizacji")
+                    }
+
+                    // Set field errors if we found any
+                    if (Object.keys(newFieldErrors).length > 0) {
+                        setFieldErrors(newFieldErrors)
+                        setIsSubmitting(false)
+                        return
+                    }
+                }
+
+                // Generic error fallback
+                throw new Error(errorData.error || errorData.message || "Nie udało się utworzyć zgłoszenia")
             }
 
             const createdReport = await response.json()
@@ -308,17 +415,21 @@ export default function SubmitReportPage() {
             setSubmissionResult({
                 accepted: true,
                 requiresReview: true,
-                message: 'Zgłoszenie zostało wysłane i trafiło do weryfikacji.',
+                message: "Zgłoszenie zostało wysłane i trafiło do weryfikacji.",
                 verification: null,
                 reportId: reportId
             })
             setTimeout(() => {
-                window.location.href = '/'
+                window.location.href = "/"
             }, 2500)
-
         } catch (err: unknown) {
+            // Only show general errors in the error box (non-field specific)
             const errorMessage = err instanceof Error ? err.message : "Wystąpił błąd podczas tworzenia zgłoszenia"
-            setError(errorMessage)
+
+            // Don't show field-specific errors in the general error box
+            if (!errorMessage.includes("znak") && !errorMessage.includes("Title") && !errorMessage.includes("Description")) {
+                setError(errorMessage)
+            }
         } finally {
             setIsSubmitting(false)
         }
@@ -386,13 +497,17 @@ export default function SubmitReportPage() {
                     <p className="mb-6 text-base text-[#e0dcd7]/80">
                         {isVerified ? (
                             <>
-                                <span className="font-semibold text-green-400">AI zweryfikowało zgłoszenie jako autentyczne.</span>
+                                <span className="font-semibold text-green-400">
+                                    AI zweryfikowało zgłoszenie jako autentyczne.
+                                </span>
                                 <br />
                                 Twoje zgłoszenie jest teraz widoczne na mapie.
                             </>
                         ) : (
                             <>
-                                <span className="font-semibold text-yellow-400">Zgłoszenie oczekuje na sprawdzenie przez moderatora.</span>
+                                <span className="font-semibold text-yellow-400">
+                                    Zgłoszenie oczekuje na sprawdzenie przez moderatora.
+                                </span>
                                 <br />
                                 Otrzymasz powiadomienie po weryfikacji.
                             </>
@@ -403,9 +518,7 @@ export default function SubmitReportPage() {
                     <div className="mb-4 rounded-lg bg-[#2a221a] p-4">
                         <p className="mb-2 text-sm text-[#e0dcd7]/70">Przeniesienie do mapy nastąpi za:</p>
                         <div className="flex items-center justify-center gap-2">
-                            <span className="text-5xl font-bold text-[#d97706] animate-pulse">
-                                {countdown}
-                            </span>
+                            <span className="animate-pulse text-5xl font-bold text-[#d97706]">{countdown}</span>
                             <span className="text-2xl text-[#e0dcd7]/50">s</span>
                         </div>
                     </div>
@@ -421,7 +534,7 @@ export default function SubmitReportPage() {
                     {/* Skip button */}
                     <button
                         onClick={() => router.push("/")}
-                        className="mt-6 text-sm text-[#e0dcd7]/50 transition-colors hover:text-[#d97706] underline"
+                        className="mt-6 text-sm text-[#e0dcd7]/50 underline transition-colors hover:text-[#d97706]"
                     >
                         Pomiń i przejdź teraz
                     </button>
@@ -448,23 +561,29 @@ export default function SubmitReportPage() {
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-6 rounded-xl bg-[#362c20] p-6">
-                    {error && <div className="rounded-lg border border-red-500 bg-red-500/20 p-4 text-red-200">{error}</div>}
+                    {/* Only show general errors at top (like location) */}
+                    {error && !error.includes("Tytuł") && !error.includes("Opis") && (
+                        <div className="rounded-lg border border-red-500 bg-red-500/20 p-4 text-red-200">{error}</div>
+                    )}
 
                     {/* Title */}
                     <div>
                         <label htmlFor="title" className="mb-2 block font-semibold text-[#e0dcd7]">
                             Tytuł zgłoszenia *
+                            <span className="ml-2 text-xs font-normal text-[#e0dcd7]/50">({formData.title.length}/500)</span>
                         </label>
                         <input
                             type="text"
                             id="title"
                             name="title"
                             required
+                            maxLength={500}
                             value={formData.title}
                             onChange={handleInputChange}
-                            className="w-full rounded-lg border border-[#e0dcd7]/20 bg-[#2a221a] px-4 py-3 text-[#e0dcd7] transition-colors focus:border-[#d97706] focus:outline-none"
+                            className={`w-full rounded-lg border ${fieldErrors.title ? "border-red-500" : "border-[#e0dcd7]/20"} bg-[#2a221a] px-4 py-3 text-[#e0dcd7] transition-colors focus:border-[#d97706] focus:outline-none`}
                             placeholder="np. Uszkodzony chodnik"
                         />
+                        {fieldErrors.title && <p className="mt-1 text-sm text-red-400">{fieldErrors.title}</p>}
                     </div>
 
                     {/* Category with AI Suggestion */}
@@ -530,15 +649,25 @@ export default function SubmitReportPage() {
                         <label htmlFor="description" className="mb-2 block font-semibold text-[#e0dcd7]">
                             Opis
                         </label>
+                        <p className="mb-2 text-xs text-[#e0dcd7]/60">
+                            Możesz dodać szczegółowy opis (maksymalnie 10000 znaków)
+                        </p>
                         <textarea
                             id="description"
                             name="description"
                             value={formData.description}
                             onChange={handleInputChange}
-                            rows={4}
-                            className="w-full resize-none rounded-lg border border-[#e0dcd7]/20 bg-[#2a221a] px-4 py-3 text-[#e0dcd7] transition-colors focus:border-[#d97706] focus:outline-none"
+                            maxLength={10000}
+                            rows={8}
+                            className={`w-full resize-none rounded-lg border ${fieldErrors.description ? "border-yellow-500" : "border-[#e0dcd7]/20"} bg-[#2a221a] px-4 py-3 text-[#e0dcd7] transition-colors focus:border-[#d97706] focus:outline-none`}
                             placeholder="Opisz dokładnie problem..."
                         />
+                        <div className="mt-1 flex items-center justify-between">
+                            {formData.description.length > 0 && (
+                                <p className="text-xs text-[#e0dcd7]/50">{formData.description.length}/10000 znaków</p>
+                            )}
+                            {fieldErrors.description && <p className="text-sm text-yellow-400">{fieldErrors.description}</p>}
+                        </div>
                     </div>
 
                     {/* Location Map */}
@@ -582,14 +711,10 @@ export default function SubmitReportPage() {
                         className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#d97706] px-6 py-4 text-lg font-bold text-white transition-colors hover:bg-[#d97706]/80 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <span className="material-symbols-outlined">send</span>
-                        {isSubmitting ? 'Wysyłanie...' : 'Wyślij Zgłoszenie'}
+                        {isSubmitting ? "Wysyłanie..." : "Wyślij Zgłoszenie"}
                     </button>
 
-                    {isSubmitting && (
-                        <p className="text-center text-[#e0dcd7]/60 text-sm">
-                            Wysyłanie zgłoszenia...
-                        </p>
-                    )}
+                    {isSubmitting && <p className="text-center text-sm text-[#e0dcd7]/60">Wysyłanie zgłoszenia...</p>}
                 </form>
             </div>
         </div>

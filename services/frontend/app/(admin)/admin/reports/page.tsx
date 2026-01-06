@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react"
 import { Table } from "@/components/ui/table/table"
 import { TableHead } from "@/components/ui/table/table-head"
+import { TableHeader } from "@/components/ui/table/table-header"
+import { TableBody } from "@/components/ui/table/table-body"
 import { TableRow } from "@/components/ui/table/table-row"
 import { TableCell } from "@/components/ui/table/table-cell"
 import { Search, Filter, ChevronLeft, ChevronRight, Pencil, Trash2, Eye, X, Check, Loader2, RefreshCw } from "lucide-react"
@@ -19,6 +21,7 @@ interface Report {
     longitude: number
     aiIsFake?: boolean
     aiFakeProbability?: number
+    imageIds?: string[]
 }
 
 interface PaginatedResponse {
@@ -150,25 +153,38 @@ export default function AdminReportsPage() {
     const handleSaveEdit = async () => {
         if (editingReport) {
             try {
+                const reportRequest = {
+                    title: editingReport.title,
+                    description: editingReport.description,
+                    latitude: editingReport.latitude,
+                    longitude: editingReport.longitude,
+                    userId: editingReport.userId,
+                    reportCategory: editingReport.category,
+                    imageIds: editingReport.imageIds || []
+                }
+
                 const response = await fetch(`${API_BASE}/${editingReport.id}`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${localStorage.getItem("access_token")}`
                     },
-                    body: JSON.stringify(editingReport)
+                    body: JSON.stringify(reportRequest)
                 })
+
                 if (response.ok) {
                     fetchReports()
                     setEditingReport(null)
                 } else {
-                    alert("Nie udało się zaktualizować zgłoszenia")
+                    const errorData = await response.json().catch(() => ({}))
+                    console.error("Update failed:", errorData)
+                    alert(
+                        `Nie udało się zaktualizować zgłoszenia: ${errorData.error || errorData.message || response.statusText}`
+                    )
                 }
             } catch (err) {
                 console.error("Update failed:", err)
-                // Fallback to local update
-                setReports(reports.map((r) => (r.id === editingReport.id ? editingReport : r)))
-                setEditingReport(null)
+                alert(`Błąd podczas aktualizacji: ${err instanceof Error ? err.message : "Unknown error"}`)
             }
         }
     }
@@ -283,17 +299,17 @@ export default function AdminReportsPage() {
             {/* Table */}
             <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
                 <Table>
-                    <TableHead>
+                    <TableHeader>
                         <TableRow>
-                            <TableCell>Tytuł</TableCell>
-                            <TableCell>Kategoria</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell>AI Weryfikacja</TableCell>
-                            <TableCell>Data</TableCell>
-                            <TableCell>Akcje</TableCell>
+                            <TableHead>Tytuł</TableHead>
+                            <TableHead>Kategoria</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>AI Weryfikacja</TableHead>
+                            <TableHead>Data</TableHead>
+                            <TableHead>Akcje</TableHead>
                         </TableRow>
-                    </TableHead>
-                    <tbody>
+                    </TableHeader>
+                    <TableBody>
                         {filteredReports.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="py-8 text-center">
@@ -377,7 +393,7 @@ export default function AdminReportsPage() {
                                 </TableRow>
                             ))
                         )}
-                    </tbody>
+                    </TableBody>
                 </Table>
             </div>
 

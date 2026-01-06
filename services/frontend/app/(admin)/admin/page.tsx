@@ -132,7 +132,7 @@ export default function AdminDashboard() {
                     </Link>
                 </div>
 
-                <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-zinc-500">Użytkownicy</p>
@@ -159,7 +159,8 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                     <p className="mt-2 text-xs text-zinc-500">
-                        {stats.totalReports > 0 ? Math.round((stats.verifiedReports / stats.totalReports) * 100) : 0}% wszystkich zgłoszeń
+                        {stats.totalReports > 0 ? Math.round((stats.verifiedReports / stats.totalReports) * 100) : 0}%
+                        wszystkich zgłoszeń
                     </p>
                 </div>
             </div>
@@ -213,8 +214,8 @@ export default function AdminDashboard() {
                                             {report.status === "PENDING"
                                                 ? "Oczekuje"
                                                 : report.status === "VERIFIED"
-                                                    ? "Zweryfikowane"
-                                                    : "Odrzucone"}
+                                                  ? "Zweryfikowane"
+                                                  : "Odrzucone"}
                                         </span>
                                     </div>
                                 </div>

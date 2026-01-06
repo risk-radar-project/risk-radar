@@ -20,15 +20,19 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface ReportRepository extends JpaRepository<Report, UUID>, JpaSpecificationExecutor<Report> {
     List<Report> findByStatus(ReportStatus status);
 
+    long countByStatus(ReportStatus status);
+
+    long countByCreatedAtAfter(java.time.LocalDateTime date);
+
     @Query("SELECT r FROM Report r WHERE r.userId = :userId " +
-           "AND (:status IS NULL OR r.status = :status) " +
-           "AND (:category IS NULL OR r.category = :category)")
+            "AND (:status IS NULL OR r.status = :status) " +
+            "AND (:category IS NULL OR r.category = :category)")
     Page<Report> findUserReports(
             @Param("userId") UUID userId,
             @Param("status") ReportStatus status,
             @Param("category") ReportCategory category,
             Pageable pageable);
-    
+
     /**
      * Find reports within a radius using Haversine formula
      * Returns reports that are potentially dangerous (VERIFIED or PENDING status)
@@ -54,8 +58,4 @@ public interface ReportRepository extends JpaRepository<Report, UUID>, JpaSpecif
             @Param("latitude") Double latitude,
             @Param("longitude") Double longitude,
             @Param("radiusKm") Double radiusKm);
-
-    long countByStatus(ReportStatus status);
-
-    long countByCreatedAtAfter(LocalDateTime createdAfter);
 }

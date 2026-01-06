@@ -21,8 +21,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import report_service.entity.ReportCategory;
-
 @Slf4j
 @Service
 public class ReportService {
@@ -73,6 +71,28 @@ public class ReportService {
         }
     }
 
+    // Methods for Admin
+    public Report updateReport(UUID id, ReportRequest request) {
+        Report report = reportRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Report not found with id: " + id));
+
+        // Update fields
+        report.setTitle(request.title());
+        report.setDescription(request.description());
+        report.setLatitude(request.latitude());
+        report.setLongitude(request.longitude());
+        report.setCategory(request.reportCategory());
+
+        return reportRepository.save(report);
+    }
+
+    public void deleteReport(UUID id) {
+        if (!reportRepository.existsById(id)) {
+            throw new RuntimeException("Report not found with id: " + id);
+        }
+        reportRepository.deleteById(id);
+    }
+
     public Page<Report> getReports(Pageable pageable, ReportStatus status, String categoryStr) {
         Specification<Report> spec = Specification.where(null);
 
@@ -109,6 +129,7 @@ public class ReportService {
         return reportRepository.findUserReports(userId, status, category, pageable);
     }
 
+    // Methods for Users (with ownership check)
     public void deleteReport(UUID id, UUID userId) {
         Report report = getReportById(id);
         if (!report.getUserId().equals(userId)) {

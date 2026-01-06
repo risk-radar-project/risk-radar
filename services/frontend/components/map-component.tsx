@@ -380,11 +380,11 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
         try {
             const response = await fetch(
                 `https://nominatim.openstreetmap.org/search?` +
-                `q=${encodeURIComponent(query)}&` +
-                `format=json&` +
-                `countrycodes=pl&` +
-                `limit=5&` +
-                `addressdetails=1`,
+                    `q=${encodeURIComponent(query)}&` +
+                    `format=json&` +
+                    `countrycodes=pl&` +
+                    `limit=5&` +
+                    `addressdetails=1`,
                 {
                     headers: {
                         "User-Agent": "RiskRadar-Map-Application"
@@ -605,7 +605,6 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
         }
     }
 
-
     return (
         <>
             {/* Styles moved to globals.css */}
@@ -773,10 +772,11 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                         <button
                             onClick={handleAIAnalysis}
                             disabled={aiLoading}
-                            className={`flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg ${aiLoading
-                                ? "cursor-wait bg-[#d97706]/70"
-                                : "bg-gradient-to-r from-[#d97706] to-[#ea580c] hover:from-[#ea580c] hover:to-[#dc2626]"
-                                } font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-xl`}
+                            className={`flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg ${
+                                aiLoading
+                                    ? "cursor-wait bg-[#d97706]/70"
+                                    : "bg-gradient-to-r from-[#d97706] to-[#ea580c] hover:from-[#ea580c] hover:to-[#dc2626]"
+                            } font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-xl`}
                             title="Sprawdź bezpieczeństwo okolicy z AI"
                         >
                             {aiLoading ? (
@@ -896,7 +896,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                         >
                             <span className="text-xl font-bold">✕</span>
                         </span>
-                        { }
+                        {}
                         <img
                             src={lightboxImage}
                             alt="Pełnowymiarowe zdjęcie"

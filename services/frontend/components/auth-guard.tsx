@@ -162,7 +162,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                     return false
                 })
 
-                console.log(`AuthGuard: Path=${normalizedPath}, Required=${requiredPermissions}, UserRoles=${userRoles}, UserPerms=${userPermissions}, HasPerm=${hasPermission}`)
+                console.log(
+                    `AuthGuard: Path=${normalizedPath}, Required=${requiredPermissions}, UserRoles=${userRoles}, UserPerms=${userPermissions}, HasPerm=${hasPermission}`
+                )
 
                 if (!hasPermission) {
                     console.log(`AuthGuard: Access Denied to ${normalizedPath}. Missing permissions: ${requiredPermissions}`)
