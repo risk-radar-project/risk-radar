@@ -11,6 +11,7 @@ import report_service.entity.ReportCategory;
 import report_service.entity.ReportStatus;
 
 import java.util.List;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -53,4 +54,8 @@ public interface ReportRepository extends JpaRepository<Report, UUID>, JpaSpecif
             @Param("latitude") Double latitude,
             @Param("longitude") Double longitude,
             @Param("radiusKm") Double radiusKm);
+
+    long countByStatus(ReportStatus status);
+
+    long countByCreatedAtAfter(LocalDateTime createdAfter);
 }

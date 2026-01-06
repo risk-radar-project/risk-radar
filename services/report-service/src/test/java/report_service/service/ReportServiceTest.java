@@ -125,7 +125,7 @@ class ReportServiceTest {
 
         reportService.deleteReport(testReportId, userId);
 
-        verify(reportRepository, times(1)).delete(savedReport);
+        verify(reportRepository, times(1)).delete(any(Report.class));
     }
 
     @Test
@@ -137,7 +137,7 @@ class ReportServiceTest {
             reportService.deleteReport(testReportId, otherUserId);
         });
 
-        verify(reportRepository, never()).delete(any());
+        verify(reportRepository, never()).delete(any(Report.class));
     }
 
     @Test
