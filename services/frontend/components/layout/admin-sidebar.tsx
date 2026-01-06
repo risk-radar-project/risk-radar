@@ -102,10 +102,11 @@ export function AdminSidebar() {
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${isActive
+                                className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
+                                    isActive
                                         ? "bg-blue-500/20 text-blue-400"
                                         : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100"
-                                    }`}
+                                }`}
                             >
                                 <Icon className="h-4 w-4" />
                                 <span className="text-sm font-medium">{item.label}</span>

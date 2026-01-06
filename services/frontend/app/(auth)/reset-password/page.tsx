@@ -82,14 +82,14 @@ function ResetPasswordContent() {
     return (
         <div className="mt-6 w-full">
             <div className="mb-6">
-                <Link href="/login" className="flex items-center text-sm text-[#baab9c] hover:text-white transition-colors">
+                <Link href="/login" className="flex items-center text-sm text-[#baab9c] transition-colors hover:text-white">
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Powrót do logowania
                 </Link>
             </div>
 
             <div className="mb-8">
-                <h1 className="text-2xl font-bold text-white mb-2">
+                <h1 className="mb-2 text-2xl font-bold text-white">
                     {mode === "request" ? "Reset hasła" : "Ustaw nowe hasło"}
                 </h1>
                 <p className="text-[#baab9c]">
@@ -100,10 +100,13 @@ function ResetPasswordContent() {
             </div>
 
             {message.text && (
-                <div className={`mb-6 p-4 rounded-lg border text-sm ${message.type === "success"
-                        ? "border-green-500/20 bg-green-500/10 text-green-500"
-                        : "border-red-500/20 bg-red-500/10 text-red-500"
-                    }`}>
+                <div
+                    className={`mb-6 rounded-lg border p-4 text-sm ${
+                        message.type === "success"
+                            ? "border-green-500/20 bg-green-500/10 text-green-500"
+                            : "border-red-500/20 bg-red-500/10 text-red-500"
+                    }`}
+                >
                     {message.text}
                 </div>
             )}
@@ -120,15 +123,15 @@ function ResetPasswordContent() {
                             placeholder="jan.kowalski@example.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="h-14 bg-[#27211b] border-[#54473b] text-white placeholder:text-[#baab9c] focus:border-primary"
-                            disabled={isLoading || (message.type === "success")}
+                            className="focus:border-primary h-14 border-[#54473b] bg-[#27211b] text-white placeholder:text-[#baab9c]"
+                            disabled={isLoading || message.type === "success"}
                             required
                         />
                     </div>
                     <Button
                         type="submit"
-                        className="h-14 w-full bg-primary text-white font-bold text-base hover:bg-primary/90 mt-2"
-                        disabled={isLoading || (message.type === "success")}
+                        className="bg-primary hover:bg-primary/90 mt-2 h-14 w-full text-base font-bold text-white"
+                        disabled={isLoading || message.type === "success"}
                     >
                         {isLoading ? "Wysyłanie..." : "Wyślij link"}
                     </Button>
@@ -146,7 +149,7 @@ function ResetPasswordContent() {
                                 placeholder="Minimum 6 znaków"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="h-14 bg-[#27211b] border-[#54473b] text-white placeholder:text-[#baab9c] focus:border-primary pr-10"
+                                className="focus:border-primary h-14 border-[#54473b] bg-[#27211b] pr-10 text-white placeholder:text-[#baab9c]"
                                 disabled={isLoading}
                                 required
                             />
@@ -154,7 +157,7 @@ function ResetPasswordContent() {
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="absolute right-0 top-0 h-full px-3 text-[#baab9c] hover:text-white hover:bg-transparent"
+                                className="absolute top-0 right-0 h-full px-3 text-[#baab9c] hover:bg-transparent hover:text-white"
                                 onClick={() => setShowPassword(!showPassword)}
                             >
                                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -171,14 +174,14 @@ function ResetPasswordContent() {
                             placeholder="Powtórz nowe hasło"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="h-14 bg-[#27211b] border-[#54473b] text-white placeholder:text-[#baab9c] focus:border-primary"
+                            className="focus:border-primary h-14 border-[#54473b] bg-[#27211b] text-white placeholder:text-[#baab9c]"
                             disabled={isLoading}
                             required
                         />
                     </div>
                     <Button
                         type="submit"
-                        className="h-14 w-full bg-primary text-white font-bold text-base hover:bg-primary/90 mt-2"
+                        className="bg-primary hover:bg-primary/90 mt-2 h-14 w-full text-base font-bold text-white"
                         disabled={isLoading}
                     >
                         {isLoading ? "Zapisywanie..." : "Zmień hasło"}
@@ -191,7 +194,7 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
     return (
-        <Suspense fallback={<div className="text-white text-center mt-10">Ładowanie...</div>}>
+        <Suspense fallback={<div className="mt-10 text-center text-white">Ładowanie...</div>}>
             <ResetPasswordContent />
         </Suspense>
     )
