@@ -33,6 +33,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
             console.log(`AuthGuard: ${reason} -> Clearing tokens and redirecting to login`)
             localStorage.removeItem("access_token")
             localStorage.removeItem("refresh_token")
+            document.cookie = "access_token=; path=/; max-age=0; SameSite=Lax"
             setAuthorized(false)
             setLoading(false)
             router.push("/login")
@@ -52,6 +53,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
             // Redirect logged-in users away from auth pages
             if (accessToken && !isTokenExpired(accessToken)) {
+                // Sync token to cookie to allow standard <img> tags to work with protected endpoints
+                document.cookie = `access_token=${accessToken}; path=/; max-age=86400; SameSite=Lax`
+
                 if (["/login", "/register", "/reset-password"].includes(normalizedPath)) {
                     setAlreadyLoggedIn(true)
                     setLoading(false)
@@ -102,6 +106,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                     localStorage.setItem("access_token", newTokens.accessToken)
                     localStorage.setItem("refresh_token", newTokens.refreshToken)
                     currentToken = newTokens.accessToken
+
+                    // Sync refreshed token to cookie
+                    document.cookie = `access_token=${newTokens.accessToken}; path=/; max-age=86400; SameSite=Lax`
                 } else {
                     clearAndRedirect("Token refresh failed")
                     return
@@ -193,6 +200,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                     onClick={() => {
                         localStorage.removeItem("access_token")
                         localStorage.removeItem("refresh_token")
+                        document.cookie = "access_token=; path=/; max-age=0; SameSite=Lax"
                         window.location.href = "/login"
                     }}
                     className="z-50 mt-4 cursor-pointer text-sm text-red-500 underline hover:text-red-400"
@@ -211,6 +219,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                     onClick={() => {
                         localStorage.removeItem("access_token")
                         localStorage.removeItem("refresh_token")
+                        document.cookie = "access_token=; path=/; max-age=0; SameSite=Lax"
                         window.location.href = "/login"
                     }}
                     className="text-sm text-red-400 underline hover:text-red-300"
@@ -229,6 +238,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                 <button
                     onClick={() => {
                         localStorage.removeItem("access_token")
+                        document.cookie = "access_token=; path=/; max-age=0; SameSite=Lax"
                         localStorage.removeItem("refresh_token")
                         window.location.href = "/login"
                     }}
