@@ -78,6 +78,112 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiSuccess'
         '400': { $ref: '#/components/responses/Error' }
+  /api/reports/my-reports:
+    get:
+      summary: Get current user's reports
+      description: Returns a paginated list of reports created by the authenticated user.
+      tags: [Reports]
+      operationId: getMyReports
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/X-User-ID'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: createdAt
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, VERIFIED, REJECTED]
+          description: Filter by report status
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by report category
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Report'
+                  totalPages:
+                    type: integer
+                  totalElements:
+                    type: integer
+        '401': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+
+  /api/reports/{id}:
+    get:
+      summary: Get report details
+      tags: [Reports]
+      operationId: getReportById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      summary: Delete a report
+      description: Allows a user to delete their own report.
+      tags: [Reports]
+      operationId: deleteReport
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/X-User-ID'
+      responses:
+        '200':
+          description: Report deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
   /api/dev/generate-jwt:
     post:
       summary: Generate JWT for development (DEV ONLY)

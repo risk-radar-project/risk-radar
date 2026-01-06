@@ -71,6 +71,7 @@ public class ReportService {
         }
     }
 
+    // Methods for Admin
     public Report updateReport(UUID id, ReportRequest request) {
         Report report = reportRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Report not found with id: " + id));
@@ -122,6 +123,39 @@ public class ReportService {
 
     public List<Report> getPendingReports() {
         return reportRepository.findByStatus(ReportStatus.PENDING);
+    }
+
+    public Page<Report> getUserReports(UUID userId, ReportStatus status, ReportCategory category, Pageable pageable) {
+        return reportRepository.findUserReports(userId, status, category, pageable);
+    }
+
+    // Methods for Users (with ownership check)
+    public void deleteReport(UUID id, UUID userId) {
+        Report report = getReportById(id);
+        if (!report.getUserId().equals(userId)) {
+            throw new SecurityException("User not authorized to delete this report");
+        }
+        reportRepository.delete(report);
+    }
+
+    public Report updateReport(UUID id, UUID userId, Map<String, Object> updates) {
+        Report report = getReportById(id);
+        if (!report.getUserId().equals(userId)) {
+            throw new SecurityException("User not authorized to update this report");
+        }
+
+        if (updates.containsKey("title")) {
+            report.setTitle((String) updates.get("title"));
+        }
+        if (updates.containsKey("description")) {
+            report.setDescription((String) updates.get("description"));
+        }
+        if (updates.containsKey("category")) {
+            String categoryStr = (String) updates.get("category");
+            report.setCategory(ReportCategory.valueOf(categoryStr));
+        }
+
+        return reportRepository.save(report);
     }
 
     /**

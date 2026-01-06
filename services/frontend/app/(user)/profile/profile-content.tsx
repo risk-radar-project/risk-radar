@@ -12,14 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/ui/ux/empty-state"
 import { Skeleton } from "@/components/ui/ux/skeleton"
 import { Badge } from "@/components/ui/ux/badge"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useUserProfile, useLoginHistory } from "@/hooks/use-api"
@@ -196,7 +189,12 @@ export default function ProfileContent() {
                             <div className={labelMuted}>Email</div>
                             <div className="flex items-center justify-between">
                                 <div className="text-sm text-[#c2b3a3]">{user.email}</div>
-                                <Button variant="outline" size="sm" onClick={() => setIsEmailDialogOpen(true)} className="h-7 text-xs border-[#3d3125] bg-[#2c231b] text-[#f6eedf] hover:bg-[#3d3125] hover:text-[#f6eedf]">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setIsEmailDialogOpen(true)}
+                                    className="h-7 border-[#3d3125] bg-[#2c231b] text-xs text-[#f6eedf] hover:bg-[#3d3125] hover:text-[#f6eedf]"
+                                >
                                     Zmień
                                 </Button>
                             </div>
@@ -302,7 +300,7 @@ export default function ProfileContent() {
             </div>
 
             <Dialog open={isEmailDialogOpen} onOpenChange={resetEmailDialog}>
-                <DialogContent className="bg-[#1f1913] border-[#33281f] text-[#ede3d6]">
+                <DialogContent className="border-[#33281f] bg-[#1f1913] text-[#ede3d6]">
                     <DialogHeader>
                         <DialogTitle>Zmiana adresu email</DialogTitle>
                         <DialogDescription className="text-[#9c8876]">
@@ -324,7 +322,7 @@ export default function ProfileContent() {
                                 onChange={(e) =>
                                     emailStep === 1 ? setNewEmail(e.target.value) : setConfirmEmail(e.target.value)
                                 }
-                                className="bg-[#120c07] border-[#3d3125] text-[#ede3d6]"
+                                className="border-[#3d3125] bg-[#120c07] text-[#ede3d6]"
                                 placeholder="jan.kowalski@example.com"
                             />
                             {emailError && <p className="text-sm text-red-400">{emailError}</p>}
@@ -332,7 +330,11 @@ export default function ProfileContent() {
                     </div>
 
                     <DialogFooter>
-                        <Button variant="ghost" onClick={resetEmailDialog} className="text-[#c2b3a3] hover:bg-[#2c231b] hover:text-[#ede3d6]">
+                        <Button
+                            variant="ghost"
+                            onClick={resetEmailDialog}
+                            className="text-[#c2b3a3] hover:bg-[#2c231b] hover:text-[#ede3d6]"
+                        >
                             Anuluj
                         </Button>
                         {emailStep === 1 ? (
@@ -340,7 +342,11 @@ export default function ProfileContent() {
                                 Dalej
                             </Button>
                         ) : (
-                            <Button onClick={handleEmailSubmit} disabled={emailMutation.isPending} className="bg-[#d97706] text-[#120c07] hover:bg-[#f59e0b]">
+                            <Button
+                                onClick={handleEmailSubmit}
+                                disabled={emailMutation.isPending}
+                                className="bg-[#d97706] text-[#120c07] hover:bg-[#f59e0b]"
+                            >
                                 {emailMutation.isPending ? "Zapisywanie..." : "Zatwierdź"}
                             </Button>
                         )}

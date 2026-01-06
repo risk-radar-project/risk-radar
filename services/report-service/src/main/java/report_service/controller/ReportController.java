@@ -24,6 +24,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import report_service.entity.ReportCategory;
+
 @RestController
 @RequiredArgsConstructor
 public class ReportController {
@@ -168,7 +170,7 @@ public class ReportController {
                 }
         }
 
-        @GetMapping("/reports")
+        @GetMapping("")
         public ResponseEntity<?> getReports(
                         @RequestParam(defaultValue = "0") int page,
                         @RequestParam(defaultValue = "10") int size,
@@ -192,7 +194,7 @@ public class ReportController {
                 }
         }
 
-        @GetMapping("/report/{id}")
+        @GetMapping("/{id}")
         public ResponseEntity<?> getReportById(
                         @PathVariable UUID id) {
                 try {
@@ -214,7 +216,7 @@ public class ReportController {
                 }
         }
 
-        @GetMapping("/reports/verified")
+        @GetMapping("/verified")
         public ResponseEntity<?> getVerifiedReports() {
                 try {
                         List<Report> reports = reportService.getVerifiedReports();
@@ -243,48 +245,47 @@ public class ReportController {
                 }
         }
 
-        /**
-         * Get reports within a specified radius from the given location
-         * Used for AI Assistant threat analysis
-         */
-        @GetMapping("/reports/nearby")
-        public ResponseEntity<?> getReportsNearby(
-                        @RequestParam Double latitude,
-                        @RequestParam Double longitude,
-                        @RequestParam(defaultValue = "1.0") Double radiusKm) {
+        @GetMapping("/my-reports")
+        public ResponseEntity<?> getMyReports(
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size,
+                        @RequestParam(defaultValue = "createdAt") String sort,
+                        @RequestParam(defaultValue = "desc") String direction,
+                        @RequestParam(required = false) ReportStatus status,
+                        @RequestParam(required = false) ReportCategory category,
+                        HttpServletRequest httpRequest) {
                 try {
-                        List<Report> reports = reportService.getReportsWithinRadius(latitude, longitude, radiusKm);
-                        return ResponseEntity.ok(Map.of(
-                                        "location", Map.of("lat", latitude, "lng", longitude),
-                                        "radiusKm", radiusKm,
-                                        "count", reports.size(),
-                                        "reports", reports));
+                        String userIdHeader = httpRequest.getHeader("X-User-ID");
+                        if (userIdHeader == null || userIdHeader.isEmpty()) {
+                                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                                                Map.of("message", "Missing User ID", "status", "failure"));
+                        }
+                        UUID userId = UUID.fromString(userIdHeader);
+
+                        Page<Report> reports = reportService.getUserReports(
+                                        userId,
+                                        status,
+                                        category,
+                                        PageRequest.of(page, size,
+                                                        Sort.by(Sort.Direction.fromString(direction), sort)));
+
+                        return ResponseEntity.ok(reports);
                 } catch (Exception e) {
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                                         Map.of(
-                                                        "message", "Failed to fetch nearby reports",
+                                                        "message", "Failed to fetch user reports",
                                                         "status", "failure",
                                                         "error", e.getMessage()));
                 }
         }
 
-        @GetMapping("/reports/stats")
-        @PreAuthorize("hasAuthority('PERM_STATS:VIEW') or hasAuthority('PERM_REPORTS:VIEW') or hasAuthority('PERM_*:*')")
-        public ResponseEntity<?> getReportStats() {
-                try {
-                        return ResponseEntity.ok(reportService.getReportStats());
-                } catch (Exception e) {
-                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                                        Map.of(
-                                                        "message", "Failed to get report stats",
-                                                        "status", "failure",
-                                                        "error", e.getMessage()));
-                }
-        }
+        // ============================================
+        // ADMIN ENDPOINTS
+        // ============================================
 
         @PutMapping("/report/{id}")
         @PreAuthorize("hasAuthority('PERM_REPORTS:EDIT') or hasAuthority('PERM_*:*')")
-        public ResponseEntity<?> updateReport(
+        public ResponseEntity<?> updateReportAsAdmin(
                         @PathVariable UUID id,
                         @Valid @RequestBody ReportRequest request,
                         BindingResult bindingResult,
@@ -354,7 +355,7 @@ public class ReportController {
 
         @DeleteMapping("/report/{id}")
         @PreAuthorize("hasAuthority('PERM_REPORTS:DELETE') or hasAuthority('PERM_*:*')")
-        public ResponseEntity<?> deleteReport(
+        public ResponseEntity<?> deleteReportAsAdmin(
                         @PathVariable UUID id,
                         HttpServletRequest httpRequest, Principal principal) {
                 try {
@@ -405,6 +406,156 @@ public class ReportController {
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                                         Map.of(
                                                         "message", "Failed to delete report",
+                                                        "status", "failure",
+                                                        "error", e.getMessage()));
+                }
+        }
+
+        // ============================================
+        // USER ENDPOINTS (from main)
+        // ============================================
+
+        @PatchMapping("/{id}")
+        public ResponseEntity<?> updateReport(
+                        @PathVariable UUID id,
+                        @RequestBody Map<String, Object> updates,
+                        HttpServletRequest httpRequest,
+                        Principal principal) {
+                try {
+                        String userIdHeader = httpRequest.getHeader("X-User-ID");
+                        if (userIdHeader == null || userIdHeader.isEmpty()) {
+                                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                                                Map.of("message", "Missing User ID", "status", "failure"));
+                        }
+                        UUID userId = UUID.fromString(userIdHeader);
+
+                        Report updatedReport = reportService.updateReport(id, userId, updates);
+
+                        auditLogClient.logAction(Map.of(
+                                        "service", "report-service",
+                                        "action", "update_report",
+                                        "actor", getActor(principal, httpRequest),
+                                        "status", "success",
+                                        "log_type", "ACTION",
+                                        "metadata", Map.of(
+                                                        "description", "Report updated successfully",
+                                                        "report_id", id.toString(),
+                                                        "user_agent",
+                                                        Optional.ofNullable(httpRequest.getHeader("User-Agent"))
+                                                                        .orElse("unknown"))));
+
+                        return ResponseEntity.ok(updatedReport);
+
+                } catch (SecurityException e) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                                        Map.of("message", e.getMessage(), "status", "failure"));
+                } catch (Exception e) {
+                        auditLogClient.logAction(Map.of(
+                                        "service", "report-service",
+                                        "action", "update_report",
+                                        "actor", getActor(principal, httpRequest),
+                                        "status", "failure",
+                                        "log_type", "ERROR",
+                                        "metadata", Map.of(
+                                                        "description", "Failed to update report",
+                                                        "report_id", id.toString(),
+                                                        "error", e.getMessage(),
+                                                        "user_agent",
+                                                        Optional.ofNullable(httpRequest.getHeader("User-Agent"))
+                                                                        .orElse("unknown"))));
+
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                                        Map.of(
+                                                        "message", "Failed to update report",
+                                                        "status", "failure",
+                                                        "error", e.getMessage()));
+                }
+        }
+
+        @DeleteMapping("/{id}")
+        public ResponseEntity<?> deleteReport(
+                        @PathVariable UUID id,
+                        HttpServletRequest httpRequest,
+                        Principal principal) {
+                try {
+                        String userIdHeader = httpRequest.getHeader("X-User-ID");
+                        if (userIdHeader == null || userIdHeader.isEmpty()) {
+                                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                                                Map.of("message", "Missing User ID", "status", "failure"));
+                        }
+                        UUID userId = UUID.fromString(userIdHeader);
+
+                        reportService.deleteReport(id, userId);
+
+                        auditLogClient.logAction(Map.of(
+                                        "service", "report-service",
+                                        "action", "delete_report",
+                                        "actor", getActor(principal, httpRequest),
+                                        "status", "success",
+                                        "log_type", "ACTION",
+                                        "metadata", Map.of(
+                                                        "description", "Report deleted successfully",
+                                                        "report_id", id.toString(),
+                                                        "user_agent",
+                                                        Optional.ofNullable(httpRequest.getHeader("User-Agent"))
+                                                                        .orElse("unknown"))));
+
+                        return ResponseEntity.ok(Map.of(
+                                        "message", "Report deleted successfully",
+                                        "status", "success"));
+
+                } catch (SecurityException e) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                                        Map.of("message", e.getMessage(), "status", "failure"));
+                } catch (Exception e) {
+                        auditLogClient.logAction(Map.of(
+                                        "service", "report-service",
+                                        "action", "delete_report",
+                                        "actor", getActor(principal, httpRequest),
+                                        "status", "failure",
+                                        "log_type", "ERROR",
+                                        "metadata", Map.of(
+                                                        "description", "Failed to delete report",
+                                                        "error", e.getMessage())));
+
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                                        Map.of(
+                                                        "message", "Failed to delete report",
+                                                        "status", "failure",
+                                                        "error", e.getMessage()));
+                }
+        }
+
+        @GetMapping("/nearby")
+        public ResponseEntity<?> getReportsNearby(
+                        @RequestParam Double latitude,
+                        @RequestParam Double longitude,
+                        @RequestParam(defaultValue = "1.0") Double radiusKm) {
+                try {
+                        List<Report> reports = reportService.getReportsWithinRadius(latitude, longitude, radiusKm);
+                        return ResponseEntity.ok(Map.of(
+                                        "location", Map.of("lat", latitude, "lng", longitude),
+                                        "radiusKm", radiusKm,
+                                        "count", reports.size(),
+                                        "reports", reports));
+                } catch (Exception e) {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                                        Map.of(
+                                                        "message", "Failed to fetch nearby reports",
+                                                        "status", "failure",
+                                                        "error", e.getMessage()));
+                }
+        }
+
+        @GetMapping("/reports/stats")
+        @PreAuthorize("hasAuthority('PERM_STATS:VIEW') or hasAuthority('PERM_REPORTS:VIEW') or hasAuthority('PERM_*:*')")
+        public ResponseEntity<?> getReportStats() {
+                try {
+                        return ResponseEntity.ok(reportService.getReportStats());
+                } catch (Exception e) {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                                        Map.of(
+                                                        "message", "Failed to get report stats",
                                                         "status", "failure",
                                                         "error", e.getMessage()));
                 }
