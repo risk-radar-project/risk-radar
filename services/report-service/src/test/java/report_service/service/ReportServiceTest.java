@@ -64,8 +64,7 @@ class ReportServiceTest {
                 18.456,
                 testUserId,
                 List.of(UUID.randomUUID(), UUID.randomUUID()),
-                null
-        );
+                null);
 
         savedReport = new Report();
         savedReport.setId(testReportId);
@@ -85,9 +84,9 @@ class ReportServiceTest {
 
         RecordMetadata recordMetadata = new RecordMetadata(
                 new TopicPartition("reports", 1), 0L, 0,
-                System.currentTimeMillis(), 0, 0
-        );
-        ProducerRecord<String, Object> producerRecord = new ProducerRecord<>("reports", "json-report", Map.of("id", savedReport.getId().toString()));
+                System.currentTimeMillis(), 0, 0);
+        ProducerRecord<String, Object> producerRecord = new ProducerRecord<>("reports", "json-report",
+                Map.of("id", savedReport.getId().toString()));
         SendResult<String, Object> sendResult = new SendResult<>(producerRecord, recordMetadata);
         CompletableFuture<SendResult<String, Object>> successFuture = CompletableFuture.completedFuture(sendResult);
 
@@ -129,7 +128,6 @@ class ReportServiceTest {
         verify(kafkaTemplate, times(1)).send(eq("reports"), anyString(), any());
     }
 
-
     @Test
     void updateReportStatus_ShouldUpdateStatus_WhenReportExists() {
         ReportStatus newStatus = ReportStatus.VERIFIED;
@@ -163,13 +161,13 @@ class ReportServiceTest {
         List<Report> reportList = List.of(savedReport);
         Page<Report> mockPage = new PageImpl<>(reportList, pageable, reportList.size());
 
-        when(reportRepository.findAll(pageable)).thenReturn(mockPage);
+        when(reportRepository.findReports(eq(null), eq(null), any(Pageable.class))).thenReturn(mockPage);
 
-        Page<Report> result = reportService.getReports(pageable);
+        Page<Report> result = reportService.getReports(pageable, null, null);
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
-        verify(reportRepository, times(1)).findAll(pageable);
+        verify(reportRepository, times(1)).findReports(eq(null), eq(null), any(Pageable.class));
     }
 
     @Test
