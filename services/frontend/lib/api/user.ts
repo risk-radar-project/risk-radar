@@ -98,3 +98,34 @@ export async function changeEmail(newEmail: string): Promise<ApiResponse<void>> 
 
     return { data: undefined as unknown as void }
 }
+
+export async function confirmPasswordReset(token: string, newPassword: string): Promise<ApiResponse<{ message: string }>> {
+    const response = await fetch(`${API_BASE_URL}/reset-password`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ token, newPassword })
+    })
+
+    if (!response.ok) {
+        let errorMessage = "Nie udało się zresetować hasła"
+        try {
+            const body = await response.json()
+            errorMessage = body.error ?? body.message ?? errorMessage
+        } catch {
+            // ignore
+        }
+        return { data: { message: "" }, error: errorMessage }
+    }
+
+    let message = "Hasło zostało zresetowane"
+    try {
+        const body = await response.json()
+        message = body.message ?? message
+    } catch {
+        //ignore
+    }
+
+    return { data: { message } }
+}

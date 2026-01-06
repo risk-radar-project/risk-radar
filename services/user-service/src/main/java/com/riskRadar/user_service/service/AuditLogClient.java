@@ -18,12 +18,19 @@ import java.util.concurrent.TimeoutException;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class AuditLogClient {
 
     private final WebClient webClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final KafkaConfig kafkaConfig;
+
+    public AuditLogClient(@org.springframework.beans.factory.annotation.Qualifier("auditWebClient") WebClient webClient,
+            KafkaTemplate<String, Object> kafkaTemplate,
+            KafkaConfig kafkaConfig) {
+        this.webClient = webClient;
+        this.kafkaTemplate = kafkaTemplate;
+        this.kafkaConfig = kafkaConfig;
+    }
 
     private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration KAFKA_TIMEOUT = Duration.ofSeconds(5);
@@ -98,8 +105,8 @@ public class AuditLogClient {
     private boolean shouldRetry(Throwable ex) {
         // Retry on network related exceptions
         return ex instanceof java.net.ConnectException ||
-               ex instanceof java.net.SocketTimeoutException ||
-               ex instanceof TimeoutException ||
-               ex instanceof org.springframework.web.reactive.function.client.WebClientRequestException;
+                ex instanceof java.net.SocketTimeoutException ||
+                ex instanceof TimeoutException ||
+                ex instanceof org.springframework.web.reactive.function.client.WebClientRequestException;
     }
 }

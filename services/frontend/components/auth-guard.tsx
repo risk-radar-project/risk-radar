@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { isTokenExpired, parseJwt } from "@/lib/auth/jwt-utils"
 import { refreshAccessToken } from "@/lib/auth/auth-service"
 
-const PUBLIC_PATHS = ["/", "/login", "/register", "/terms"]
+const PUBLIC_PATHS = ["/", "/login", "/register", "/terms", "/reset-password"]
 
 // Map paths to required permissions
 // NOTE: More specific paths must come BEFORE generic ones (e.g., /admin/verification before /admin)
@@ -52,7 +52,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
             // Redirect logged-in users away from auth pages
             if (accessToken && !isTokenExpired(accessToken)) {
-                if (["/login", "/register"].includes(normalizedPath)) {
+                if (["/login", "/register", "/reset-password"].includes(normalizedPath)) {
                     setAlreadyLoggedIn(true)
                     setLoading(false)
                     setTimeout(() => router.push("/"), 1500)

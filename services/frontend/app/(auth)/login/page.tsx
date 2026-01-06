@@ -127,8 +127,8 @@ export default function LoginPage() {
                             data && typeof data.error === "string"
                                 ? data.error
                                 : data && data.message
-                                  ? String(data.message)
-                                  : "Wystąpił błąd podczas logowania"
+                                    ? String(data.message)
+                                    : "Wystąpił błąd podczas logowania"
 
                         setErrors((prev) => ({ ...prev, form: errorMessage }))
                     }
@@ -157,6 +157,14 @@ export default function LoginPage() {
                     {successMessage}
                 </div>
             )}
+            <div className="flex w-full flex-col items-center">
+                <h1 className="tracking-light pt-6 pb-3 text-center text-[32px] leading-tight font-bold text-white">
+                    RiskRadar
+                </h1>
+                <p className="px-4 pt-1 pb-3 text-center text-base leading-normal font-normal text-zinc-400 dark:text-white">
+                    Zaloguj się lub Utwórz konto, aby rozpocząć.
+                </p>
+            </div>
             <div className="pb-3">
                 <div className="flex justify-between border-b border-[#54473b]">
                     <Link
@@ -185,9 +193,8 @@ export default function LoginPage() {
                         Email lub login
                     </Label>
                     <Input
-                        className={`form-input focus:ring-primary/50 flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg border text-white focus:ring-2 focus:outline-0 ${
-                            errors.username ? "border-red-500 focus:border-red-500" : "focus:border-primary border-[#54473b]"
-                        } h-14 bg-[#27211b] p-[15px] text-base leading-normal font-normal placeholder:text-[#baab9c]`}
+                        className={`form-input focus:ring-primary/50 flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg border text-white focus:ring-2 focus:outline-0 ${errors.username ? "border-red-500 focus:border-red-500" : "focus:border-primary border-[#54473b]"
+                            } h-14 bg-[#27211b] p-[15px] text-base leading-normal font-normal placeholder:text-[#baab9c]`}
                         id="username"
                         placeholder="jan.kowalski@example.com lub janek"
                         type="text"
@@ -202,11 +209,10 @@ export default function LoginPage() {
                         Hasło
                     </Label>
                     <div
-                        className={`flex w-full flex-1 items-center rounded-lg border ${
-                            errors.password
-                                ? "border-red-500 focus-within:border-red-500"
-                                : "focus-within:border-primary border-[#54473b]"
-                        } focus-within:ring-primary/50 h-14 overflow-hidden bg-[#27211b] focus-within:ring-2`}
+                        className={`flex w-full flex-1 items-center rounded-lg border ${errors.password
+                            ? "border-red-500 focus-within:border-red-500"
+                            : "focus-within:border-primary border-[#54473b]"
+                            } focus-within:ring-primary/50 h-14 overflow-hidden bg-[#27211b] focus-within:ring-2`}
                     >
                         <Input
                             className="form-input flex h-full w-full min-w-0 flex-1 resize-none rounded-none border-0 bg-transparent p-[15px] pr-2 text-base leading-normal font-normal text-white shadow-none placeholder:text-[#baab9c] focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -242,7 +248,7 @@ export default function LoginPage() {
                             Zapamiętaj mnie
                         </Label>
                     </div>
-                    <Link className="text-sm text-white hover:underline" href="#">
+                    <Link className="text-sm text-white hover:underline" href="/reset-password">
                         Nie pamiętasz hasła?
                     </Link>
                 </div>
