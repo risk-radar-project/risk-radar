@@ -1,6 +1,6 @@
 import { isTokenExpired } from "@/lib/auth/jwt-utils"
 
-export const GATEWAY_URL = "http://localhost:8090"
+export const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:8090"
 export const API_BASE_URL = `${GATEWAY_URL}/api/users`
 export const REPORTS_API_URL = `${GATEWAY_URL}/api/reports`
 export const MEDIA_API_URL = `${GATEWAY_URL}/api/media`

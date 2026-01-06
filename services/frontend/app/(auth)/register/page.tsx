@@ -1,4 +1,3 @@
-"use client"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { Eye, EyeOff } from "lucide-react"
+import { GATEWAY_URL } from "@/lib/auth/auth-service"
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({
@@ -110,7 +110,7 @@ export default function RegisterPage() {
         if (isValid) {
             setIsLoading(true)
             try {
-                const response = await fetch("http://localhost:8090/api/users/register", {
+                const response = await fetch(`${GATEWAY_URL}/api/users/register`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -223,8 +223,8 @@ export default function RegisterPage() {
                     </Label>
                     <div
                         className={`flex w-full flex-1 items-center rounded-lg border ${errors.password
-                                ? "border-red-500 focus-within:border-red-500"
-                                : "focus-within:border-primary border-[#54473b]"
+                            ? "border-red-500 focus-within:border-red-500"
+                            : "focus-within:border-primary border-[#54473b]"
                             } focus-within:ring-primary/50 h-14 overflow-hidden bg-[#27211b] focus-within:ring-2`}
                     >
                         <Input
@@ -254,8 +254,8 @@ export default function RegisterPage() {
                     </Label>
                     <div
                         className={`flex w-full flex-1 items-center rounded-lg border ${errors.confirmPassword
-                                ? "border-red-500 focus-within:border-red-500"
-                                : "focus-within:border-primary border-[#54473b]"
+                            ? "border-red-500 focus-within:border-red-500"
+                            : "focus-within:border-primary border-[#54473b]"
                             } focus-within:ring-primary/50 h-14 overflow-hidden bg-[#27211b] focus-within:ring-2`}
                     >
                         <Input

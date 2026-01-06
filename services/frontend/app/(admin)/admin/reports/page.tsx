@@ -304,7 +304,6 @@ export default function AdminReportsPage() {
                             <TableHead>Tytuł</TableHead>
                             <TableHead>Kategoria</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead>AI Weryfikacja</TableHead>
                             <TableHead>Data</TableHead>
                             <TableHead>Akcje</TableHead>
                         </TableRow>
@@ -345,21 +344,7 @@ export default function AdminReportsPage() {
                                             <option value="REJECTED">Odrzucone</option>
                                         </select>
                                     </TableCell>
-                                    <TableCell>
-                                        {report.aiFakeProbability !== undefined && (
-                                            <div className="flex items-center gap-2">
-                                                <div
-                                                    className={`h-2 w-2 rounded-full ${report.aiIsFake ? "bg-red-500" : "bg-green-500"}`}
-                                                />
-                                                <span
-                                                    className={`text-xs ${report.aiIsFake ? "text-red-400" : "text-green-400"}`}
-                                                >
-                                                    {report.aiIsFake ? "Podejrzane" : "OK"} (
-                                                    {Math.round(report.aiFakeProbability * 100)}%)
-                                                </span>
-                                            </div>
-                                        )}
-                                    </TableCell>
+
                                     <TableCell>
                                         <span className="text-sm text-zinc-400">
                                             {new Date(report.createdAt).toLocaleDateString("pl-PL")}
@@ -459,15 +444,7 @@ export default function AdminReportsPage() {
                                     </p>
                                 </div>
                             </div>
-                            {viewingReport.aiFakeProbability !== undefined && (
-                                <div>
-                                    <span className="text-zinc-500">Weryfikacja AI:</span>
-                                    <p className={viewingReport.aiIsFake ? "text-red-400" : "text-green-400"}>
-                                        {viewingReport.aiIsFake ? "Podejrzane zgłoszenie" : "Zgłoszenie wiarygodne"}(
-                                        {Math.round(viewingReport.aiFakeProbability * 100)}% prawdopodobieństwo fałszu)
-                                    </p>
-                                </div>
-                            )}
+
                         </div>
                     </div>
                 </div>

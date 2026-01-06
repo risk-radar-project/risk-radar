@@ -9,6 +9,7 @@ import { Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useEffect } from "react"
+import { GATEWAY_URL } from "@/lib/auth/auth-service"
 
 export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false)
@@ -85,7 +86,7 @@ export default function LoginPage() {
         if (isValid) {
             setIsLoading(true)
             try {
-                const response = await fetch("http://localhost:8090/api/users/login", {
+                const response = await fetch(`${GATEWAY_URL}/api/users/login`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
