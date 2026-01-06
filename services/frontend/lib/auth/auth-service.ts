@@ -1,4 +1,33 @@
-export const API_BASE_URL = "http://localhost:8090/api/users"
+import { isTokenExpired } from "@/lib/auth/jwt-utils"
+
+export const GATEWAY_URL = "http://localhost:8090"
+export const API_BASE_URL = `${GATEWAY_URL}/api/users`
+export const REPORTS_API_URL = `${GATEWAY_URL}/api/reports`
+export const MEDIA_API_URL = `${GATEWAY_URL}/api/media`
+
+export async function getFreshAccessToken(): Promise<string | null> {
+    if (typeof window === "undefined") return null
+
+    const accessToken = localStorage.getItem("access_token")
+    const refreshToken = localStorage.getItem("refresh_token")
+
+    if (accessToken && !isTokenExpired(accessToken)) {
+        return accessToken
+    }
+
+    if (!refreshToken) return null
+
+    const refreshed = await refreshAccessToken(refreshToken)
+    if (refreshed?.accessToken) {
+        localStorage.setItem("access_token", refreshed.accessToken)
+        if (refreshed.refreshToken) {
+            localStorage.setItem("refresh_token", refreshed.refreshToken)
+        }
+        return refreshed.accessToken
+    }
+
+    return null
+}
 
 export async function refreshAccessToken(
     refreshToken: string

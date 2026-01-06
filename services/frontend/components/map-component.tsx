@@ -468,8 +468,6 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                 const lat = position.coords.latitude
                 const lng = position.coords.longitude
 
-                setUserLocation({ lat, lng })
-
                 // Add user location marker to the map
                 if (mapRef.current) {
                     // Remove previous user location marker and circle

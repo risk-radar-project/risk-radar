@@ -22,6 +22,8 @@ import report_service.entity.Report;
 import report_service.entity.ReportStatus;
 import report_service.repository.ReportRepository;
 
+import report_service.entity.ReportCategory;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -97,7 +99,45 @@ class ReportServiceTest {
         reportService.createReport(testRequest);
 
         verify(reportRepository, times(1)).save(any(Report.class));
-        verify(kafkaTemplate, times(1)).send(anyString(), eq(savedReport.getId().toString()), any());
+        verify(kafkaTemplate, times(1)).send(any(), any());
+    }
+
+    @Test
+    void getUserReports_ShouldReturnPageOfReports() {
+        UUID userId = savedReport.getUserId();
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Report> page = new PageImpl<>(List.of(savedReport));
+
+        when(reportRepository.findUserReports(eq(userId), isNull(), isNull(), eq(pageable))).thenReturn(page);
+
+        Page<Report> result = reportService.getUserReports(userId, null, null, pageable);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(savedReport.getId(), result.getContent().get(0).getId());
+        verify(reportRepository, times(1)).findUserReports(eq(userId), isNull(), isNull(), eq(pageable));
+    }
+
+    @Test
+    void deleteReport_ShouldDelete_WhenUserIsOwner() {
+        UUID userId = savedReport.getUserId();
+        when(reportRepository.findById(testReportId)).thenReturn(Optional.of(savedReport));
+
+        reportService.deleteReport(testReportId, userId);
+
+        verify(reportRepository, times(1)).delete(savedReport);
+    }
+
+    @Test
+    void deleteReport_ShouldThrowException_WhenUserIsNotOwner() {
+        UUID otherUserId = UUID.randomUUID();
+        when(reportRepository.findById(testReportId)).thenReturn(Optional.of(savedReport));
+
+        assertThrows(SecurityException.class, () -> {
+            reportService.deleteReport(testReportId, otherUserId);
+        });
+
+        verify(reportRepository, never()).delete(any());
     }
 
     @Test

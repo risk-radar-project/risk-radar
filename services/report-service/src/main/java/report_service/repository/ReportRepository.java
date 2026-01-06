@@ -1,10 +1,13 @@
 package report_service.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import report_service.entity.Report;
+import report_service.entity.ReportCategory;
 import report_service.entity.ReportStatus;
 
 import java.util.List;
@@ -16,10 +19,15 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface ReportRepository extends JpaRepository<Report, UUID>, JpaSpecificationExecutor<Report> {
     List<Report> findByStatus(ReportStatus status);
 
-    long countByStatus(ReportStatus status);
-
-    long countByCreatedAtAfter(java.time.LocalDateTime date);
-
+    @Query("SELECT r FROM Report r WHERE r.userId = :userId " +
+           "AND (:status IS NULL OR r.status = :status) " +
+           "AND (:category IS NULL OR r.category = :category)")
+    Page<Report> findUserReports(
+            @Param("userId") UUID userId,
+            @Param("status") ReportStatus status,
+            @Param("category") ReportCategory category,
+            Pageable pageable);
+    
     /**
      * Find reports within a radius using Haversine formula
      * Returns reports that are potentially dangerous (VERIFIED or PENDING status)

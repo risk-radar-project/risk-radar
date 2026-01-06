@@ -1,30 +1,5 @@
 import type { ApiResponse, User } from "./types"
-import { isTokenExpired } from "@/lib/auth/jwt-utils"
-import { refreshAccessToken, API_BASE_URL } from "@/lib/auth/auth-service"
-
-async function getFreshAccessToken(): Promise<string | null> {
-    if (typeof window === "undefined") return null
-
-    const accessToken = localStorage.getItem("access_token")
-    const refreshToken = localStorage.getItem("refresh_token")
-
-    if (accessToken && !isTokenExpired(accessToken)) {
-        return accessToken
-    }
-
-    if (!refreshToken) return null
-
-    const refreshed = await refreshAccessToken(refreshToken)
-    if (refreshed?.accessToken) {
-        localStorage.setItem("access_token", refreshed.accessToken)
-        if (refreshed.refreshToken) {
-            localStorage.setItem("refresh_token", refreshed.refreshToken)
-        }
-        return refreshed.accessToken
-    }
-
-    return null
-}
+import { API_BASE_URL, getFreshAccessToken } from "@/lib/auth/auth-service"
 
 // Fetch current user profile from backend
 export async function getUserProfile(): Promise<ApiResponse<User>> {
@@ -95,7 +70,7 @@ export async function requestPasswordReset(email: string): Promise<ApiResponse<{
 
 export async function changeEmail(newEmail: string): Promise<ApiResponse<void>> {
     const token = await getFreshAccessToken()
-    if (!token) return { error: "Not authenticated" }
+    if (!token) return { data: undefined as unknown as void, error: "Not authenticated" }
 
     const response = await fetch(`${API_BASE_URL}/change-email`, {
         method: "POST",
@@ -118,8 +93,8 @@ export async function changeEmail(newEmail: string): Promise<ApiResponse<void>> 
         } catch {
             // ignore
         }
-        return { error: errorMessage }
+        return { data: undefined as unknown as void, error: errorMessage }
     }
 
-    return { data: undefined }
+    return { data: undefined as unknown as void }
 }

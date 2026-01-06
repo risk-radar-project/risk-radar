@@ -1,49 +1,49 @@
 "use client"
 
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
 
-export function ModalConfirm({
-    onConfirm,
-    title,
-    description
-}: {
+interface ModalConfirmProps {
+    isOpen: boolean
+    onClose: () => void
     onConfirm: () => void
     title: string
     description: string
-}) {
-    const [open, setOpen] = useState(false)
+    confirmText?: string
+    cancelText?: string
+    variant?: "default" | "destructive"
+    isLoading?: boolean
+}
 
+export function ModalConfirm({
+    isOpen,
+    onClose,
+    onConfirm,
+    title,
+    description,
+    confirmText = "Potwierdź",
+    cancelText = "Anuluj",
+    variant = "default",
+    isLoading = false
+}: ModalConfirmProps) {
     return (
-        <>
-            <Button variant="destructive" onClick={() => setOpen(true)}>
-                Usuń
-            </Button>
-
-            <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <h2 className="text-lg font-semibold">{title}</h2>
-                    </DialogHeader>
-                    <p className="text-sm text-zinc-400">{description}</p>
-
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setOpen(false)}>
-                            Anuluj
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={() => {
-                                onConfirm()
-                                setOpen(false)
-                            }}
-                        >
-                            Potwierdź
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{title}</DialogTitle>
+                    <DialogDescription>{description}</DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={onClose} disabled={isLoading}>
+                        {cancelText}
+                    </Button>
+                    <Button variant={variant} onClick={onConfirm} disabled={isLoading}>
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {confirmText}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     )
 }

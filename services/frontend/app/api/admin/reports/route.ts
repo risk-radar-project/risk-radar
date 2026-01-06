@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
         const queryString = searchParams.toString()
         const authHeader = request.headers.get("Authorization")
 
-        const url = `${REPORT_SERVICE_URL}/reports${queryString ? `?${queryString}` : ""}`
+        const url = `${REPORT_SERVICE_URL}${queryString ? `?${queryString}` : ""}`
         console.log(`Admin API Route: Fetching reports from ${url}`)
 
         const response = await fetch(url, {

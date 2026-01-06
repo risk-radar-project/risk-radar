@@ -19,6 +19,13 @@ export type Report = {
     description: string
     status: string
     createdAt: string
+    category?: string
+    latitude?: number
+    longitude?: number
+    imageIds?: string[]
+    aiIsFake?: boolean
+    aiFakeProbability?: number
+    aiConfidence?: string
 }
 
 export type MediaAsset = {
