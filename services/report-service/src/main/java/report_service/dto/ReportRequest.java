@@ -7,17 +7,17 @@ import java.util.List;
 import java.util.UUID;
 
 public record ReportRequest(
-        @NotBlank(message = "Title is required") @Size(max = 500, message = "Title cannot exceed 500 characters") String title,
+        @NotBlank(message = "Tytuł jest wymagany") @Size(max = 500, message = "Tytuł nie może przekraczać 500 znaków") String title,
 
-        @Size(max = 10000, message = "Description cannot exceed 10000 characters") String description,
+        @Size(max = 10000, message = "Opis nie może przekraczać 10000 znaków") String description,
 
-        @NotNull(message = "Latitude is required") @DecimalMin(value = "-90.0", message = "Latitude must be between -90 and 90") @DecimalMax(value = "90.0", message = "Latitude must be between -90 and 90") Double latitude,
+        @NotNull(message = "Szerokość geograficzna jest wymagana") @DecimalMin(value = "-90.0", message = "Szerokość geograficzna musi być między -90 a 90") @DecimalMax(value = "90.0", message = "Szerokość geograficzna musi być między -90 a 90") Double latitude,
 
-        @NotNull(message = "Longitude is required") @DecimalMin(value = "-180.0", message = "Longitude must be between -180 and 180") @DecimalMax(value = "180.0", message = "Longitude must be between -180 and 180") Double longitude,
+        @NotNull(message = "Długość geograficzna jest wymagana") @DecimalMin(value = "-180.0", message = "Długość geograficzna musi być między -180 a 180") @DecimalMax(value = "180.0", message = "Długość geograficzna musi być między -180 a 180") Double longitude,
 
-        @NotNull(message = "User ID is required") UUID userId,
+        @NotNull(message = "ID użytkownika jest wymagane") UUID userId,
 
         List<UUID> imageIds,
 
-        @NotNull(message = "Report category is required") ReportCategory reportCategory) {
+        @NotNull(message = "Kategoria zgłoszenia jest wymagana") ReportCategory reportCategory) {
 }

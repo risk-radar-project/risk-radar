@@ -317,7 +317,67 @@ export default function SubmitReportPage() {
 
             if (!response.ok) {
                 const errorData = await response.json()
-                throw new Error(errorData.error || "Nie udało się utworzyć zgłoszenia")
+
+                // Check if it's a validation error from backend
+                if (errorData.error && typeof errorData.error === 'string') {
+                    const errorStr = errorData.error
+                    const newFieldErrors: { title?: string; description?: string } = {}
+
+                    // Parse field-level errors (format: "field: message, field: message")
+                    // Looking for field names in both English and references in Polish messages
+                    if (errorStr.toLowerCase().includes('title:') || errorStr.toLowerCase().includes('tytuł')) {
+                        const titleMatch = errorStr.match(/title:\s*([^,]+)/i)
+                        if (titleMatch) {
+                            newFieldErrors.title = titleMatch[1].trim()
+                        } else {
+                            // Extract the message directly if it contains "tytuł"
+                            const parts = errorStr.split(',')
+                            for (const part of parts) {
+                                if (part.toLowerCase().includes('tytuł')) {
+                                    const colonIndex = part.indexOf(':')
+                                    const msg = colonIndex > 0 ? part.substring(colonIndex + 1) : part
+                                    newFieldErrors.title = msg.trim()
+                                    break
+                                }
+                            }
+                        }
+                    }
+
+                    if (errorStr.toLowerCase().includes('description:') || errorStr.toLowerCase().includes('opis')) {
+                        const descMatch = errorStr.match(/description:\s*([^,]+)/i)
+                        if (descMatch) {
+                            newFieldErrors.description = descMatch[1].trim()
+                        } else {
+                            // Extract the message directly if it contains "opis"
+                            const parts = errorStr.split(',')
+                            for (const part of parts) {
+                                if (part.toLowerCase().includes('opis')) {
+                                    const colonIndex = part.indexOf(':')
+                                    const msg = colonIndex > 0 ? part.substring(colonIndex + 1) : part
+                                    newFieldErrors.description = msg.trim()
+                                    break
+                                }
+                            }
+                        }
+                    }
+
+                    if (errorStr.toLowerCase().includes('latitude:') ||
+                        errorStr.toLowerCase().includes('longitude:') ||
+                        errorStr.toLowerCase().includes('szerokość') ||
+                        errorStr.toLowerCase().includes('długość')) {
+                        setError("Nieprawidłowe współrzędne lokalizacji")
+                    }
+
+                    // Set field errors if we found any
+                    if (Object.keys(newFieldErrors).length > 0) {
+                        setFieldErrors(newFieldErrors)
+                        setIsSubmitting(false)
+                        return
+                    }
+                }
+
+                // Generic error fallback
+                throw new Error(errorData.error || errorData.message || "Nie udało się utworzyć zgłoszenia")
             }
 
             const createdReport = await response.json()
@@ -362,8 +422,13 @@ export default function SubmitReportPage() {
             }, 2500)
 
         } catch (err: unknown) {
+            // Only show general errors in the error box (non-field specific)
             const errorMessage = err instanceof Error ? err.message : "Wystąpił błąd podczas tworzenia zgłoszenia"
-            setError(errorMessage)
+
+            // Don't show field-specific errors in the general error box
+            if (!errorMessage.includes('znak') && !errorMessage.includes('Title') && !errorMessage.includes('Description')) {
+                setError(errorMessage)
+            }
         } finally {
             setIsSubmitting(false)
         }
