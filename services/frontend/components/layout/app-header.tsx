@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { JwtPayload, parseJwt } from "@/lib/auth/jwt-utils"
+import { GATEWAY_URL } from "@/lib/auth/auth-service"
 
 export function AppHeader() {
     const [user, setUser] = useState<JwtPayload | null>(null)
@@ -81,7 +82,7 @@ export function AppHeader() {
 
                                     // Try to call backend logout (don't await to avoid delays)
                                     if (token) {
-                                        fetch("http://localhost:8090/api/users/logout", {
+                                        fetch(`${GATEWAY_URL}/api/users/logout`, {
                                             method: "POST",
                                             headers: {
                                                 Authorization: `Bearer ${token}`

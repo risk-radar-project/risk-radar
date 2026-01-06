@@ -11,10 +11,20 @@ public class WebClientConfig {
     @Value("${audit.service.url:http://audit-log-service:8080}")
     private String auditServiceUrl;
 
-    @Bean
+    @Value("${notification.service.url:http://notification-service:8086}")
+    private String notificationServiceUrl;
+
+    @Bean("auditWebClient")
     public WebClient auditWebClient() {
         return WebClient.builder()
                 .baseUrl(auditServiceUrl)
+                .build();
+    }
+
+    @Bean("notificationWebClient")
+    public WebClient notificationWebClient() {
+        return WebClient.builder()
+                .baseUrl(notificationServiceUrl)
                 .build();
     }
 }

@@ -4,6 +4,7 @@ import com.riskRadar.user_service.dto.PasswordResetConfirmRequest;
 import com.riskRadar.user_service.dto.PasswordResetRequest;
 import com.riskRadar.user_service.service.PasswordResetService;
 import com.riskRadar.user_service.service.UserService;
+import com.riskRadar.user_service.service.NotificationClient;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +22,7 @@ public class PasswordResetController {
 
     private final PasswordResetService passwordResetService;
     private final UserService userService;
+    private final NotificationClient notificationClient;
     private static final Logger logger = LoggerFactory.getLogger(PasswordResetController.class);
 
     @PostMapping("/forgot-password")
@@ -31,18 +33,20 @@ public class PasswordResetController {
                         .body(Map.of("error", "Email is required"));
             }
 
-            // Generate token but don't return it directly - security vulnerability
-            String token = passwordResetService.generatePasswordResetToken(request.email());
+            try {
+                // Check if user exists and get ID
+                var user = userService.getUserByUsernameOrEmail(request.email());
 
-            if (token == null) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(Map.of("error", "Failed to generate reset token"));
+                String token = passwordResetService.generatePasswordResetToken(request.email());
+
+                if (token != null) {
+                    notificationClient.sendPasswordResetEmail(user.getId(), request.email(), token);
+                    logger.info("Password reset token generated and email requested for email: {}", request.email());
+                }
+            } catch (Exception e) {
+                // User not found or other error - log debug but don't fail request
+                logger.debug("Password reset requested for invalid email or user not found: {}", request.email());
             }
-
-            // TODO: Integration with external mail service
-            // externalEmailService.sendPasswordResetEmail(request.email(), token);
-
-            logger.info("Password reset token generated for email: {}", request.email());
 
             // Secure response - don't reveal if email exists
             return ResponseEntity.ok(Map.of(

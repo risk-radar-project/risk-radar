@@ -46,7 +46,7 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
     const [showRejectAnimation, setShowRejectAnimation] = useState(false)
 
     const hasImages = report.imageIds && report.imageIds.length > 0
-    const MEDIA_SERVICE_BASE_URL = "http://localhost:8084/media/"
+    const MEDIA_SERVICE_BASE_URL = process.env.NEXT_PUBLIC_MEDIA_URL || "http://localhost:8084/media/"
 
     // Determine AI status based on report data
     // Simplified: only show accepted/rejected feedback to user
@@ -184,9 +184,8 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
                 {/* AI Verification Results - Simplified feedback for user */}
                 {aiStatus.show && (
                     <div
-                        className={`rounded-lg border p-3 ${
-                            aiStatus.isAccepted ? "border-green-500/30 bg-green-500/10" : "border-red-500/30 bg-red-500/10"
-                        }`}
+                        className={`rounded-lg border p-3 ${aiStatus.isAccepted ? "border-green-500/30 bg-green-500/10" : "border-red-500/30 bg-red-500/10"
+                            }`}
                     >
                         <div className="flex items-center gap-2">
                             <span className={`text-lg ${aiStatus.isAccepted ? "text-green-400" : "text-red-400"}`}>
@@ -194,9 +193,8 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
                             </span>
                             <div>
                                 <span
-                                    className={`text-sm font-semibold ${
-                                        aiStatus.isAccepted ? "text-green-400" : "text-red-400"
-                                    }`}
+                                    className={`text-sm font-semibold ${aiStatus.isAccepted ? "text-green-400" : "text-red-400"
+                                        }`}
                                 >
                                     {aiStatus.message}
                                 </span>

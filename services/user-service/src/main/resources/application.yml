@@ -38,6 +38,10 @@ audit:
   kafka:
     topic: audit_logs
 
+notification:
+  service:
+    url: http://notification-service:8080
+
 jwt:
   access-secret: ${JWT_ACCESS_SECRET}
   refresh-secret: ${JWT_REFRESH_SECRET}
