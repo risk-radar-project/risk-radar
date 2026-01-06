@@ -43,35 +43,26 @@ export function ReportCard({ report }: { report: Report }) {
     const MEDIA_SERVICE_BASE_URL = "http://localhost:8084/media/"
 
     // Determine AI status based on report data
+    // Simplified: only show accepted/rejected feedback to user
     const getAIStatusInfo = () => {
-        if (!report.aiIsFake || report.status === "PENDING") {
+        // Only show status info for VERIFIED or REJECTED reports
+        if (report.status === "PENDING") {
             return { show: false }
-        }
-
-        const confidence = report.aiConfidence || ""
-        const confidenceLabels: Record<string, string> = {
-            high: "Wysoka pewność",
-            medium: "Średnia pewność",
-            low: "Niska pewność"
         }
 
         if (report.status === "REJECTED") {
             return {
                 show: true,
-                isFake: true,
-                probability: report.aiFakeProbability || 0,
-                confidence: confidenceLabels[confidence] || confidence,
-                message: "Przekazano do sprawdzenia przez moderatora",
-                description: "AI wykryło potencjalne problemy z treścią zgłoszenia"
+                isAccepted: false,
+                message: "Odrzucone",
+                description: "Zgłoszenie zostało odrzucone przez system weryfikacji"
             }
         } else if (report.status === "VERIFIED") {
             return {
                 show: true,
-                isFake: false,
-                probability: report.aiFakeProbability || 0,
-                confidence: confidenceLabels[confidence] || confidence,
-                message: "Zweryfikowano automatycznie",
-                description: "AI potwierdziło autentyczność zgłoszenia"
+                isAccepted: true,
+                message: "Zaakceptowane",
+                description: "Zgłoszenie zostało zaakceptowane"
             }
         }
         return { show: false }
@@ -152,57 +143,25 @@ export function ReportCard({ report }: { report: Report }) {
                 {/* Description */}
                 {report.description && <p className="text-sm text-[#e0dcd7]/80">{report.description}</p>}
 
-                {/* AI Verification Results */}
+                {/* AI Verification Results - Simplified feedback for user */}
                 {aiStatus.show && (
-                    <div className="rounded-lg border border-[#e0dcd7]/10 bg-black/20 p-3">
-                        <div className="mb-2 flex items-center gap-2">
-                            <span className="material-symbols-outlined text-sm text-blue-400">psychology</span>
-                            <span className="text-xs font-semibold text-blue-400">Szczegóły analizy AI</span>
-                        </div>
-                        <div className="space-y-2 text-xs">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[#e0dcd7]/70">Wynik:</span>
-                                <span
-                                    className={`rounded px-2 py-1 font-medium ${
-                                        aiStatus.isFake ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"
-                                    }`}
-                                >
-                                    {aiStatus.isFake ? "✗ Podejrzane" : "✓ Autentyczne"}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-[#e0dcd7]/70">Prawdopodobieństwo:</span>
-                                <span className="rounded bg-blue-500/20 px-2 py-1 font-medium text-blue-400">
-                                    {(aiStatus.probability! * 100).toFixed(1)}%
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-[#e0dcd7]/70">Pewność AI:</span>
-                                <span
-                                    className={`rounded px-2 py-1 font-medium ${
-                                        aiStatus.confidence === "Wysoka pewność"
-                                            ? "bg-green-500/20 text-green-400"
-                                            : aiStatus.confidence === "Średnia pewność"
-                                              ? "bg-yellow-500/20 text-yellow-400"
-                                              : "bg-orange-500/20 text-orange-400"
-                                    }`}
-                                >
-                                    {aiStatus.confidence}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between border-t border-[#e0dcd7]/10 pt-1">
-                                <span className="text-[#e0dcd7]/70">Status:</span>
-                                <span
-                                    className={`rounded px-2 py-1 font-medium ${
-                                        aiStatus.isFake
-                                            ? "bg-orange-500/20 text-orange-400"
-                                            : "bg-green-500/20 text-green-400"
-                                    }`}
-                                >
+                    <div className={`rounded-lg border p-3 ${
+                        aiStatus.isAccepted 
+                            ? "border-green-500/30 bg-green-500/10" 
+                            : "border-red-500/30 bg-red-500/10"
+                    }`}>
+                        <div className="flex items-center gap-2">
+                            <span className={`text-lg ${aiStatus.isAccepted ? "text-green-400" : "text-red-400"}`}>
+                                {aiStatus.isAccepted ? "✓" : "✗"}
+                            </span>
+                            <div>
+                                <span className={`text-sm font-semibold ${
+                                    aiStatus.isAccepted ? "text-green-400" : "text-red-400"
+                                }`}>
                                     {aiStatus.message}
                                 </span>
+                                <p className="text-xs text-[#e0dcd7]/60">{aiStatus.description}</p>
                             </div>
-                            <div className="mt-2 text-[11px] text-[#e0dcd7]/60 italic">💡 {aiStatus.description}</div>
                         </div>
                     </div>
                 )}

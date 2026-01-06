@@ -52,13 +52,16 @@ public class VerificationEventConsumer {
                     report.setAiConfidence(confidence);
                     report.setAiVerifiedAt(LocalDateTime.now());
                     
-                    // Update status based on verification result
-                    if (isFake) {
-                        report.setStatus(ReportStatus.REJECTED);
-                        log.info("Report {} marked as REJECTED (fake detected)", reportId);
-                    } else {
+                    // AI NEVER auto-rejects - only human moderators can reject
+                    // If is_fake=true -> PENDING (needs manual review by moderator)
+                    // If is_fake=false -> VERIFIED (auto-accepted)
+                    if (!isFake) {
                         report.setStatus(ReportStatus.VERIFIED);
-                        log.info("Report {} marked as VERIFIED (authentic)", reportId);
+                        log.info("Report {} marked as VERIFIED (AI verified as authentic)", reportId);
+                    } else {
+                        // Suspicious report - keep as PENDING for human moderator to decide
+                        report.setStatus(ReportStatus.PENDING);
+                        log.info("Report {} remains PENDING (AI flagged as suspicious - needs moderator review)", reportId);
                     }
                     reportRepository.save(report);
                 } else {
