@@ -45,6 +45,7 @@ class VerificationResponse(BaseModel):
     is_fake: bool
     fake_probability: float
     confidence: str
+    should_reject: bool = False  # Only True when high confidence fake
     explanation: Optional[str] = None
 
 class DuplicateCheckRequest(BaseModel):
@@ -67,6 +68,18 @@ class HealthResponse(BaseModel):
     models_loaded: bool
     kafka_enabled: bool
 
+def check_lfs_pointer(file_path: str) -> bool:
+    """Check if a file is a Git LFS pointer instead of actual content"""
+    try:
+        with open(file_path, 'rb') as f:
+            header = f.read(50)
+            # LFS pointers start with "version https://git-lfs"
+            if b'version https://git-lfs' in header:
+                return True
+    except:
+        pass
+    return False
+
 def load_models():
     """Load all ML models - ALL models are REQUIRED"""
     global bert_model, tokenizer, scaler, fake_detector, duplicate_classifier
@@ -78,9 +91,23 @@ def load_models():
     # Load fine-tuned BERT weights - REQUIRED
     bert_path = os.path.join(model_dir, "bert_model_finetuned.pth")
     if not os.path.exists(bert_path):
-        raise RuntimeError(f"Required model file not found: {bert_path}")
+        raise RuntimeError(f"Required model file not found: {bert_path}. Run 'git lfs pull' to download model files.")
     
-    state_dict = torch.load(bert_path, map_location='cpu')
+    # Check if file is LFS pointer
+    if check_lfs_pointer(bert_path):
+        raise RuntimeError(
+            f"Model file {bert_path} is a Git LFS pointer, not actual model data. "
+            "Please run: git lfs install && git lfs pull"
+        )
+    
+    try:
+        state_dict = torch.load(bert_path, map_location='cpu')
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to load model {bert_path}: {e}. "
+            "The file may be corrupted or a Git LFS pointer. "
+            "Please run: git lfs pull"
+        )
     
     # Detect model configuration from saved weights
     vocab_size = state_dict['embeddings.word_embeddings.weight'].shape[0]
@@ -319,9 +346,13 @@ async def verify_report(request: VerificationRequest):
         is_fake = fake_prob > 0.5
         confidence = "high" if abs(fake_prob - 0.5) > 0.3 else "medium" if abs(fake_prob - 0.5) > 0.15 else "low"
         
+        # AI NEVER auto-rejects - only human moderators can reject reports
+        # If is_fake=true -> PENDING (needs manual review)
+        # If is_fake=false -> VERIFIED (auto-accepted)
+        
         logger.info(f"Verification result for {request.report_id}: is_fake={is_fake}, fake_prob={fake_prob:.4f}, authentic_prob={authentic_prob:.4f}, confidence={confidence}")
         
-        # Publish to Kafka
+        # Publish to Kafka - no should_reject field, AI never rejects
         await kafka_client.publish(
             topic="verification_events",
             message={
@@ -336,30 +367,38 @@ async def verify_report(request: VerificationRequest):
             key=request.report_id
         )
         
-        # Send notification if fake detected (format compatible with notification-service)
+        # Send notification for suspicious reports (needs moderator review)
         if is_fake:
             await kafka_client.publish(
                 topic="notification_events",
                 message={
                     "eventId": str(uuid.uuid4()),
-                    "eventType": "FAKE_REPORT_DETECTED",
+                    "eventType": "SUSPICIOUS_REPORT_DETECTED",
                     "userId": request.user_id,
                     "source": "ai-verification-duplication-service",
                     "payload": {
                         "reportId": request.report_id,
                         "fake_probability": round(fake_prob * 100, 2),
-                        "confidence": confidence
+                        "confidence": confidence,
+                        "message": "Zgłoszenie wymaga weryfikacji przez moderatora"
                     }
                 },
                 key=request.user_id
             )
+        
+        # Explanation for user - simple feedback
+        if not is_fake:
+            user_explanation = "Zgłoszenie zostało zaakceptowane."
+        else:
+            user_explanation = "Zgłoszenie oczekuje na weryfikację przez moderatora."
         
         return VerificationResponse(
             report_id=request.report_id,
             is_fake=is_fake,
             fake_probability=round(fake_prob, 4),
             confidence=confidence,
-            explanation=f"Report classified as {'fake' if is_fake else 'authentic'} with {confidence} confidence"
+            should_reject=False,  # AI never auto-rejects
+            explanation=user_explanation
         )
         
     except Exception as e:

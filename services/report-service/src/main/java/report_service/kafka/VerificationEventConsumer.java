@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import report_service.entity.Report;
+import report_service.entity.ReportStatus;
 
 import report_service.repository.ReportRepository;
 
@@ -52,16 +53,18 @@ public class VerificationEventConsumer {
                     report.setAiConfidence(confidence);
                     report.setAiVerifiedAt(LocalDateTime.now());
 
-                    // Update status based on verification result - DISABLED (Auto-Verification OFF)
-                    /*
-                     * if (isFake) {
-                     * report.setStatus(ReportStatus.REJECTED);
-                     * log.info("Report {} marked as REJECTED (fake detected)", reportId);
-                     * } else {
-                     * report.setStatus(ReportStatus.VERIFIED);
-                     * log.info("Report {} marked as VERIFIED (authentic)", reportId);
-                     * }
-                     */
+                    // AI NEVER auto-rejects - only human moderators can reject
+                    // If is_fake=true -> PENDING (needs manual review by moderator)
+                    // If is_fake=false -> VERIFIED (auto-accepted)
+                    if (!isFake) {
+                        report.setStatus(ReportStatus.VERIFIED);
+                        log.info("Report {} marked as VERIFIED (AI verified as authentic)", reportId);
+                    } else {
+                        // Suspicious report - keep as PENDING for human moderator to decide
+                        report.setStatus(ReportStatus.PENDING);
+                        log.info("Report {} remains PENDING (AI flagged as suspicious - needs moderator review)",
+                                reportId);
+                    }
                     reportRepository.save(report);
                 } else {
                     log.warn("Report {} not found in database", reportId);

@@ -1,24 +1,40 @@
-FROM python:3.11-slim
+# Stage 1: Build dependencies
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
 COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Stage 2: Final image
+FROM python:3.11-slim
 
-# Copy application code
+WORKDIR /app
+
+# Install Git LFS for model files
+RUN apt-get update && apt-get install -y \
+    git \
+    git-lfs \
+    && git lfs install \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /install /usr/local
 COPY . .
 
-# Expose port
+# Verify model files are not LFS pointers (fail build if they are)
+RUN echo "Verifying AI model files..." && \
+    if head -c 50 detector_model_components/bert_model_finetuned.pth | grep -q "version https://git-lfs"; then \
+        echo "ERROR: bert_model_finetuned.pth is a Git LFS pointer!" && \
+        echo "Run 'git lfs pull' before building Docker image." && \
+        exit 1; \
+    fi && \
+    echo "Model files OK"
+
 EXPOSE 8080
 
-# Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["python", "main.py"]

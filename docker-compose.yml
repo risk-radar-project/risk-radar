@@ -26,9 +26,12 @@ services:
             dockerfile: Dockerfile
         container_name: user-service
         depends_on:
-            - postgres
-            - redis
-            - kafka
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
         environment:
             <<: *global-env
             KAFKA_BROKERS: kafka:9092
@@ -43,7 +46,8 @@ services:
             dockerfile: Dockerfile
         container_name: authz-service
         depends_on:
-            - postgres
+            postgres:
+                condition: service_healthy
         environment:
             <<: *global-env
             HTTP_PORT: 8080
@@ -62,8 +66,10 @@ services:
             dockerfile: Dockerfile
         container_name: audit-log-service
         depends_on:
-            - postgres
-            - kafka
+            postgres:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
         environment:
             <<: *global-env
             PORT: 8080
@@ -85,8 +91,10 @@ services:
             dockerfile: Dockerfile
         container_name: ai-categorization-service
         depends_on:
-            - kafka
-            - audit-log-service
+            kafka:
+                condition: service_healthy
+            audit-log-service:
+                condition: service_started
         environment:
             <<: *global-env
             PORT: 8080
@@ -106,8 +114,10 @@ services:
             dockerfile: Dockerfile
         container_name: threat-analysis-service
         depends_on:
-            - kafka
-            - audit-log-service
+            kafka:
+                condition: service_healthy
+            audit-log-service:
+                condition: service_started
         environment:
             <<: *global-env
             PORT: 8080
@@ -130,8 +140,10 @@ services:
             dockerfile: Dockerfile
         container_name: ai-verification-duplication-service
         depends_on:
-            - kafka
-            - audit-log-service
+            kafka:
+                condition: service_healthy
+            audit-log-service:
+                condition: service_started
         environment:
             <<: *global-env
             PORT: 8080
@@ -151,7 +163,8 @@ services:
             dockerfile: Dockerfile
         container_name: media-service
         depends_on:
-            - postgres
+            postgres:
+                condition: service_healthy
         environment:
             <<: *global-env
             HTTP_PORT: 8080
@@ -167,15 +180,19 @@ services:
             - "8084:8080"
         volumes:
             - ./services/media-service/data:/app/data
+
     notification-service:
         build:
             context: ./services/notification-service
             dockerfile: Dockerfile
         container_name: notification-service
         depends_on:
-            - postgres
-            - kafka
-            - mailpit
+            postgres:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
+            mailpit:
+                condition: service_started
         environment:
             <<: *global-env
             PORT: 8080
@@ -192,33 +209,41 @@ services:
             - backend
         ports:
             - "8087:8080"
+
     report-service:
         build:
             context: ./services/report-service
             dockerfile: Dockerfile
         depends_on:
-            - postgres
-            - kafka
-            - redis
+            postgres:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
         environment:
             <<: *global-env
             HTTP_PORT: 8080
             KAFKA_BROKERS: kafka:9092
             KAFKA_CLIENT_ID: report-service
-            REPORT_KAFKA_TOPIC: reports_events
+            REPORT_KAFKA_TOPIC: report
         networks:
             - backend
         ports:
             - "8085:8080"
+
     map-service:
         build:
             context: ./services/map-service
             dockerfile: Dockerfile
         container_name: map-service
         depends_on:
-            - postgres
-            - kafka
-            - report-service
+            postgres:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
+            report-service:
+                condition: service_started
         environment:
             <<: *global-env
         networks:
@@ -261,6 +286,11 @@ services:
             - redis_data:/data
         networks:
             - backend
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
     postgres:
         image: postgres:17
@@ -275,6 +305,11 @@ services:
             - postgres_data:/var/lib/postgresql/data
         networks:
             - backend
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U risk-radar-admin -d risk-radar"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
     mailpit:
         image: axllent/mailpit:latest
@@ -296,22 +331,31 @@ services:
             - backend
         volumes:
             - ./docs:/app
+
     zookeeper:
         image: confluentinc/cp-zookeeper:7.5.0
         container_name: zookeeper
         environment:
             ZOOKEEPER_CLIENT_PORT: 2181
             ZOOKEEPER_TICK_TIME: 2000
+            ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: WARN
+            ZOOKEEPER_TOOLS_LOG4J_LOGLEVEL: WARN
         ports:
             - "2181:2181"
         networks:
             - backend
+        healthcheck:
+            test: echo srvr | nc localhost 2181 || exit 1
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
     kafka:
         image: confluentinc/cp-kafka:7.5.0
         container_name: kafka
         depends_on:
-            - zookeeper
+            zookeeper:
+                condition: service_healthy
         ports:
             - "9092:9092"
             - "9093:9093"
@@ -323,8 +367,17 @@ services:
             KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
             KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
             KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+            KAFKA_LOG4J_ROOT_LOGLEVEL: ERROR
+            KAFKA_TOOLS_LOG4J_LOGLEVEL: ERROR
+            # Apply ERROR to all kafka.* packages, then override a few chatty ones explicitly (still ERROR) for clarity.
+            KAFKA_LOG4J_LOGGERS: "kafka=ERROR,kafka.controller=ERROR,kafka.producer.async.DefaultEventHandler=ERROR,state.change.logger=ERROR,kafka.coordinator.group.GroupMetadataManager=ERROR,kafka.coordinator.group.GroupCoordinator=ERROR,kafka.log.LogCleaner=ERROR"
         networks:
             - backend
+        healthcheck:
+            test: nc -z localhost 9092 || exit 1
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
     api-gateway:
         build:

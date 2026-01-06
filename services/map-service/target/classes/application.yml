@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: map-service
+  data:
+    redis:
+      host: redis
+      port: 6379
+  datasource:
+    url: jdbc:postgresql://postgres:5432/risk-radar
+    username: risk-radar-admin
+    password: passwd
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+  kafka:
+    bootstrap-servers: kafka:9092
+    admin:
+      auto-create: true
+app:
+  services:
+    report-service-url: ${REPORT_SERVICE_URL:http://report-service:8080}
+
+
+# kafka group id: reports

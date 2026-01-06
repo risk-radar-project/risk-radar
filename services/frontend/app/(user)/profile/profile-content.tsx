@@ -1,6 +1,8 @@
 "use client"
 
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useState } from "react"
+import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
 import { PageTitle } from "@/components/shared/page-title"
@@ -10,8 +12,18 @@ import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/ui/ux/empty-state"
 import { Skeleton } from "@/components/ui/ux/skeleton"
 import { Badge } from "@/components/ui/ux/badge"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useUserProfile, useLoginHistory } from "@/hooks/use-api"
-import { requestPasswordReset } from "@/lib/api/user"
+import { requestPasswordReset, changeEmail } from "@/lib/api/user"
 import { formatDistanceToNow } from "date-fns"
 import { pl } from "date-fns/locale"
 
@@ -81,6 +93,61 @@ export default function ProfileContent() {
     const { data: user, isLoading, isError, refetch } = useUserProfile()
     const { data: loginHistory } = useLoginHistory(user?.id)
 
+    const queryClient = useQueryClient()
+    const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false)
+    const [emailStep, setEmailStep] = useState<1 | 2>(1)
+    const [newEmail, setNewEmail] = useState("")
+    const [confirmEmail, setConfirmEmail] = useState("")
+    const [emailError, setEmailError] = useState("")
+
+    const emailMutation = useMutation({
+        mutationFn: async (email: string) => changeEmail(email),
+        onSuccess: (response) => {
+            if (response.error) {
+                toast.error("Nie udało się zmienić adresu email")
+            } else {
+                toast.success("Adres email został zmieniony")
+                resetEmailDialog()
+                queryClient.invalidateQueries({ queryKey: ["user-profile"] })
+            }
+        },
+        onError: () => {
+            toast.error("Wystąpił błąd podczas zmiany adresu email")
+        }
+    })
+
+    const handleEmailNextStep = () => {
+        if (!newEmail.includes("@")) {
+            setEmailError("Podaj poprawny adres email")
+            return
+        }
+        if (newEmail === user?.email) {
+            setEmailError("Nowy adres email musi być inny niż obecny")
+            return
+        }
+        setEmailError("")
+        setEmailStep(2)
+    }
+
+    const handleEmailSubmit = () => {
+        if (newEmail !== confirmEmail) {
+            setEmailError("Adresy email muszą być identyczne")
+            return
+        }
+        setEmailError("")
+        emailMutation.mutate(newEmail)
+    }
+
+    const resetEmailDialog = () => {
+        setIsEmailDialogOpen(false)
+        setTimeout(() => {
+            setEmailStep(1)
+            setNewEmail("")
+            setConfirmEmail("")
+            setEmailError("")
+        }, 300)
+    }
+
     const passwordMutation = useMutation({
         mutationFn: async () => {
             if (!user?.email) {
@@ -127,7 +194,12 @@ export default function ProfileContent() {
                         </div>
                         <div className="space-y-1">
                             <div className={labelMuted}>Email</div>
-                            <div className="text-sm text-[#c2b3a3]">{user.email}</div>
+                            <div className="flex items-center justify-between">
+                                <div className="text-sm text-[#c2b3a3]">{user.email}</div>
+                                <Button variant="outline" size="sm" onClick={() => setIsEmailDialogOpen(true)} className="h-7 text-xs border-[#3d3125] bg-[#2c231b] text-[#f6eedf] hover:bg-[#3d3125] hover:text-[#f6eedf]">
+                                    Zmień
+                                </Button>
+                            </div>
                         </div>
                         <div className="space-y-1">
                             <div className={labelMuted}>ID</div>
@@ -228,6 +300,53 @@ export default function ProfileContent() {
                     </div>
                 </SectionCard>
             </div>
+
+            <Dialog open={isEmailDialogOpen} onOpenChange={resetEmailDialog}>
+                <DialogContent className="bg-[#1f1913] border-[#33281f] text-[#ede3d6]">
+                    <DialogHeader>
+                        <DialogTitle>Zmiana adresu email</DialogTitle>
+                        <DialogDescription className="text-[#9c8876]">
+                            {emailStep === 1
+                                ? "Wprowadź nowy adres email."
+                                : "Potwierdź nowy adres email, wpisując go ponownie."}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="email" className="text-[#c2b3a3]">
+                                {emailStep === 1 ? "Nowy email" : "Potwierdź email"}
+                            </Label>
+                            <Input
+                                id="email"
+                                type="email"
+                                value={emailStep === 1 ? newEmail : confirmEmail}
+                                onChange={(e) =>
+                                    emailStep === 1 ? setNewEmail(e.target.value) : setConfirmEmail(e.target.value)
+                                }
+                                className="bg-[#120c07] border-[#3d3125] text-[#ede3d6]"
+                                placeholder="jan.kowalski@example.com"
+                            />
+                            {emailError && <p className="text-sm text-red-400">{emailError}</p>}
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={resetEmailDialog} className="text-[#c2b3a3] hover:bg-[#2c231b] hover:text-[#ede3d6]">
+                            Anuluj
+                        </Button>
+                        {emailStep === 1 ? (
+                            <Button onClick={handleEmailNextStep} className="bg-[#d97706] text-[#120c07] hover:bg-[#f59e0b]">
+                                Dalej
+                            </Button>
+                        ) : (
+                            <Button onClick={handleEmailSubmit} disabled={emailMutation.isPending} className="bg-[#d97706] text-[#120c07] hover:bg-[#f59e0b]">
+                                {emailMutation.isPending ? "Zapisywanie..." : "Zatwierdź"}
+                            </Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

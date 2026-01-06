@@ -92,3 +92,34 @@ export async function requestPasswordReset(email: string): Promise<ApiResponse<{
 
     return { data: { message } }
 }
+
+export async function changeEmail(newEmail: string): Promise<ApiResponse<void>> {
+    const token = await getFreshAccessToken()
+    if (!token) return { error: "Not authenticated" }
+
+    const response = await fetch(`${API_BASE_URL}/change-email`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ newEmail })
+    })
+
+    if (!response.ok) {
+        let errorMessage = "Nie udało się zmienić adresu email"
+        try {
+            const body = await response.json()
+            if (body.error && typeof body.error === "object") {
+                errorMessage = body.error.message || "Wystąpił błąd"
+            } else {
+                errorMessage = body.error ?? body.message ?? errorMessage
+            }
+        } catch {
+            // ignore
+        }
+        return { error: errorMessage }
+    }
+
+    return { data: undefined }
+}
