@@ -178,13 +178,13 @@ export default function SubmitReportPage() {
         }
     }
 
-    const handleLocationSelect = (lat: number, lng: number) => {
+    const handleLocationSelect = useCallback((lat: number, lng: number) => {
         setFormData((prev) => ({
             ...prev,
             latitude: lat,
             longitude: lng
         }))
-    }
+    }, [])
 
     // Accept AI suggested category
     const acceptAISuggestion = () => {

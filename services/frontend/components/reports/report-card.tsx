@@ -43,6 +43,7 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
     const [isPending, startTransition] = useTransition()
     const [isExpanded, setIsExpanded] = useState(false)
     const [showSuccessAnimation, setShowSuccessAnimation] = useState(false)
+    const [showRejectAnimation, setShowRejectAnimation] = useState(false)
 
     const hasImages = report.imageIds && report.imageIds.length > 0
     const MEDIA_SERVICE_BASE_URL = "http://localhost:8084/media/"
@@ -111,7 +112,12 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
             if (!result.success) {
                 alert(`Błąd: ${result.error}`)
             } else {
-                if (onProcessed) onProcessed(report.id)
+                // Show reject animation
+                setShowRejectAnimation(true)
+                setTimeout(() => {
+                    setShowRejectAnimation(false)
+                    if (onProcessed) onProcessed(report.id)
+                }, 2000)
             }
         })
     }
@@ -124,6 +130,16 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
                     <div className="animate-bounce text-center">
                         <div className="mb-2 text-6xl">✓</div>
                         <div className="text-lg font-bold text-green-400">Zaakceptowano!</div>
+                    </div>
+                </div>
+            )}
+
+            {/* Reject Animation Overlay */}
+            {showRejectAnimation && (
+                <div className="animate-fadeIn absolute inset-0 z-50 flex items-center justify-center bg-red-500/20 backdrop-blur-sm">
+                    <div className="animate-bounce text-center">
+                        <div className="mb-2 text-6xl">✗</div>
+                        <div className="text-lg font-bold text-red-400">Odrzucono!</div>
                     </div>
                 </div>
             )}

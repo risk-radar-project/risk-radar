@@ -84,12 +84,20 @@ export default function LocationPickerMap({
         }
     }
 
-    // Load Leaflet CSS
+    // Load Leaflet CSS and configure icon paths
     useEffect(() => {
         const link = document.createElement("link")
         link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         link.rel = "stylesheet"
         document.head.appendChild(link)
+
+        // Fix Leaflet default icon path issues
+        delete (L.Icon.Default.prototype as any)._getIconUrl
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        })
 
         return () => {
             document.head.removeChild(link)

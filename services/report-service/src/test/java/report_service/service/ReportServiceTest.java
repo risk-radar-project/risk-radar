@@ -5,11 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentMatchers;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -161,13 +163,15 @@ class ReportServiceTest {
         List<Report> reportList = List.of(savedReport);
         Page<Report> mockPage = new PageImpl<>(reportList, pageable, reportList.size());
 
-        when(reportRepository.findReports(eq(null), eq(null), any(Pageable.class))).thenReturn(mockPage);
+        when(reportRepository.findAll(ArgumentMatchers.<Specification<Report>>any(), eq(pageable)))
+                .thenReturn(mockPage);
 
         Page<Report> result = reportService.getReports(pageable, null, null);
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
-        verify(reportRepository, times(1)).findReports(eq(null), eq(null), any(Pageable.class));
+        verify(reportRepository, times(1)).findAll(ArgumentMatchers.<Specification<Report>>any(),
+                eq(pageable));
     }
 
     @Test
