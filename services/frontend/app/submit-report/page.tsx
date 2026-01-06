@@ -103,6 +103,12 @@ export default function SubmitReportPage() {
     const [success, setSuccess] = useState(false)
     const [countdown, setCountdown] = useState(3)
 
+    // Field-level validation errors
+    const [fieldErrors, setFieldErrors] = useState<{
+        title?: string
+        description?: string
+    }>({})
+
     // AI Integration States
     const [isCategorizing, setIsCategorizing] = useState(false)
     const [aiSuggestedCategory, setAiSuggestedCategory] = useState<CategorizationResponse | null>(null)
@@ -148,6 +154,28 @@ export default function SubmitReportPage() {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target
         setFormData((prev) => ({ ...prev, [name]: value }))
+
+        // Client-side validation
+        const newFieldErrors = { ...fieldErrors }
+
+        if (name === "title") {
+            if (value.length > 500) {
+                newFieldErrors.title = "Tytuł nie może przekraczać 500 znaków"
+            } else {
+                delete newFieldErrors.title
+            }
+        }
+
+        if (name === "description") {
+            // No hard limit for description (TEXT field), but warn if very long
+            if (value.length > 5000) {
+                newFieldErrors.description = "Opis jest bardzo długi. Rozważ skrócenie dla lepszej czytelności."
+            } else {
+                delete newFieldErrors.description
+            }
+        }
+
+        setFieldErrors(newFieldErrors)
 
         // Trigger categorization on title or description change (debounced)
         if (name === "title" || name === "description") {
@@ -199,6 +227,13 @@ export default function SubmitReportPage() {
         setIsSubmitting(true)
         setError(null)
         setSubmissionResult(null)
+
+        // Validate title length
+        if (formData.title.length > 500) {
+            setFieldErrors({ ...fieldErrors, title: "Tytuł nie może przekraczać 500 znaków" })
+            setIsSubmitting(false)
+            return
+        }
 
         // Validate location
         if (formData.latitude === null || formData.longitude === null) {
@@ -448,23 +483,33 @@ export default function SubmitReportPage() {
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-6 rounded-xl bg-[#362c20] p-6">
-                    {error && <div className="rounded-lg border border-red-500 bg-red-500/20 p-4 text-red-200">{error}</div>}
+                    {/* Only show general errors at top (like location) */}
+                    {error && !error.includes("Tytuł") && !error.includes("Opis") && (
+                        <div className="rounded-lg border border-red-500 bg-red-500/20 p-4 text-red-200">{error}</div>
+                    )}
 
                     {/* Title */}
                     <div>
                         <label htmlFor="title" className="mb-2 block font-semibold text-[#e0dcd7]">
                             Tytuł zgłoszenia *
+                            <span className="ml-2 text-xs font-normal text-[#e0dcd7]/50">
+                                ({formData.title.length}/500)
+                            </span>
                         </label>
                         <input
                             type="text"
                             id="title"
                             name="title"
                             required
+                            maxLength={500}
                             value={formData.title}
                             onChange={handleInputChange}
-                            className="w-full rounded-lg border border-[#e0dcd7]/20 bg-[#2a221a] px-4 py-3 text-[#e0dcd7] transition-colors focus:border-[#d97706] focus:outline-none"
+                            className={`w-full rounded-lg border ${fieldErrors.title ? 'border-red-500' : 'border-[#e0dcd7]/20'} bg-[#2a221a] px-4 py-3 text-[#e0dcd7] transition-colors focus:border-[#d97706] focus:outline-none`}
                             placeholder="np. Uszkodzony chodnik"
                         />
+                        {fieldErrors.title && (
+                            <p className="mt-1 text-sm text-red-400">{fieldErrors.title}</p>
+                        )}
                     </div>
 
                     {/* Category with AI Suggestion */}
@@ -530,15 +575,28 @@ export default function SubmitReportPage() {
                         <label htmlFor="description" className="mb-2 block font-semibold text-[#e0dcd7]">
                             Opis
                         </label>
+                        <p className="mb-2 text-xs text-[#e0dcd7]/60">
+                            Możesz dodać szczegółowy opis (bez limitu znaków)
+                        </p>
                         <textarea
                             id="description"
                             name="description"
                             value={formData.description}
                             onChange={handleInputChange}
-                            rows={4}
-                            className="w-full resize-none rounded-lg border border-[#e0dcd7]/20 bg-[#2a221a] px-4 py-3 text-[#e0dcd7] transition-colors focus:border-[#d97706] focus:outline-none"
+                            rows={8}
+                            className={`w-full resize-none rounded-lg border ${fieldErrors.description ? 'border-yellow-500' : 'border-[#e0dcd7]/20'} bg-[#2a221a] px-4 py-3 text-[#e0dcd7] transition-colors focus:border-[#d97706] focus:outline-none`}
                             placeholder="Opisz dokładnie problem..."
                         />
+                        <div className="mt-1 flex items-center justify-between">
+                            {formData.description.length > 0 && (
+                                <p className="text-xs text-[#e0dcd7]/50">
+                                    {formData.description.length} znaków
+                                </p>
+                            )}
+                            {fieldErrors.description && (
+                                <p className="text-sm text-yellow-400">{fieldErrors.description}</p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Location Map */}

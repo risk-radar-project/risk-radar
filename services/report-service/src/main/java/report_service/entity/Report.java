@@ -29,8 +29,10 @@ public class Report {
     private Double longitude;
 
     @NotNull
+    @Column(length = 500)
     private String title;
     @NotNull
+    @Column(columnDefinition = "TEXT")
     private String description;
     @NotNull
     private UUID userId;
