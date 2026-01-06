@@ -34,7 +34,12 @@ const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
     OTHER: "Inne"
 }
 
-export function ReportCard({ report }: { report: Report }) {
+interface ReportCardProps {
+    report: Report
+    onProcessed?: (id: string) => void
+}
+
+export function ReportCard({ report, onProcessed }: ReportCardProps) {
     const [isPending, startTransition] = useTransition()
     const [isExpanded, setIsExpanded] = useState(false)
     const [showSuccessAnimation, setShowSuccessAnimation] = useState(false)
@@ -71,14 +76,23 @@ export function ReportCard({ report }: { report: Report }) {
     const aiStatus = getAIStatusInfo()
 
     const handleVerify = () => {
+        const token = localStorage.getItem("access_token")
+        if (!token) {
+            alert("Błąd: Brak tokenu autoryzacji. Zaloguj się ponownie.")
+            return
+        }
+
         startTransition(async () => {
-            const result = await verifyReport(report.id)
+            const result = await verifyReport(report.id, token)
             if (!result.success) {
                 alert(`Błąd: ${result.error}`)
             } else {
                 // Show success animation
                 setShowSuccessAnimation(true)
-                setTimeout(() => setShowSuccessAnimation(false), 2000)
+                setTimeout(() => {
+                    setShowSuccessAnimation(false)
+                    if (onProcessed) onProcessed(report.id)
+                }, 2000)
             }
         })
     }
@@ -86,16 +100,24 @@ export function ReportCard({ report }: { report: Report }) {
     const handleReject = () => {
         if (!confirm("Czy na pewno chcesz odrzucić to zgłoszenie?")) return
 
+        const token = localStorage.getItem("access_token")
+        if (!token) {
+            alert("Błąd: Brak tokenu autoryzacji. Zaloguj się ponownie.")
+            return
+        }
+
         startTransition(async () => {
-            const result = await rejectReport(report.id)
+            const result = await rejectReport(report.id, token)
             if (!result.success) {
                 alert(`Błąd: ${result.error}`)
+            } else {
+                if (onProcessed) onProcessed(report.id)
             }
         })
     }
 
     return (
-        <SectionCard className="relative overflow-hidden border-[#e0dcd7]/10 bg-[#362c20]">
+        <div className="relative overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
             {/* Success Animation Overlay */}
             {showSuccessAnimation && (
                 <div className="animate-fadeIn absolute inset-0 z-50 flex items-center justify-center bg-green-500/20 backdrop-blur-sm">
@@ -106,13 +128,13 @@ export function ReportCard({ report }: { report: Report }) {
                 </div>
             )}
 
-            <div className="space-y-3">
+            <div className="space-y-3 p-4">
                 {/* Header */}
                 <div className="flex items-start justify-between">
                     <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-[#e0dcd7]">{report.title}</h3>
+                        <h3 className="text-lg font-semibold text-zinc-100">{report.title}</h3>
                         <div className="mt-1 flex items-center gap-2">
-                            <p className="text-sm text-[#d97706]">
+                            <p className="text-sm text-blue-400">
                                 {CATEGORY_DISPLAY_NAMES[report.category] || report.category}
                             </p>
                             {/* AI Sparkle Animation */}
@@ -141,12 +163,12 @@ export function ReportCard({ report }: { report: Report }) {
                 </div>
 
                 {/* Description */}
-                {report.description && <p className="text-sm text-[#e0dcd7]/80">{report.description}</p>}
+                {report.description && <p className="text-sm text-zinc-400">{report.description}</p>}
 
                 {/* AI Verification Results - Simplified feedback for user */}
                 {aiStatus.show && <div className={`rounded-lg border p-3 ${aiStatus.isAccepted
-                        ? "border-green-500/30 bg-green-500/10"
-                        : "border-red-500/30 bg-red-500/10"
+                    ? "border-green-500/30 bg-green-500/10"
+                    : "border-red-500/30 bg-red-500/10"
                     }`}>
                     <div className="flex items-center gap-2">
                         <span className={`text-lg ${aiStatus.isAccepted ? "text-green-400" : "text-red-400"}`}>
@@ -160,8 +182,7 @@ export function ReportCard({ report }: { report: Report }) {
                             <p className="text-xs text-[#e0dcd7]/60">{aiStatus.description}</p>
                         </div>
                     </div>
-                </div>
-                }
+                </div>}
 
                 {/* Location info */}
                 <div className="flex items-center gap-4 text-xs text-zinc-500">
@@ -174,7 +195,7 @@ export function ReportCard({ report }: { report: Report }) {
 
                 {/* Photos Gallery */}
                 {isExpanded && hasImages && (
-                    <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-black/20 p-2 sm:grid-cols-3">
+                    <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-zinc-800/50 p-2 sm:grid-cols-3">
                         {report.imageIds!.map((imageId) => (
                             <div key={imageId} className="relative aspect-square overflow-hidden rounded-md bg-zinc-800">
                                 <img
@@ -189,18 +210,18 @@ export function ReportCard({ report }: { report: Report }) {
                 )}
 
                 {/* Action buttons */}
-                <div className="flex gap-3 border-t border-[#e0dcd7]/10 pt-2">
+                <div className="flex gap-3 border-t border-zinc-800 pt-3">
                     <button
                         onClick={handleVerify}
                         disabled={isPending}
-                        className="flex-1 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                        className="flex-1 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-500 disabled:opacity-50"
                     >
                         {isPending ? "Przetwarzanie..." : "✓ Potwierdź"}
                     </button>
                     <button
                         onClick={handleReject}
                         disabled={isPending}
-                        className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                        className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50"
                     >
                         {isPending ? "..." : "✗ Odrzuć"}
                     </button>
@@ -208,20 +229,20 @@ export function ReportCard({ report }: { report: Report }) {
                     {hasImages ? (
                         <button
                             onClick={() => setIsExpanded(!isExpanded)}
-                            className="rounded-lg border border-[#e0dcd7]/20 bg-[#362c20] px-4 py-2 text-sm font-medium text-[#e0dcd7] transition-colors hover:bg-[#362c20]/80"
+                            className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
                         >
                             {isExpanded ? "Ukryj zdjęcia" : "Pokaż zdjęcia"}
                         </button>
                     ) : (
                         <button
                             disabled
-                            className="cursor-not-allowed rounded-lg border border-[#e0dcd7]/10 bg-transparent px-4 py-2 text-sm font-medium text-[#e0dcd7]/30"
+                            className="cursor-not-allowed rounded-lg border border-zinc-800 bg-transparent px-4 py-2 text-sm font-medium text-zinc-600"
                         >
                             Brak zdjęć
                         </button>
                     )}
                 </div>
             </div>
-        </SectionCard>
+        </div>
     )
 }

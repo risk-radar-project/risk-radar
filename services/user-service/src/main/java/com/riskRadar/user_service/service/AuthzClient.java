@@ -115,12 +115,35 @@ public class AuthzClient {
         }
 
         public void revokeRoles(UUID userId) {
-                executeWithRetry(
-                                webClient.post()
-                                                .uri("/roles/revoke?userId={id}", userId)
-                                                .header("X-User-ID", SYSTEM_USER_ID)
-                                                .retrieve()
-                                                .bodyToMono(Void.class),
-                                "revokeRoles " + userId);
+                try {
+                        // First get all roles for the user
+                        Role[] currentRoles = getRolesByUserId(userId);
+                        if (currentRoles == null || currentRoles.length == 0) {
+                                log.debug("No roles to revoke for user {}", userId);
+                                return;
+                        }
+
+                        // Delete each role assignment
+                        for (Role role : currentRoles) {
+                                if (role != null && role.id() != null) {
+                                        try {
+                                                webClient.delete()
+                                                                .uri("/users/{userId}/roles/{roleId}", userId,
+                                                                                role.id())
+                                                                .header("X-User-ID", SYSTEM_USER_ID)
+                                                                .retrieve()
+                                                                .bodyToMono(Void.class)
+                                                                .timeout(RESPONSE_TIMEOUT)
+                                                                .block();
+                                                log.debug("Revoked role {} from user {}", role.name(), userId);
+                                        } catch (Exception e) {
+                                                log.warn("Failed to revoke role {} from user {}: {}", role.name(),
+                                                                userId, e.getMessage());
+                                        }
+                                }
+                        }
+                } catch (Exception e) {
+                        log.error("Failed to revoke roles for user {}", userId, e);
+                }
         }
 }

@@ -10,8 +10,10 @@ import report_service.entity.ReportStatus;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
 @Repository
-public interface ReportRepository extends JpaRepository<Report, UUID> {
+public interface ReportRepository extends JpaRepository<Report, UUID>, JpaSpecificationExecutor<Report> {
     List<Report> findByStatus(ReportStatus status);
 
     long countByStatus(ReportStatus status);

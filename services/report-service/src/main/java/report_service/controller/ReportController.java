@@ -146,11 +146,15 @@ public class ReportController {
                         @RequestParam(defaultValue = "0") int page,
                         @RequestParam(defaultValue = "10") int size,
                         @RequestParam(defaultValue = "createdAt") String sort,
-                        @RequestParam(defaultValue = "desc") String direction) {
+                        @RequestParam(defaultValue = "desc") String direction,
+                        @RequestParam(required = false) ReportStatus status,
+                        @RequestParam(required = false) String category) {
                 try {
                         Page<Report> reports = reportService.getReports(
                                         PageRequest.of(page, size,
-                                                        Sort.by(Sort.Direction.fromString(direction), sort)));
+                                                        Sort.by(Sort.Direction.fromString(direction), sort)),
+                                        status,
+                                        category);
                         return ResponseEntity.ok(reports);
                 } catch (Exception e) {
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
@@ -198,7 +202,7 @@ public class ReportController {
         }
 
         @GetMapping("/reports/pending")
-        @PreAuthorize("hasAuthority('PERM_REPORTS:VIEW') or hasAuthority('PERM_*:*')")
+        @PreAuthorize("hasAuthority('PERM_REPORTS:VALIDATE') or hasAuthority('PERM_*:*')")
         public ResponseEntity<?> getPendingReports() {
                 try {
                         List<Report> reports = reportService.getPendingReports();

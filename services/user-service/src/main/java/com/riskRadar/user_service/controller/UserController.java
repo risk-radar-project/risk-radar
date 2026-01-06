@@ -75,7 +75,7 @@ public class UserController {
     }
 
     @PostMapping("/users/{id}/roles")
-    @PreAuthorize("hasAuthority('PERM_USERS:EDIT') or hasAuthority('PERM_*:*')")
+    @PreAuthorize("hasAuthority('PERM_ROLES:ASSIGN') or hasAuthority('PERM_*:*')")
     public ResponseEntity<?> updateUserRole(@PathVariable UUID id, @RequestBody UpdateRoleRequest request) {
         try {
             userService.updateUserRole(id, request.roleName());

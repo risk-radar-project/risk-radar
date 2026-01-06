@@ -88,7 +88,11 @@ export default function AdminReportsPage() {
                 params.append("category", categoryFilter)
             }
 
-            const response = await fetch(`${API_BASE}?${params}`)
+            const response = await fetch(`${API_BASE}?${params}`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("access_token")}`
+                }
+            })
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`)
             }
@@ -122,7 +126,10 @@ export default function AdminReportsPage() {
         if (confirm("Czy na pewno chcesz usunąć to zgłoszenie?")) {
             try {
                 const response = await fetch(`${API_BASE}/${id}`, {
-                    method: "DELETE"
+                    method: "DELETE",
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("access_token")}`
+                    }
                 })
                 if (response.ok) {
                     fetchReports()
@@ -146,7 +153,8 @@ export default function AdminReportsPage() {
                 const response = await fetch(`${API_BASE}/${editingReport.id}`, {
                     method: "PUT",
                     headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("access_token")}`
                     },
                     body: JSON.stringify(editingReport)
                 })
@@ -168,7 +176,10 @@ export default function AdminReportsPage() {
     const handleStatusChange = async (id: string, newStatus: Report["status"]) => {
         try {
             const response = await fetch(`${API_BASE}/${id}?status=${newStatus}`, {
-                method: "PATCH"
+                method: "PATCH",
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("access_token")}`
+                }
             })
             if (response.ok) {
                 // Update local state immediately for better UX

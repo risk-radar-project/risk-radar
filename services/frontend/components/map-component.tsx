@@ -61,6 +61,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     const [showResults, setShowResults] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
     const [isAdmin, setIsAdmin] = useState(false)
+    const [canValidate, setCanValidate] = useState(false)
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
 
     useEffect(() => {
@@ -72,12 +73,18 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                 const roles = user.roles || []
 
                 const hasAdminAccess =
-                    permissions.includes("*:*") ||
-                    permissions.includes("system:admin") ||
-                    permissions.includes("PERM_SYSTEM_ADMIN") ||
+                    permissions.includes("PERM_*:*") ||
+                    permissions.includes("PERM_SYSTEM:ADMIN") ||
                     roles.includes("ROLE_ADMIN")
 
+                const hasValidateAccess =
+                    hasAdminAccess ||
+                    roles.includes("ROLE_MODERATOR") ||
+                    roles.includes("ROLE_VOLUNTEER") ||
+                    permissions.includes("PERM_REPORTS:VALIDATE")
+
                 setIsAdmin(hasAdminAccess)
+                setCanValidate(hasValidateAccess)
             }
         }
     }, [])
@@ -661,6 +668,20 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
                             <span className="material-symbols-outlined">settings</span>
                             <p className="text-base leading-normal">Ustawienia</p>
                         </Link>
+
+                        {canValidate && (
+                            <>
+                                <div className="my-2 border-t border-[#e0dcd7]/10"></div>
+
+                                <Link
+                                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7] transition-colors hover:bg-white/10"
+                                    href="/reports"
+                                >
+                                    <span className="material-symbols-outlined">verified</span>
+                                    <p className="text-base leading-normal">Weryfikacja</p>
+                                </Link>
+                            </>
+                        )}
 
                         {isAdmin && (
                             <>

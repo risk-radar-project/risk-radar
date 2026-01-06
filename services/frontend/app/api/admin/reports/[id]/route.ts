@@ -6,10 +6,14 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     try {
         const { id } = await params
         const url = `${REPORT_SERVICE_URL}/report/${id}`
+        const authHeader = request.headers.get("Authorization")
         console.log(`Admin API Route: Deleting report ${id}`)
 
         const response = await fetch(url, {
-            method: "DELETE"
+            method: "DELETE",
+            headers: {
+                ...(authHeader ? { Authorization: authHeader } : {})
+            }
         })
 
         if (!response.ok) {
@@ -31,12 +35,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         const { id } = await params
         const body = await request.json()
         const url = `${REPORT_SERVICE_URL}/report/${id}`
+        const authHeader = request.headers.get("Authorization")
         console.log(`Admin API Route: Updating report ${id}`)
 
         const response = await fetch(url, {
             method: "PUT",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                ...(authHeader ? { Authorization: authHeader } : {})
             },
             body: JSON.stringify(body)
         })
@@ -67,10 +73,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         }
 
         const url = `${REPORT_SERVICE_URL}/report/${id}/status?status=${status}`
+        const authHeader = request.headers.get("Authorization")
         console.log(`Admin API Route: Changing status of report ${id} to ${status}`)
 
         const response = await fetch(url, {
-            method: "PATCH"
+            method: "PATCH",
+            headers: {
+                ...(authHeader ? { Authorization: authHeader } : {})
+            }
         })
 
         if (!response.ok) {

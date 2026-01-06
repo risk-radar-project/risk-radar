@@ -11,7 +11,7 @@ interface User {
     id: string
     username: string
     email: string
-    role: "user" | "admin" | "moderator"
+    role: "user" | "volunteer" | "moderator" | "admin"
     isBanned: boolean
     createdAt: string
     reportsCount: number
@@ -21,12 +21,14 @@ interface User {
 
 const ROLE_STYLES: Record<string, string> = {
     user: "bg-zinc-700/50 text-zinc-300",
+    volunteer: "bg-green-500/20 text-green-400",
     moderator: "bg-blue-500/20 text-blue-400",
     admin: "bg-purple-500/20 text-purple-400"
 }
 
 const ROLE_NAMES: Record<string, string> = {
     user: "Użytkownik",
+    volunteer: "Wolontariusz",
     moderator: "Moderator",
     admin: "Administrator"
 }
@@ -81,7 +83,8 @@ export default function AdminUsersPage() {
     function getRoleFromList(roles: string[]) {
         if (!roles) return 'user'
         if (roles.includes('admin') || roles.includes('ADMIN') || roles.includes('ROLE_ADMIN')) return 'admin'
-        if (roles.includes('moderator') || roles.includes('MODERATOR')) return 'moderator'
+        if (roles.includes('moderator') || roles.includes('MODERATOR') || roles.includes('ROLE_MODERATOR')) return 'moderator'
+        if (roles.includes('volunteer') || roles.includes('VOLUNTEER') || roles.includes('ROLE_VOLUNTEER')) return 'volunteer'
         return 'user'
     }
 
@@ -127,7 +130,9 @@ export default function AdminUsersPage() {
                     setViewingUser(prev => prev ? ({ ...prev, isBanned: !isCurrentlyBanned }) : null)
                 }
             } else {
-                alert('Wystąpił błąd podczas zmiany statusu.')
+                const errData = await res.json().catch(() => ({ error: 'Unknown error' }))
+                const errorMsg = errData.error || errData.message || `Błąd ${res.status}`
+                alert(`Wystąpił błąd: ${errorMsg}`)
             }
         } catch (e) {
             console.error(e)
@@ -138,7 +143,7 @@ export default function AdminUsersPage() {
     const handleRoleChange = async (userId: string, newRole: string) => {
         const token = localStorage.getItem('access_token')
         try {
-            const res = await fetch(`/api/admin/users/${userId}/roles`, {
+            const res = await fetch(`/api/admin/users/${userId}/role`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -189,6 +194,7 @@ export default function AdminUsersPage() {
                     >
                         <option value="all">Wszystkie role</option>
                         <option value="user">Użytkownicy</option>
+                        <option value="volunteer">Wolontariusze</option>
                         <option value="moderator">Moderatorzy</option>
                         <option value="admin">Administratorzy</option>
                     </select>
@@ -244,9 +250,16 @@ export default function AdminUsersPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <span className={`px-2 py-1 rounded text-xs font-medium ${ROLE_STYLES[user.role] || ROLE_STYLES['user']}`}>
-                                            {ROLE_NAMES[user.role] || user.role}
-                                        </span>
+                                        <select
+                                            value={user.role}
+                                            onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                                            className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-600 ${ROLE_STYLES[user.role] || ROLE_STYLES['user']}`}
+                                        >
+                                            <option value="user" className="bg-zinc-800 text-zinc-300">Użytkownik</option>
+                                            <option value="volunteer" className="bg-zinc-800 text-zinc-300">Wolontariusz</option>
+                                            <option value="moderator" className="bg-zinc-800 text-zinc-300">Moderator</option>
+                                            <option value="admin" className="bg-zinc-800 text-zinc-300">Administrator</option>
+                                        </select>
                                     </TableCell>
                                     <TableCell>
                                         {user.isBanned ? (
@@ -349,6 +362,7 @@ export default function AdminUsersPage() {
                                         className="bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm rounded px-2 py-1 w-full focus:outline-none focus:border-zinc-600"
                                     >
                                         <option value="user">Użytkownik</option>
+                                        <option value="volunteer">Wolontariusz</option>
                                         <option value="moderator">Moderator</option>
                                         <option value="admin">Administrator</option>
                                     </select>
