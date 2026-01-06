@@ -19,6 +19,7 @@ interface Report {
     longitude: number
     aiIsFake?: boolean
     aiFakeProbability?: number
+    imageIds?: string[]
 }
 
 interface PaginatedResponse {
@@ -150,25 +151,36 @@ export default function AdminReportsPage() {
     const handleSaveEdit = async () => {
         if (editingReport) {
             try {
+                const reportRequest = {
+                    title: editingReport.title,
+                    description: editingReport.description,
+                    latitude: editingReport.latitude,
+                    longitude: editingReport.longitude,
+                    userId: editingReport.userId,
+                    reportCategory: editingReport.category,
+                    imageIds: editingReport.imageIds || []
+                }
+
                 const response = await fetch(`${API_BASE}/${editingReport.id}`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${localStorage.getItem("access_token")}`
                     },
-                    body: JSON.stringify(editingReport)
+                    body: JSON.stringify(reportRequest)
                 })
+
                 if (response.ok) {
                     fetchReports()
                     setEditingReport(null)
                 } else {
-                    alert("Nie udało się zaktualizować zgłoszenia")
+                    const errorData = await response.json().catch(() => ({}))
+                    console.error("Update failed:", errorData)
+                    alert(`Nie udało się zaktualizować zgłoszenia: ${errorData.error || errorData.message || response.statusText}`)
                 }
             } catch (err) {
                 console.error("Update failed:", err)
-                // Fallback to local update
-                setReports(reports.map((r) => (r.id === editingReport.id ? editingReport : r)))
-                setEditingReport(null)
+                alert(`Błąd podczas aktualizacji: ${err instanceof Error ? err.message : 'Unknown error'}`)
             }
         }
     }
