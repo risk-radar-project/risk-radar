@@ -90,8 +90,7 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                         <div
                             className="aspect-square size-10 rounded-full bg-cover bg-center bg-no-repeat ring-2 ring-[#e0dcd7]/20"
                             style={{
-                                backgroundImage:
-                                    'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBCpSftcBIvJAKvmwFok7b1n6PmpFeiao9KAOoqFs1ajLc3TP11U4nkdfvllw469DY1mB-Y1m1e7oB8GSX8bbwky-01VrnWL9l125eTlHbsCZUcZjvd7TiB8IW5deiSfMZwMmILFSm1c_nTv7Ci1kWaC8oKq2yPxg4R5NvJS4GZiUGdi1_IPO8Br02BiSIni02B55xHKLE6UZ8ijEO6waP2xaJfd7-QajaNPHqxIs-PfTZTFZp7RFc3jiA6t0XacRdEVHpJlzgLrz4")'
+                                backgroundImage: 'url("/icon.png")'
                             }}
                         />
                         <h1 className="text-lg leading-normal font-bold text-[#e0dcd7]">RiskRadar</h1>
