@@ -83,6 +83,14 @@ export default function MapComponent({
         summary: string
         reportsCount: number
     } | null>(null)
+    // AI Area Selection Mode
+    const [aiSelectMode, setAiSelectMode] = useState(false)
+    const [selectedAreaLocation, setSelectedAreaLocation] = useState<{ lat: number; lng: number } | null>(null)
+    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+    // AI Menu expanded state
+    const [aiMenuOpen, setAiMenuOpen] = useState(false)
+    const selectedAreaMarkerRef = useRef<L.Marker | null>(null)
+    const selectedAreaCircleRef = useRef<L.Circle | null>(null)
 
     // Create user location icon (blue pulsing dot)
     const createUserLocationIcon = () => {
@@ -476,111 +484,252 @@ export default function MapComponent({
         })
     }
 
-    // AI Assistant - analyze nearby threats
-    const handleAIAnalysis = async () => {
+    // Get location with fallback to IP geolocation (for Windows and other devices)
+    const getLocationWithFallback = async (): Promise<{ lat: number; lng: number } | null> => {
+        // Try browser geolocation first
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) {
+                // No geolocation support - try IP fallback
+                getLocationFromIP().then(resolve)
+                return
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    resolve({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    })
+                },
+                async (error) => {
+                    console.warn("Geolocation failed, trying IP fallback:", error.message)
+                    // Fallback to IP geolocation
+                    const ipLocation = await getLocationFromIP()
+                    resolve(ipLocation)
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+            )
+        })
+    }
+
+    // IP-based geolocation fallback (works on Windows without HTTPS)
+    const getLocationFromIP = async (): Promise<{ lat: number; lng: number } | null> => {
+        try {
+            // Using ip-api.com (free, no API key needed)
+            const response = await fetch("http://ip-api.com/json/?fields=lat,lon,status")
+            const data = await response.json()
+            if (data.status === "success" && data.lat && data.lon) {
+                return { lat: data.lat, lng: data.lon }
+            }
+        } catch (e) {
+            console.error("IP geolocation failed:", e)
+        }
+        
+        try {
+            // Backup: ipapi.co
+            const response = await fetch("https://ipapi.co/json/")
+            const data = await response.json()
+            if (data.latitude && data.longitude) {
+                return { lat: data.latitude, lng: data.longitude }
+            }
+        } catch (e) {
+            console.error("Backup IP geolocation failed:", e)
+        }
+        
+        return null
+    }
+
+    // Perform AI analysis at given coordinates
+    const performAIAnalysis = async (lat: number, lng: number, isUserLocation: boolean = false) => {
+        // Add marker and circle to map
+        if (mapRef.current) {
+            // Remove previous markers/circles
+            if (userLocationMarkerRef.current) {
+                mapRef.current.removeLayer(userLocationMarkerRef.current)
+                userLocationMarkerRef.current = null
+            }
+            if (userLocationCircleRef.current) {
+                mapRef.current.removeLayer(userLocationCircleRef.current)
+                userLocationCircleRef.current = null
+            }
+            if (selectedAreaMarkerRef.current) {
+                mapRef.current.removeLayer(selectedAreaMarkerRef.current)
+                selectedAreaMarkerRef.current = null
+            }
+            if (selectedAreaCircleRef.current) {
+                mapRef.current.removeLayer(selectedAreaCircleRef.current)
+                selectedAreaCircleRef.current = null
+            }
+
+            // Add circle showing 1km radius
+            const circleColor = isUserLocation ? "#3b82f6" : "#d97706"
+            const circle = L.circle([lat, lng], {
+                color: circleColor,
+                fillColor: circleColor,
+                fillOpacity: 0.1,
+                radius: 1000,
+                weight: 2,
+                dashArray: "5, 10"
+            }).addTo(mapRef.current)
+
+            if (isUserLocation) {
+                userLocationCircleRef.current = circle
+                // Add user location marker (blue pulsing dot)
+                const marker = L.marker([lat, lng], {
+                    icon: createUserLocationIcon(),
+                    zIndexOffset: 1000
+                }).addTo(mapRef.current).bindPopup(`
+                    <div class="text-center">
+                        <b>📍 Twoja lokalizacja</b><br>
+                        <span class="text-xs text-gray-500">
+                            ${lat.toFixed(6)}, ${lng.toFixed(6)}
+                        </span>
+                    </div>
+                `)
+                userLocationMarkerRef.current = marker
+            } else {
+                selectedAreaCircleRef.current = circle
+                // Add selected area marker (orange pin)
+                const selectedIcon = L.divIcon({
+                    className: "selected-area-marker",
+                    html: `
+                        <div style="
+                            width: 36px;
+                            height: 36px;
+                            background: linear-gradient(135deg, #d97706, #ea580c);
+                            border-radius: 50% 50% 50% 0;
+                            transform: rotate(-45deg);
+                            border: 3px solid white;
+                            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        ">
+                            <span style="transform: rotate(45deg); font-size: 16px;">🎯</span>
+                        </div>
+                    `,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 36],
+                    popupAnchor: [0, -36]
+                })
+                const marker = L.marker([lat, lng], {
+                    icon: selectedIcon,
+                    zIndexOffset: 1000
+                }).addTo(mapRef.current).bindPopup(`
+                    <div class="text-center">
+                        <b>🎯 Wybrany obszar</b><br>
+                        <span class="text-xs text-gray-500">
+                            ${lat.toFixed(6)}, ${lng.toFixed(6)}
+                        </span>
+                    </div>
+                `)
+                selectedAreaMarkerRef.current = marker
+            }
+
+            // Center map on location
+            mapRef.current.flyTo([lat, lng], 14, { duration: 1.5 })
+        }
+
+        try {
+            // Call AI Assistant API
+            const response = await fetch("/api/ai-assistant/nearby-threats", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    latitude: lat,
+                    longitude: lng,
+                    radius_km: 1.0
+                })
+            })
+
+            if (!response.ok) {
+                throw new Error("AI analysis failed")
+            }
+
+            const data = await response.json()
+
+            setAiResponse({
+                visible: true,
+                dangerLevel: data.danger_level,
+                dangerScore: data.danger_score,
+                summary: data.ai_summary,
+                reportsCount: data.reports_count
+            })
+        } catch (error) {
+            console.error("AI analysis error:", error)
+            setAiResponse({
+                visible: true,
+                dangerLevel: "Błąd",
+                dangerScore: 0,
+                summary: "Nie udało się pobrać analizy. Spróbuj ponownie później.",
+                reportsCount: 0
+            })
+        } finally {
+            setAiLoading(false)
+            setAiSelectMode(false)
+        }
+    }
+
+    // AI Assistant - analyze nearby threats at user location
+    const handleAIAnalysisMyLocation = async () => {
         if (aiLoading) return
 
         setAiLoading(true)
         setAiResponse(null)
+        setAiSelectMode(false)
 
-        // First, get user's location
-        if (!navigator.geolocation) {
-            alert("Geolokalizacja nie jest wspierana przez Twoją przeglądarkę")
+        const location = await getLocationWithFallback()
+        
+        if (!location) {
+            alert("Nie można pobrać Twojej lokalizacji. Użyj opcji 'Wybierz na mapie' aby ręcznie wskazać obszar.")
             setAiLoading(false)
             return
         }
 
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const lat = position.coords.latitude
-                const lng = position.coords.longitude
+        setUserLocation(location)
+        await performAIAnalysis(location.lat, location.lng, true)
+    }
 
-                // Add user location marker to the map
-                if (mapRef.current) {
-                    // Remove previous user location marker and circle
-                    if (userLocationMarkerRef.current) {
-                        mapRef.current.removeLayer(userLocationMarkerRef.current)
-                        userLocationMarkerRef.current = null
-                    }
-                    if (userLocationCircleRef.current) {
-                        mapRef.current.removeLayer(userLocationCircleRef.current)
-                        userLocationCircleRef.current = null
-                    }
+    // AI Assistant - enable map click mode to select area
+    const handleAISelectArea = () => {
+        if (aiLoading) return
+        setAiSelectMode(true)
+        setAiResponse(null)
+    }
 
-                    // Add circle showing 1km radius
-                    const circle = L.circle([lat, lng], {
-                        color: "#3b82f6",
-                        fillColor: "#3b82f6",
-                        fillOpacity: 0.1,
-                        radius: 1000, // 1km in meters
-                        weight: 2,
-                        dashArray: "5, 10"
-                    }).addTo(mapRef.current)
-                    userLocationCircleRef.current = circle
+    // Handle map click for area selection
+    useEffect(() => {
+        if (!mapRef.current) return
 
-                    // Add user location marker (blue pulsing dot)
-                    const marker = L.marker([lat, lng], {
-                        icon: createUserLocationIcon(),
-                        zIndexOffset: 1000 // Make sure it's on top
-                    }).addTo(mapRef.current).bindPopup(`
-                            <div class="text-center">
-                                <b>📍 Twoja lokalizacja</b><br>
-                                <span class="text-xs text-gray-500">
-                                    ${lat.toFixed(6)}, ${lng.toFixed(6)}
-                                </span>
-                            </div>
-                        `)
-                    userLocationMarkerRef.current = marker
+        const handleMapClick = async (e: L.LeafletMouseEvent) => {
+            if (!aiSelectMode) return
 
-                    // Center map on user location
-                    mapRef.current.flyTo([lat, lng], 14, { duration: 1.5 })
-                }
+            const { lat, lng } = e.latlng
+            setSelectedAreaLocation({ lat, lng })
+            setAiLoading(true)
+            await performAIAnalysis(lat, lng, false)
+        }
 
-                try {
-                    // Call AI Assistant API
-                    const response = await fetch("/api/ai-assistant/nearby-threats", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            latitude: lat,
-                            longitude: lng,
-                            radius_km: 1.0
-                        })
-                    })
+        if (aiSelectMode) {
+            mapRef.current.on("click", handleMapClick)
+            // Change cursor to crosshair
+            mapRef.current.getContainer().style.cursor = "crosshair"
+        } else {
+            mapRef.current.off("click", handleMapClick)
+            mapRef.current.getContainer().style.cursor = ""
+        }
 
-                    if (!response.ok) {
-                        throw new Error("AI analysis failed")
-                    }
+        return () => {
+            if (mapRef.current) {
+                mapRef.current.off("click", handleMapClick)
+                mapRef.current.getContainer().style.cursor = ""
+            }
+        }
+    }, [aiSelectMode])
 
-                    const data = await response.json()
-
-                    setAiResponse({
-                        visible: true,
-                        dangerLevel: data.danger_level,
-                        dangerScore: data.danger_score,
-                        summary: data.ai_summary,
-                        reportsCount: data.reports_count
-                    })
-                } catch (error) {
-                    console.error("AI analysis error:", error)
-                    setAiResponse({
-                        visible: true,
-                        dangerLevel: "Błąd",
-                        dangerScore: 0,
-                        summary: "Nie udało się pobrać analizy. Spróbuj ponownie później.",
-                        reportsCount: 0
-                    })
-                } finally {
-                    setAiLoading(false)
-                }
-            },
-            (error) => {
-                console.error("Geolocation error:", error)
-                alert("Nie można pobrać Twojej lokalizacji: " + error.message)
-                setAiLoading(false)
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
-        )
+    // Cancel area selection mode
+    const handleCancelSelectMode = () => {
+        setAiSelectMode(false)
     }
 
     // Get danger level color
@@ -619,18 +768,37 @@ export default function MapComponent({
         }
     }
 
-    // Close AI response and remove only the circle (keep marker visible)
+    // Close AI response and remove circles
     const handleCloseAIResponse = () => {
         setAiResponse(null)
+        setAiSelectMode(false)
+        setAiMenuOpen(false)
 
-        // Remove only the circle from map, keep the marker
+        // Remove circles from map (keep markers visible)
         if (mapRef.current) {
             if (userLocationCircleRef.current) {
                 mapRef.current.removeLayer(userLocationCircleRef.current)
                 userLocationCircleRef.current = null
             }
+            if (selectedAreaCircleRef.current) {
+                mapRef.current.removeLayer(selectedAreaCircleRef.current)
+                selectedAreaCircleRef.current = null
+            }
         }
     }
+
+    // Close AI menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as HTMLElement
+            if (aiMenuOpen && !target.closest(".ai-assistant-container")) {
+                setAiMenuOpen(false)
+            }
+        }
+
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [aiMenuOpen])
 
     return (
         <>
@@ -716,15 +884,63 @@ export default function MapComponent({
                         <div ref={mapContainerRef} className="z-[1] h-full w-full" />
                     </div>
 
-                    {/* AI Assistant Button - Top Right Corner */}
-                    <div className="absolute right-6 top-6 z-20">
+                    {/* AI Assistant Buttons - Left Bottom Corner */}
+                    <div className="ai-assistant-container absolute bottom-6 left-6 z-20 flex flex-col items-start gap-2">
+                        {/* Area Selection Mode Active Banner */}
+                        {aiSelectMode && (
+                            <div className="animate-in fade-in mb-2 flex items-center gap-2 rounded-xl bg-[#362c20]/95 px-4 py-3 text-white shadow-lg backdrop-blur-sm">
+                                <span className="text-xl">🎯</span>
+                                <div className="flex-1">
+                                    <p className="text-sm font-semibold">Tryb wyboru obszaru</p>
+                                    <p className="text-xs text-white/70">Kliknij na mapę, aby wybrać punkt do analizy</p>
+                                </div>
+                                <button
+                                    onClick={() => { handleCancelSelectMode(); setAiMenuOpen(false); }}
+                                    className="rounded-lg bg-white/10 p-1.5 transition-colors hover:bg-white/20"
+                                    title="Anuluj"
+                                >
+                                    <span className="material-symbols-outlined text-lg">close</span>
+                                </button>
+                            </div>
+                        )}
+
+                        {/* AI Menu Options - shown when menu is open */}
+                        {aiMenuOpen && !aiSelectMode && !aiLoading && (
+                            <div className="animate-in fade-in slide-in-from-bottom-2 mb-2 flex flex-col gap-2 duration-200">
+                                {/* Option 1: My Location */}
+                                <button
+                                    onClick={() => { handleAIAnalysisMyLocation(); setAiMenuOpen(false); }}
+                                    className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#3b82f6] to-[#2563eb] px-4 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:from-[#2563eb] hover:to-[#1d4ed8] hover:shadow-xl"
+                                    title="Analizuj bezpieczeństwo w mojej lokalizacji"
+                                >
+                                    <span className="material-symbols-outlined">my_location</span>
+                                    <span>Moja lokalizacja</span>
+                                </button>
+
+                                {/* Option 2: Select on map */}
+                                <button
+                                    onClick={() => { handleAISelectArea(); setAiMenuOpen(false); }}
+                                    className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#d97706] to-[#ea580c] px-4 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:from-[#ea580c] hover:to-[#dc2626] hover:shadow-xl"
+                                    title="Wybierz obszar na mapie do analizy"
+                                >
+                                    <span className="text-xl">🎯</span>
+                                    <span>Wybierz na mapie</span>
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Main AI Assistant Button */}
                         <button
-                            onClick={handleAIAnalysis}
-                            disabled={aiLoading}
+                            onClick={() => setAiMenuOpen(!aiMenuOpen)}
+                            disabled={aiLoading || aiSelectMode}
                             className={`flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg ${
                                 aiLoading
-                                    ? "cursor-wait bg-[#d97706]/70"
-                                    : "bg-gradient-to-r from-[#d97706] to-[#ea580c] hover:from-[#ea580c] hover:to-[#dc2626]"
+                                    ? "cursor-wait bg-[#8b5cf6]/70"
+                                    : aiSelectMode
+                                      ? "cursor-not-allowed bg-gray-400"
+                                      : aiMenuOpen
+                                        ? "bg-[#7c3aed] ring-2 ring-white"
+                                        : "bg-gradient-to-r from-[#8b5cf6] to-[#7c3aed] hover:from-[#7c3aed] hover:to-[#6d28d9]"
                             } font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-xl`}
                             title="Sprawdź bezpieczeństwo okolicy z AI"
                         >
@@ -737,6 +953,9 @@ export default function MapComponent({
                                 <>
                                     <span className="text-xl">✨</span>
                                     <span>AI Asystent</span>
+                                    <span className="material-symbols-outlined text-lg">
+                                        {aiMenuOpen ? "expand_more" : "expand_less"}
+                                    </span>
                                 </>
                             )}
                         </button>
