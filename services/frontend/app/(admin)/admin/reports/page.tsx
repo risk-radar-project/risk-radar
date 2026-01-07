@@ -444,7 +444,6 @@ export default function AdminReportsPage() {
                                     </p>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </div>

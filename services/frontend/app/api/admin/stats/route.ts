@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { JwtPayload, parseJwt } from "@/lib/auth/jwt-utils"
+import { parseJwt } from "@/lib/auth/jwt-utils"
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://127.0.0.1:8080"
 const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || "http://127.0.0.1:8085"

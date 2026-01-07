@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
-import { categorizeReport, submitAndVerifyReport, type CategorizationResponse, type SubmissionResult } from "@/lib/api/ai"
+import { categorizeReport, type CategorizationResponse, type SubmissionResult } from "@/lib/api/ai"
 
 // Dynamically import map component (client-side only)
 const LocationPickerMap = dynamic(() => import("@/components/location-picker-map"), {
