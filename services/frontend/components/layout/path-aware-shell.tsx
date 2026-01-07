@@ -1,37 +1,53 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useEffect, useMemo } from "react"
+import { useState } from "react"
 import { usePathname } from "next/navigation"
 import { AppFooter } from "./app-footer"
-import { AppHeader } from "./app-header"
+import { AppSidebar } from "./app-sidebar"
 import { cn } from "@/lib/utils"
 
 const MAP_PATHS = new Set(["/", "", "/map"])
 
 export function PathAwareShell({ children }: { children: ReactNode }) {
-    const pathname = usePathname()
+    const pathname = usePathname() || "/"
 
-    const normalizedPath = useMemo(() => {
-        if (!pathname) return "/"
-        if (pathname !== "/" && pathname.endsWith("/")) return pathname.slice(0, -1)
-        return pathname
-    }, [pathname])
+    const normalizedPath = pathname !== "/" && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname
 
     const isMapPage = MAP_PATHS.has(normalizedPath)
 
-    // Keep map view full-screen without middleware header detection
-    useEffect(() => {
-        const body = document.body
-        body.classList.toggle("h-screen", isMapPage)
-        body.classList.toggle("overflow-hidden", isMapPage)
-    }, [isMapPage])
+    // State derived from prop pattern
+    const [isSidebarOpen, setIsSidebarOpen] = useState(!isMapPage)
+    const [prevIsMapPage, setPrevIsMapPage] = useState(isMapPage)
+
+    if (isMapPage !== prevIsMapPage) {
+        setIsSidebarOpen(!isMapPage)
+        setPrevIsMapPage(isMapPage)
+    }
+
+    if (isMapPage && typeof document !== "undefined") {
+        document.body.classList.add("h-screen", "overflow-hidden")
+    } else if (typeof document !== "undefined") {
+        document.body.classList.remove("h-screen", "overflow-hidden")
+    }
+
+    // if (isAdminPage) {
+    //     return <main className="min-h-screen">{children}</main>
+    // }
 
     return (
-        <>
-            {!isMapPage && <AppHeader />}
-            <main className={cn("flex-1", isMapPage ? "h-screen" : undefined)}>{children}</main>
-            {!isMapPage && <AppFooter />}
-        </>
+        <div className="relative flex min-h-screen flex-col">
+            <AppSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+
+            <div
+                className={cn(
+                    "flex flex-1 flex-col transition-all duration-300 ease-in-out",
+                    isSidebarOpen && !isMapPage ? "ml-72" : "ml-0"
+                )}
+            >
+                <main className={cn("relative w-full flex-1", isMapPage ? "h-screen" : "flex flex-col")}>{children}</main>
+                {!isMapPage && <AppFooter />}
+            </div>
+        </div>
     )
 }

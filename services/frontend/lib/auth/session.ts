@@ -3,6 +3,7 @@ export type SessionUser = {
     email: string
     username: string
     roles: string[]
+    permissions?: string[]
 } | null
 
 // Placeholder – backend not implemented yet

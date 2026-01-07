@@ -1,5 +1,14 @@
 "use client"
 
-export function Spinner() {
-    return <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent" />
+import { cn } from "@/lib/utils"
+
+export function Spinner({ className }: { className?: string }) {
+    return (
+        <div
+            className={cn(
+                "size-6 animate-spin rounded-full border-2 border-[#e0dcd7]/30 border-t-[#d97706]",
+                className
+            )}
+        />
+    )
 }

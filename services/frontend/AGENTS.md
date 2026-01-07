@@ -49,7 +49,7 @@ services/frontend/
 │   ├─ (admin)/
 │   └─ standalone routes (only if explicitly approved by the project owner)
 ├─ components/
-│   ├─ layout/     # AppHeader, AppFooter, AdminSidebar
+│   ├─ layout/     # AppSidebar, AppFooter, AdminSidebar
 │   ├─ providers/  # QueryClientWrapper, ClientSessionHydrator
 │   ├─ shared/     # PageHeader, PageTitle, SectionCard, etc.
 │   ├─ ui/         # shadcn primitives + wrappers (form primitives, button, dialog...)
@@ -220,7 +220,7 @@ Fix issues and rerun until all three succeed (the known middleware warning durin
 3. **Add validation** (if a form) via Zod + React Hook Form.
 4. **Add/update API client** in `lib/api/<domain>.ts` (placeholder-friendly).
 5. **Expose hooks** in `hooks/` using React Query returning pure `data`.
-6. **Wire up navigation** (AppHeader, AdminSidebar) if a new route is user-facing.
+6. **Wire up navigation** (AppSidebar, AdminSidebar) if a new route is user-facing.
 7. **Mind SSR vs CSR**: server components for layouts/data loading, client components for interactive parts.
 8. **Run build** and fix any issues.
 
