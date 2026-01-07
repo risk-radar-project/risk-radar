@@ -35,6 +35,7 @@ class AuthControllerTest {
     private AuthzClient authzClient;
     private AuthenticationManager authenticationManager;
     private AuditLogClient auditLogClient;
+    private PasswordResetService passwordResetService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private User testUser;
@@ -48,6 +49,7 @@ class AuthControllerTest {
         authzClient = mock(AuthzClient.class);
         authenticationManager = mock(AuthenticationManager.class);
         auditLogClient = mock(AuditLogClient.class);
+        passwordResetService = mock(PasswordResetService.class);
 
 
 
@@ -58,7 +60,8 @@ class AuthControllerTest {
                 authenticationManager,
                 redisService,
                 authzClient,
-                auditLogClient
+                auditLogClient,
+                passwordResetService
         );
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller)

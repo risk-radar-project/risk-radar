@@ -40,6 +40,7 @@ public class AuthController {
         private final RedisService redisService;
         private final AuthzClient authzClient;
         private final AuditLogClient auditLogClient;
+        private final PasswordResetService passwordResetService;
 
         @PostMapping("/register")
         public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
@@ -324,6 +325,16 @@ public class AuthController {
                         throw new UserOperationException("Logout failed",
                                         UserOperationException.ErrorType.OPERATION_FAILED, e);
                 }
+        }
+
+        @PostMapping("/validate-reset-token")
+        public ResponseEntity<?> validateResetToken(@RequestBody Map<String, String> request) {
+                String token = request.get("token");
+                String email = passwordResetService.getEmailByToken(token);
+                if (email == null) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Invalid or expired token"));
+                }
+                return ResponseEntity.ok(Map.of("valid", true));
         }
 
     @PostMapping("/refresh")

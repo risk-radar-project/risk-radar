@@ -50,22 +50,22 @@ export async function requestPasswordReset(email: string): Promise<ApiResponse<{
         let errorMessage = "Nie udało się wysłać linku resetującego"
         try {
             const body = await response.json()
-            errorMessage = body.error ?? body.message ?? errorMessage
+            // We ignore backend error messages here for security/UX reasons (prefer generic Polish messages)
+            // or map them if strictly necessary. For now, generic Polish error.
+             const err = body.error ?? body.message
+             if (err && String(err).includes("not found")) {
+                 errorMessage = "Nie znaleziono użytkownika o podanym adresie email"
+             } else if (err) {
+                 // Keep generic or basic mapping
+             }
         } catch {
             // ignore JSON parse failures
         }
         return { data: { message: "" }, error: errorMessage }
     }
 
-    let message = "Link resetujący został wysłany"
-    try {
-        const body = await response.json()
-        message = body.message ?? message
-    } catch {
-        // ignore JSON parse failures
-    }
-
-    return { data: { message } }
+    // Always return Polish message for success, ignore backend English response
+    return { data: { message: "Link resetujący został wysłany (sprawdź email)" } }
 }
 
 export async function changeEmail(newEmail: string): Promise<ApiResponse<void>> {
@@ -112,20 +112,34 @@ export async function confirmPasswordReset(token: string, newPassword: string): 
         let errorMessage = "Nie udało się zresetować hasła"
         try {
             const body = await response.json()
-            errorMessage = body.error ?? body.message ?? errorMessage
+            const err = body.error ?? body.message
+             if (err && String(err).includes("Invalid or expired")) {
+                 errorMessage = "Link jest nieprawidłowy lub wygasł"
+             } else if (err && String(err).includes("New password cannot be the same")) {
+                 errorMessage = "Nowe hasło nie może być takie samo jak poprzednie"
+             }
         } catch {
             // ignore
         }
         return { data: { message: "" }, error: errorMessage }
     }
 
-    let message = "Hasło zostało zresetowane"
-    try {
-        const body = await response.json()
-        message = body.message ?? message
-    } catch {
-        //ignore
+    // Return hardcoded Polish message
+    return { data: { message: "Hasło zostało pomyślnie zresetowane" } }
+}
+
+export async function validateResetToken(token: string): Promise<ApiResponse<{ valid: boolean }>> {
+    const response = await fetch(`${API_BASE_URL}/validate-reset-token`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ token })
+    })
+
+    if (!response.ok) {
+        return { data: { valid: false }, error: "Token jest nieprawidłowy lub wygasł" }
     }
 
-    return { data: { message } }
+    return { data: { valid: true } }
 }

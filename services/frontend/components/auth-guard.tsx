@@ -52,11 +52,12 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
             const accessToken = localStorage.getItem("access_token")
 
             // Redirect logged-in users away from auth pages
+            // We allow /reset-password even if logged in, so users clicking email links don't get bounced
             if (accessToken && !isTokenExpired(accessToken)) {
                 // Sync token to cookie to allow standard <img> tags to work with protected endpoints
                 document.cookie = `access_token=${accessToken}; path=/; max-age=86400; SameSite=Lax`
 
-                if (["/login", "/register", "/reset-password"].includes(normalizedPath)) {
+                if (["/login", "/register"].includes(normalizedPath)) {
                     setAlreadyLoggedIn(true)
                     setLoading(false)
                     setTimeout(() => router.push("/"), 1500)

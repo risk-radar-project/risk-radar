@@ -33,6 +33,11 @@ public class UserService {
         userRepository.save(user);
     }
 
+    public boolean isSamePassword(String email, String rawPassword) {
+        User user = getUserByUsernameOrEmail(email);
+        return passwordEncoder.matches(rawPassword, user.getPassword());
+    }
+
     public java.util.Map<String, Long> getUserStats() {
         long totalUsers = userRepository.count();
         long bannedUsers = userRepository.countByIsBanned(true);
