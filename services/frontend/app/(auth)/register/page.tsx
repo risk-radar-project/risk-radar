@@ -1,3 +1,4 @@
+"use client"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -190,8 +191,9 @@ export default function RegisterPage() {
                         Nazwa użytkownika
                     </Label>
                     <Input
-                        className={`form-input focus:ring-primary/50 flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg border text-white focus:ring-2 focus:outline-0 ${errors.username ? "border-red-500 focus:border-red-500" : "focus:border-primary border-[#54473b]"
-                            } h-14 bg-[#27211b] p-[15px] text-base leading-normal font-normal placeholder:text-[#baab9c]`}
+                        className={`form-input focus:ring-primary/50 flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg border text-white focus:ring-2 focus:outline-0 ${
+                            errors.username ? "border-red-500 focus:border-red-500" : "focus:border-primary border-[#54473b]"
+                        } h-14 bg-[#27211b] p-[15px] text-base leading-normal font-normal placeholder:text-[#baab9c]`}
                         id="username"
                         placeholder="JanKowalski"
                         type="text"
@@ -206,8 +208,9 @@ export default function RegisterPage() {
                         Email
                     </Label>
                     <Input
-                        className={`form-input focus:ring-primary/50 flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg border text-white focus:ring-2 focus:outline-0 ${errors.email ? "border-red-500 focus:border-red-500" : "focus:border-primary border-[#54473b]"
-                            } h-14 bg-[#27211b] p-[15px] text-base leading-normal font-normal placeholder:text-[#baab9c]`}
+                        className={`form-input focus:ring-primary/50 flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg border text-white focus:ring-2 focus:outline-0 ${
+                            errors.email ? "border-red-500 focus:border-red-500" : "focus:border-primary border-[#54473b]"
+                        } h-14 bg-[#27211b] p-[15px] text-base leading-normal font-normal placeholder:text-[#baab9c]`}
                         id="email"
                         placeholder="jan.kowalski@example.com"
                         type="email"
@@ -222,10 +225,11 @@ export default function RegisterPage() {
                         Hasło
                     </Label>
                     <div
-                        className={`flex w-full flex-1 items-center rounded-lg border ${errors.password
-                            ? "border-red-500 focus-within:border-red-500"
-                            : "focus-within:border-primary border-[#54473b]"
-                            } focus-within:ring-primary/50 h-14 overflow-hidden bg-[#27211b] focus-within:ring-2`}
+                        className={`flex w-full flex-1 items-center rounded-lg border ${
+                            errors.password
+                                ? "border-red-500 focus-within:border-red-500"
+                                : "focus-within:border-primary border-[#54473b]"
+                        } focus-within:ring-primary/50 h-14 overflow-hidden bg-[#27211b] focus-within:ring-2`}
                     >
                         <Input
                             className="form-input flex h-full w-full min-w-0 flex-1 resize-none rounded-none border-0 bg-transparent p-[15px] pr-2 text-base leading-normal font-normal text-white shadow-none placeholder:text-[#baab9c] focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -253,10 +257,11 @@ export default function RegisterPage() {
                         Potwierdź hasło
                     </Label>
                     <div
-                        className={`flex w-full flex-1 items-center rounded-lg border ${errors.confirmPassword
-                            ? "border-red-500 focus-within:border-red-500"
-                            : "focus-within:border-primary border-[#54473b]"
-                            } focus-within:ring-primary/50 h-14 overflow-hidden bg-[#27211b] focus-within:ring-2`}
+                        className={`flex w-full flex-1 items-center rounded-lg border ${
+                            errors.confirmPassword
+                                ? "border-red-500 focus-within:border-red-500"
+                                : "focus-within:border-primary border-[#54473b]"
+                        } focus-within:ring-primary/50 h-14 overflow-hidden bg-[#27211b] focus-within:ring-2`}
                     >
                         <Input
                             className="form-input flex h-full w-full min-w-0 flex-1 resize-none rounded-none border-0 bg-transparent p-[15px] pr-2 text-base leading-normal font-normal text-white shadow-none placeholder:text-[#baab9c] focus-visible:ring-0 focus-visible:ring-offset-0"

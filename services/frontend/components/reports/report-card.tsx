@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { SectionCard } from "@/components/shared/section-card"
 import { verifyReport, rejectReport } from "@/app/reports/actions"
 
 export interface Report {
@@ -184,8 +183,9 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
                 {/* AI Verification Results - Simplified feedback for user */}
                 {aiStatus.show && (
                     <div
-                        className={`rounded-lg border p-3 ${aiStatus.isAccepted ? "border-green-500/30 bg-green-500/10" : "border-red-500/30 bg-red-500/10"
-                            }`}
+                        className={`rounded-lg border p-3 ${
+                            aiStatus.isAccepted ? "border-green-500/30 bg-green-500/10" : "border-red-500/30 bg-red-500/10"
+                        }`}
                     >
                         <div className="flex items-center gap-2">
                             <span className={`text-lg ${aiStatus.isAccepted ? "text-green-400" : "text-red-400"}`}>
@@ -193,8 +193,9 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
                             </span>
                             <div>
                                 <span
-                                    className={`text-sm font-semibold ${aiStatus.isAccepted ? "text-green-400" : "text-red-400"
-                                        }`}
+                                    className={`text-sm font-semibold ${
+                                        aiStatus.isAccepted ? "text-green-400" : "text-red-400"
+                                    }`}
                                 >
                                     {aiStatus.message}
                                 </span>

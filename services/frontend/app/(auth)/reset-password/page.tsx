@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -41,7 +41,7 @@ function ResetPasswordContent() {
                     text: result.data?.message || "Jeśli podany email istnieje, wysłaliśmy link resetujący."
                 })
             }
-        } catch (error) {
+        } catch {
             setMessage({ type: "error", text: "Wystąpił błąd." })
         } finally {
             setIsLoading(false)
@@ -72,7 +72,7 @@ function ResetPasswordContent() {
                     router.push("/login")
                 }, 2000)
             }
-        } catch (error) {
+        } catch {
             setMessage({ type: "error", text: "Wystąpił błąd." })
         } finally {
             setIsLoading(false)
