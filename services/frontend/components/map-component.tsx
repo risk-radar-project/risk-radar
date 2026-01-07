@@ -41,9 +41,17 @@ interface SearchResult {
 
 interface MapComponentProps {
     initialReports?: Report[]
+    initialLat?: number
+    initialLng?: number
+    initialZoom?: number
 }
 
-export default function MapComponent({ initialReports = [] }: MapComponentProps) {
+export default function MapComponent({ 
+    initialReports = [], 
+    initialLat, 
+    initialLng, 
+    initialZoom 
+}: MapComponentProps) {
     const mapRef = useRef<L.Map | null>(null)
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const markersRef = useRef<L.MarkerClusterGroup | null>(null)
@@ -153,11 +161,17 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     useEffect(() => {
         if (!mapContainerRef.current || mapRef.current) return
 
-        // Initialize map centered on Kraków (where reports are located)
+        // Determine start view
+        const startLat = initialLat || 50.06
+        const startLng = initialLng || 19.94
+        // If query params are provided, zoom in closer (e.g. 16), otherwise default to 9
+        const startZoom = initialZoom || (initialLat && initialLng ? 16 : 9)
+
+        // Initialize map centered on Kraków (where reports are located) or specific point
         const map = L.map(mapContainerRef.current, {
             attributionControl: false,
             zoomControl: false
-        }).setView([50.06, 19.94], 9)
+        }).setView([startLat, startLng], startZoom)
         mapRef.current = map
 
         // FIX: Clear the "displayed" set when the map is re-initialized.
