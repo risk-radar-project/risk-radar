@@ -68,15 +68,20 @@ public class PasswordResetController {
                         .body(Map.of("error", "Reset token is required"));
             }
 
-            if (request.newPassword() == null || request.newPassword().length() < 6) {
+            if (request.newPassword() == null || request.newPassword().length() < 8) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "New password must be at least 6 characters long"));
+                        .body(Map.of("error", "New password must be at least 8 characters long"));
             }
 
             String email = passwordResetService.getEmailByToken(request.token());
             if (email == null) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "Invalid or expired reset token"));
+            }
+
+            if (userService.isSamePassword(email, request.newPassword())) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "New password cannot be the same as the old password"));
             }
 
             userService.updatePassword(email, request.newPassword());

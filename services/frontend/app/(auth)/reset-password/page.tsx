@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useState, Suspense, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { requestPasswordReset, confirmPasswordReset } from "@/lib/api/user"
+import { requestPasswordReset, confirmPasswordReset, validateResetToken } from "@/lib/api/user"
 import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 
 function ResetPasswordContent() {
@@ -20,9 +20,24 @@ function ResetPasswordContent() {
     const [showPassword, setShowPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [message, setMessage] = useState({ type: "", text: "" })
+    const [tokenInvalid, setTokenInvalid] = useState(false)
+    const [isValidating, setIsValidating] = useState(false)
 
     // Mode: "request" (enter email) or "reset" (enter new password)
     const mode = token ? "reset" : "request"
+
+    useEffect(() => {
+        if (mode === "reset" && token) {
+            setIsValidating(true)
+            validateResetToken(token).then((res) => {
+                if (res.error) {
+                    setTokenInvalid(true)
+                    setMessage({ type: "error", text: res.error })
+                }
+                setIsValidating(false)
+            })
+        }
+    }, [mode, token])
 
     const handleRequestSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -54,8 +69,15 @@ function ResetPasswordContent() {
             setMessage({ type: "error", text: "Hasła nie są identyczne" })
             return
         }
-        if (password.length < 6) {
-            setMessage({ type: "error", text: "Hasło musi mieć co najmniej 6 znaków" })
+
+        const hasUpperCase = /[A-Z]/.test(password)
+        const hasLowerCase = /[a-z]/.test(password)
+        const hasNumbers = /\d/.test(password)
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password)
+        const hasMinLength = password.length >= 8
+
+        if (!hasMinLength || !hasUpperCase || !hasLowerCase || !hasNumbers || !hasSpecialChar) {
+            setMessage({ type: "error", text: "Hasło musi mieć min. 8 znaków, dużą i małą literę, cyfrę oraz znak specjalny" })
             return
         }
 
@@ -111,7 +133,15 @@ function ResetPasswordContent() {
                 </div>
             )}
 
-            {mode === "request" ? (
+            {isValidating ? (
+                <div className="text-center text-[#baab9c] py-8">Sprawdzanie ważności linku...</div>
+            ) : tokenInvalid ? (
+                <div className="flex flex-col gap-4">
+                    <p className="text-center text-[#baab9c]">
+                        Link wygasł lub jest nieprawidłowy.
+                    </p>
+                </div>
+            ) : mode === "request" ? (
                 <form onSubmit={handleRequestSubmit} className="flex flex-col gap-4">
                     <div className="flex w-full flex-col">
                         <Label className="pb-2 text-base font-medium text-white" htmlFor="email">

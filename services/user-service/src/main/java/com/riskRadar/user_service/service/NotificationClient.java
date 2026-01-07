@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
@@ -19,7 +21,7 @@ public class NotificationClient {
 
     public void sendPasswordResetEmail(UUID userId, String email, String token) {
         // TODO: Externalize frontend URL or use configuration
-        String resetUrl = "http://localhost:3000/reset-password?token=" + token;
+        String resetUrl = "http://localhost:3000/reset-password?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
 
         var payload = Map.of(
                 "eventType", "USER_PASSWORD_RESET_REQUESTED",

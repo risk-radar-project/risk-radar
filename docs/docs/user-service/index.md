@@ -108,7 +108,7 @@ Initiates the password reset process (e.g., sends an email).
 **POST** `/reset-password`
 Sets a new password using a valid reset token.
 - `200 OK` — Password reset successfully
-- `400 Bad Request` — Invalid or expired token
+- `400 Bad Request` — Invalid/expired token OR new password matches the old password
 
 ### 7. **Ban User** (Admin only)
 **POST** `/banUser`
