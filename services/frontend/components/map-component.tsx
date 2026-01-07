@@ -6,8 +6,6 @@ import "leaflet/dist/leaflet.css"
 import "leaflet.markercluster/dist/MarkerCluster.css"
 import "leaflet.markercluster/dist/MarkerCluster.Default.css"
 import "leaflet.markercluster"
-import { parseJwt } from "@/lib/auth/jwt-utils"
-import Link from "next/link"
 
 const MEDIA_SERVICE_BASE_URL = "/api/image/"
 
@@ -55,38 +53,10 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
     const userLocationCircleRef = useRef<L.Circle | null>(null)
 
     const [lightboxImage, setLightboxImage] = useState<string | null>(null)
-    const [sidebarOpen, setSidebarOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
     const [searchResults, setSearchResults] = useState<SearchResult[]>([])
     const [showResults, setShowResults] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
-    const [isAdmin, setIsAdmin] = useState(false)
-    const [canValidate, setCanValidate] = useState(false)
-
-    useEffect(() => {
-        const token = localStorage.getItem("access_token")
-        if (token) {
-            const user = parseJwt(token)
-            if (user) {
-                const permissions = user.permissions || []
-                const roles = user.roles || []
-
-                const hasAdminAccess =
-                    permissions.includes("PERM_*:*") ||
-                    permissions.includes("PERM_SYSTEM:ADMIN") ||
-                    roles.includes("ROLE_ADMIN")
-
-                const hasValidateAccess =
-                    hasAdminAccess ||
-                    roles.includes("ROLE_MODERATOR") ||
-                    roles.includes("ROLE_VOLUNTEER") ||
-                    permissions.includes("PERM_REPORTS:VALIDATE")
-
-                setIsAdmin(hasAdminAccess)
-                setCanValidate(hasValidateAccess)
-            }
-        }
-    }, [])
 
     // AI Assistant state
     const [aiLoading, setAiLoading] = useState(false)
@@ -156,18 +126,6 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
 
-    // Refresh map when sidebar toggles
-    useEffect(() => {
-        if (mapRef.current) {
-            // Wait for transition to complete before invalidating size
-            const timer = setTimeout(() => {
-                mapRef.current?.invalidateSize()
-            }, 350) // Slightly longer than transition-duration-300
-
-            return () => clearTimeout(timer)
-        }
-    }, [sidebarOpen])
-
     // Force map refresh when component mounts or becomes visible
     useEffect(() => {
         const handleVisibilityChange = () => {
@@ -211,21 +169,24 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
             maxZoom: 19
         }).addTo(map)
 
+        // Track if map is destroyed to prevent calls on unmounted map
+        let isDestroyed = false
+
         // Fix map rendering issues - invalidate size after initialization
         setTimeout(() => {
-            map.invalidateSize()
+            if (!isDestroyed) map.invalidateSize()
         }, 100)
 
         // Additional invalidation after tiles load
         map.whenReady(() => {
             setTimeout(() => {
-                map.invalidateSize()
+                if (!isDestroyed) map.invalidateSize()
             }, 200)
         })
 
         // Listen for tile loading to ensure proper rendering
         map.on("load", () => {
-            map.invalidateSize()
+            if (!isDestroyed) map.invalidateSize()
         })
 
         // Add marker clustering
@@ -362,6 +323,7 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
 
         // Cleanup
         return () => {
+            isDestroyed = true
             delete win.openLightbox
             map.remove()
             mapRef.current = null
@@ -609,100 +571,8 @@ export default function MapComponent({ initialReports = [] }: MapComponentProps)
             {/* Styles moved to globals.css */}
 
             <div className="relative flex h-full w-full flex-col overflow-hidden">
-                {/* Sidebar */}
-                <aside
-                    className={`absolute inset-y-0 left-0 z-30 flex w-72 flex-col bg-[#362c20]/90 p-4 backdrop-blur-sm transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-                >
-                    <div className="flex items-center justify-between px-3 py-2">
-                        <Link href="/" className="flex items-center gap-3">
-                            <div
-                                className="aspect-square size-10 rounded-full bg-cover bg-center bg-no-repeat"
-                                style={{
-                                    backgroundImage:
-                                        'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBCpSftcBIvJAKvmwFok7b1n6PmpFeiao9KAOoqFs1ajLc3TP11U4nkdfvllw469DY1mB-Y1m1e7oB8GSX8bbwky-01VrnWL9l125eTlHbsCZUcZjvd7TiB8IW5deiSfMZwMmILFSm1c_nTv7Ci1kWaC8oKq2yPxg4R5NvJS4GZiUGdi1_IPO8Br02BiSIni02B55xHKLE6UZ8ijEO6waP2xaJfd7-QajaNPHqxIs-PfTZTFZp7RFc3jiA6t0XacRdEVHpJlzgLrz4")'
-                                }}
-                            />
-                            <h1 className="text-lg leading-normal font-bold text-[#e0dcd7]">RiskRadar</h1>
-                        </Link>
-                        <button
-                            onClick={() => setSidebarOpen(false)}
-                            className="flex size-10 items-center justify-center rounded-lg text-[#e0dcd7] transition-colors hover:bg-white/10"
-                            title="Schowaj sidebar"
-                        >
-                            <span className="material-symbols-outlined">chevron_left</span>
-                        </button>
-                    </div>
-                    <div className="mt-8 flex flex-col gap-2">
-                        <Link
-                            className="flex items-center gap-3 rounded-lg bg-[#d97706] px-3 py-2 font-semibold text-white transition-colors hover:bg-[#d97706]/80"
-                            href="/submit-report"
-                        >
-                            <span className="material-symbols-outlined">add_location_alt</span>
-                            <p className="text-base leading-normal">Zgłoś Nowe Zdarzenie</p>
-                        </Link>
-
-                        <div className="my-2 border-t border-[#e0dcd7]/10"></div>
-
-                        <Link
-                            className="flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7] transition-colors hover:bg-white/10"
-                            href="/profile"
-                        >
-                            <span className="material-symbols-outlined">person</span>
-                            <p className="text-base leading-normal">Profil</p>
-                        </Link>
-                        <Link
-                            className="flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7] transition-colors hover:bg-white/10"
-                            href="/my-reports"
-                        >
-                            <span className="material-symbols-outlined">description</span>
-                            <p className="text-base leading-normal">Moje zgłoszenia</p>
-                        </Link>
-
-                        {canValidate && (
-                            <>
-                                <div className="my-2 border-t border-[#e0dcd7]/10"></div>
-
-                                <Link
-                                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7] transition-colors hover:bg-white/10"
-                                    href="/reports"
-                                >
-                                    <span className="material-symbols-outlined">verified</span>
-                                    <p className="text-base leading-normal">Weryfikacja</p>
-                                </Link>
-                            </>
-                        )}
-
-                        {isAdmin && (
-                            <>
-                                <div className="my-2 border-t border-[#e0dcd7]/10"></div>
-
-                                <a
-                                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7] transition-colors hover:bg-white/10"
-                                    href="/admin"
-                                >
-                                    <span className="material-symbols-outlined">shield</span>
-                                    <p className="text-base leading-normal">Panel administratora</p>
-                                </a>
-                            </>
-                        )}
-                    </div>
-                </aside>
-
                 {/* Main Content */}
-                <main
-                    className={`relative flex flex-1 flex-col transition-all duration-300 ${sidebarOpen ? "md:ml-72" : ""}`}
-                >
-                    {/* Hamburger Menu Button */}
-                    {!sidebarOpen && (
-                        <button
-                            onClick={() => setSidebarOpen(true)}
-                            className="absolute top-4 left-4 z-40 flex size-12 items-center justify-center rounded-lg bg-[#362c20]/90 shadow-lg backdrop-blur-sm transition-colors hover:bg-[#362c20]"
-                            title="Pokaż sidebar"
-                        >
-                            <span className="material-symbols-outlined text-3xl text-[#e0dcd7]">menu</span>
-                        </button>
-                    )}
-
+                <main className={`relative flex flex-1 flex-col transition-all duration-300`}>
                     {/* Search Bar */}
                     <div className="absolute inset-x-0 top-0 z-30 flex justify-center p-4">
                         <div className="search-container flex w-full max-w-lg flex-col">
