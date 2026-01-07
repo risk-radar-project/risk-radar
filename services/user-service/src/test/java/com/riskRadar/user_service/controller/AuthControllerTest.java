@@ -103,7 +103,7 @@ class AuthControllerTest {
 
     @Test
     void login_success() throws Exception {
-        LoginRequest request = new LoginRequest("testuser", "password");
+        LoginRequest request = new LoginRequest("testuser", "password", null);
         Authentication auth = mock(Authentication.class);
         CustomUserDetails userDetails = mock(CustomUserDetails.class);
 
@@ -114,7 +114,7 @@ class AuthControllerTest {
         when(authzClient.getRolesByUserId(testUser.getId())).thenReturn(new Role[0]);
         when(authzClient.getPermissionsByUserId(testUser.getId())).thenReturn(new Permission[0]);
         when(jwtService.generateAccessToken(anyString(), anyMap())).thenReturn("access-token");
-        when(jwtService.generateRefreshToken(anyString())).thenReturn("refresh-token");
+        when(jwtService.generateRefreshToken(anyString(), anyBoolean())).thenReturn("refresh-token");
 
         mockMvc.perform(post("/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -127,7 +127,7 @@ class AuthControllerTest {
 
     @Test
     void login_badCredentials() throws Exception {
-        LoginRequest request = new LoginRequest("testuser", "wrongpassword");
+        LoginRequest request = new LoginRequest("testuser", "wrongpassword", null);
         when(authenticationManager.authenticate(any())).thenThrow(new BadCredentialsException("Bad credentials"));
 
         mockMvc.perform(post("/login")
@@ -164,7 +164,7 @@ class AuthControllerTest {
         when(authzClient.getRolesByUserId(testUser.getId())).thenReturn(new Role[0]);
         when(authzClient.getPermissionsByUserId(testUser.getId())).thenReturn(new Permission[0]);
         when(jwtService.generateAccessToken(anyString(), anyMap())).thenReturn("new-access");
-        when(jwtService.generateRefreshToken(anyString())).thenReturn("new-refresh");
+        when(jwtService.generateRefreshToken(anyString(), anyBoolean())).thenReturn("new-refresh");
 
         mockMvc.perform(post("/refresh")
                         .contentType(MediaType.APPLICATION_JSON)

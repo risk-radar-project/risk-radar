@@ -47,8 +47,8 @@ export default function TermsPage() {
                             key={item.id}
                             className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                                 activeSection === item.id
-                                    ? "bg-primary/20 text-primary"
-                                    : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+                                    ? "bg-primary/20 text-white"
+                                    : "text-white hover:bg-zinc-800/50 hover:text-primary"
                             }`}
                             href={`#${item.id}`}
                         >

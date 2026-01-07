@@ -37,6 +37,14 @@ interface SearchResult {
     display_name: string
     lat: string
     lon: string
+    address?: {
+        road?: string
+        house_number?: string
+        city?: string
+        town?: string
+        village?: string
+        municipality?: string
+    }
 }
 
 interface MapComponentProps {
@@ -352,6 +360,34 @@ export default function MapComponent({
         }
     }, [initialReports])
 
+    // Format address to show only essential parts
+    const formatAddress = (result: SearchResult): string => {
+        if (!result.address) {
+            // Fallback to first 2-3 parts of display_name
+            const parts = result.display_name.split(', ')
+            return parts.slice(0, 3).join(', ')
+        }
+
+        const parts: string[] = []
+        
+        // Add street and number
+        if (result.address.road) {
+            let street = result.address.road
+            if (result.address.house_number) {
+                street += ' ' + result.address.house_number
+            }
+            parts.push(street)
+        }
+        
+        // Add city/town/village
+        const location = result.address.city || result.address.town || result.address.village || result.address.municipality
+        if (location) {
+            parts.push(location)
+        }
+        
+        return parts.length > 0 ? parts.join(', ') : result.display_name.split(', ').slice(0, 2).join(', ')
+    }
+
     // Search for cities using Nominatim API
     const handleSearch = async (query: string) => {
         if (query.length < 2) {
@@ -388,6 +424,15 @@ export default function MapComponent({
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value
         setSearchQuery(value)
+        
+        // Show results panel when typing
+        if (value.length >= 2) {
+            setShowResults(true)
+            setIsSearching(true) // Set searching immediately to show loading state
+        } else {
+            setShowResults(false)
+            setSearchResults([])
+        }
 
         // Clear previous timeout
         if (searchTimeoutRef.current) {
@@ -410,10 +455,17 @@ export default function MapComponent({
             })
         }
 
-        setSearchQuery(result.display_name)
+        setSearchQuery(formatAddress(result))
         setShowResults(false)
     }
-
+    const handleClearSearch = () => {
+        setSearchQuery("")
+        setSearchResults([])
+        setShowResults(false)
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current)
+        }
+    }
     const handleZoomIn = () => {
         mapRef.current?.zoomIn()
     }
@@ -766,13 +818,24 @@ export default function MapComponent({
                                 >
                                     <span className="material-symbols-outlined text-4xl">search</span>
                                 </div>
-                                <input
-                                    value={searchQuery}
-                                    onChange={handleSearchChange}
-                                    onFocus={() => searchResults.length > 0 && setShowResults(true)}
-                                    className={`form-input flex h-full w-full min-w-0 flex-1 resize-none overflow-hidden border-none bg-[#362c20]/90 px-6 text-2xl leading-normal font-normal text-[#e0dcd7] backdrop-blur-sm placeholder:text-[#e0dcd7]/70 focus:outline-0 ${showResults || isSearching ? "rounded-tr-xl" : "rounded-r-xl"}`}
-                                    placeholder="Wyszukaj miasto w Polsce..."
-                                />
+                                <div className="relative flex h-full w-full flex-1">
+                                    <input
+                                        value={searchQuery}
+                                        onChange={handleSearchChange}
+                                        onFocus={() => searchResults.length > 0 && setShowResults(true)}
+                                        className={`form-input flex h-full w-full min-w-0 flex-1 resize-none overflow-hidden border-none bg-[#362c20]/90 px-8 py-4 text-lg leading-normal font-normal text-[#e0dcd7] backdrop-blur-sm placeholder:text-[#e0dcd7]/70 focus:outline-0 ${showResults || isSearching ? "rounded-tr-xl" : "rounded-r-xl"}`}
+                                        placeholder="Wyszukaj lokalizację..."
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            onClick={handleClearSearch}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#e0dcd7]/70 transition-colors hover:text-[#e0dcd7]"
+                                            title="Wyczyść"
+                                        >
+                                            <span className="material-symbols-outlined text-2xl">close</span>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Search Results Dropdown */}
@@ -788,7 +851,7 @@ export default function MapComponent({
                                                 <span className="material-symbols-outlined text-2xl text-[#d97706]">
                                                     location_on
                                                 </span>
-                                                <span className="text-base text-[#e0dcd7]">{result.display_name}</span>
+                                                <span className="text-base text-[#e0dcd7]">{formatAddress(result)}</span>
                                             </div>
                                         </button>
                                     ))}
@@ -800,6 +863,16 @@ export default function MapComponent({
                                 <div className="w-full rounded-b-xl bg-[#362c20]/90 px-5 py-5 shadow-lg backdrop-blur-sm">
                                     <div className="flex items-center gap-2 text-[#e0dcd7]">
                                         <span className="text-sm">Wyszukiwanie...</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* No results message */}
+                            {!isSearching && showResults && searchResults.length === 0 && searchQuery.length >= 2 && (
+                                <div className="w-full rounded-b-xl bg-[#362c20]/90 px-5 py-5 shadow-lg backdrop-blur-sm">
+                                    <div className="flex items-center gap-2 text-[#e0dcd7]/70">
+                                        <span className="material-symbols-outlined text-xl">search_off</span>
+                                        <span className="text-sm">Nie znaleziono wyników</span>
                                     </div>
                                 </div>
                             )}
@@ -890,7 +963,7 @@ export default function MapComponent({
 
                     {/* AI Response Bubble */}
                     {aiResponse?.visible && (
-                        <div className="animate-in fade-in slide-in-from-bottom-4 absolute bottom-24 left-6 z-30 max-w-sm duration-300">
+                        <div className="animate-in fade-in slide-in-from-top-4 absolute right-6 top-24 z-30 max-w-sm duration-300">
                             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
                                 {/* Header with danger level */}
                                 <div
@@ -941,8 +1014,8 @@ export default function MapComponent({
                                 </div>
                             </div>
 
-                            {/* Speech bubble arrow */}
-                            <div className="absolute -bottom-2 left-8 h-4 w-4 rotate-45 transform border-r border-b border-gray-200 bg-white"></div>
+                            {/* Speech bubble arrow pointing up */}
+                            <div className="absolute -top-2 right-8 h-4 w-4 rotate-45 transform border-l border-t border-gray-200 bg-white"></div>
                         </div>
                     )}
 

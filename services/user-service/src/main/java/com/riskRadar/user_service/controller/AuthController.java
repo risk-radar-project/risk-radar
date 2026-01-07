@@ -192,7 +192,8 @@ public class AuthController {
 
                         Map<String, Object> claims = extractClaims(user);
                         String oldToken = extractTokenFromCookies(httpRequest);
-                        JwtResponse jwtResponse = generateTokens(user, claims, oldToken);
+                        boolean rememberMe = request.rememberMe() != null && request.rememberMe();
+                        JwtResponse jwtResponse = generateTokens(user, claims, oldToken, rememberMe);
 
             auditLogClient.logAction(Map.of(
                     "service", "user-service",
@@ -428,7 +429,9 @@ public class AuthController {
 
                         Map<String, Object> claims = extractClaims(user);
                         String newAccessToken = jwtService.generateAccessToken(username, claims);
-                        String newRefreshToken = jwtService.generateRefreshToken(username);
+                        // Check if the existing refresh token was extended (Remember Me was checked)
+                        boolean wasRememberMe = jwtService.isRefreshTokenExtended(refreshToken);
+                        String newRefreshToken = jwtService.generateRefreshToken(username, wasRememberMe);
 
                         redisService.revokeRefreshToken(username);
                         redisService.storeRefreshToken(username, newRefreshToken);
@@ -585,7 +588,7 @@ public class AuthController {
                 }
         }
 
-        private JwtResponse generateTokens(User user, Map<String, Object> claims, String oldToken) {
+        private JwtResponse generateTokens(User user, Map<String, Object> claims, String oldToken, boolean rememberMe) {
                 try {
                         if (user == null) {
                                 throw new UserOperationException("User cannot be null",
@@ -599,7 +602,7 @@ public class AuthController {
                         enrichedClaims.put("created_at", Instant.now().toString());
 
                         String newAccessToken = jwtService.generateAccessToken(user.getUsername(), enrichedClaims);
-                        String newRefreshToken = jwtService.generateRefreshToken(user.getUsername());
+                        String newRefreshToken = jwtService.generateRefreshToken(user.getUsername(), rememberMe);
 
                         redisService.revokeRefreshToken(user.getUsername());
 
@@ -609,7 +612,7 @@ public class AuthController {
 
                         redisService.storeRefreshToken(user.getUsername(), newRefreshToken);
 
-                        log.debug("Generated new tokens for user: {}", user.getUsername());
+                        log.debug("Generated new tokens for user: {} (rememberMe: {})", user.getUsername(), rememberMe);
                         return new JwtResponse(newAccessToken, newRefreshToken);
                 } catch (Exception e) {
                         assert user != null;

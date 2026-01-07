@@ -43,7 +43,7 @@ class JwtServiceTest {
     @Test
     void testGenerateAndValidateRefreshToken() {
         String username = "userTest";
-        String token = jwtService.generateRefreshToken(username);
+        String token = jwtService.generateRefreshToken(username, false);
 
         assertNotNull(token);
         assertTrue(jwtService.isRefreshTokenValid(token));
