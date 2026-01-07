@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Table } from "@/components/ui/table/table"
 import { TableHead } from "@/components/ui/table/table-head"
+import { TableHeader } from "@/components/ui/table/table-header"
 import { TableRow } from "@/components/ui/table/table-row"
 import { TableCell } from "@/components/ui/table/table-cell"
 import { Search, Filter, ChevronLeft, ChevronRight, Ban, ShieldCheck, Eye, X, UserCircle } from "lucide-react"
@@ -216,15 +217,15 @@ export default function AdminUsersPage() {
             {/* Table */}
             <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
                 <Table>
-                    <TableHead>
+                    <TableHeader>
                         <TableRow>
-                            <TableCell>Użytkownik</TableCell>
-                            <TableCell>Rola</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell>Data rejestracji</TableCell>
-                            <TableCell>Akcje</TableCell>
+                            <TableHead>Użytkownik</TableHead>
+                            <TableHead>Rola</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Data rejestracji</TableHead>
+                            <TableHead>Akcje</TableHead>
                         </TableRow>
-                    </TableHead>
+                    </TableHeader>
                     <tbody>
                         {loading ? (
                             <TableRow>
@@ -301,8 +302,8 @@ export default function AdminUsersPage() {
                                                 <button
                                                     onClick={() => handleBanToggle(user.id, user.username, user.isBanned)}
                                                     className={`rounded p-1.5 hover:bg-zinc-700 ${user.isBanned
-                                                            ? "text-green-400 hover:text-green-300"
-                                                            : "text-zinc-400 hover:text-red-400"
+                                                        ? "text-green-400 hover:text-green-300"
+                                                        : "text-zinc-400 hover:text-red-400"
                                                         }`}
                                                     title={user.isBanned ? "Odbanuj" : "Zbanuj"}
                                                 >
@@ -405,8 +406,8 @@ export default function AdminUsersPage() {
                                             handleBanToggle(viewingUser.id, viewingUser.username, viewingUser.isBanned)
                                         }}
                                         className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition-colors ${viewingUser.isBanned
-                                                ? "bg-green-600 text-white hover:bg-green-500"
-                                                : "bg-red-600 text-white hover:bg-red-500"
+                                            ? "bg-green-600 text-white hover:bg-green-500"
+                                            : "bg-red-600 text-white hover:bg-red-500"
                                             }`}
                                     >
                                         {viewingUser.isBanned ? (
