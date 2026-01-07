@@ -29,6 +29,7 @@ public class JwtService {
 
     private static final long ACCESS_TOKEN_EXPIRATION_MS = 1000 * 60 * 15; // 15 minut
     private static final long REFRESH_TOKEN_EXPIRATION_MS = 1000 * 60 * 60 * 24 * 7; // 7 dni
+    private static final long REFRESH_TOKEN_EXTENDED_EXPIRATION_MS = 1000L * 60 * 60 * 24 * 30; // 30 dni (Remember Me)
 
     @PostConstruct
     public void init() {
@@ -52,11 +53,16 @@ public class JwtService {
     }
 
     public String generateRefreshToken(String username) {
+        return generateRefreshToken(username, false);
+    }
+
+    public String generateRefreshToken(String username, boolean rememberMe) {
+        long expirationTime = rememberMe ? REFRESH_TOKEN_EXTENDED_EXPIRATION_MS : REFRESH_TOKEN_EXPIRATION_MS;
         return Jwts.builder()
                 .setHeaderParam("typ", "JWT")
                 .setSubject(username)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION_MS))
+                .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(refreshKey, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -103,6 +109,22 @@ public class JwtService {
             return extractClaim(token, Claims::getSubject, refreshKey);
         } catch (Exception e) {
             throw new JwtException("Failed to extract username from refresh token", e);
+        }
+    }
+
+    public Date extractRefreshExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration, refreshKey);
+    }
+
+    public boolean isRefreshTokenExtended(String token) {
+        try {
+            Date expiration = extractRefreshExpiration(token);
+            Date issued = extractClaim(token, Claims::getIssuedAt, refreshKey);
+            long tokenLifetime = expiration.getTime() - issued.getTime();
+            // Consider token extended if lifetime is more than 14 days (halfway between 7 and 30)
+            return tokenLifetime > (1000L * 60 * 60 * 24 * 14);
+        } catch (Exception e) {
+            return false; // Default to standard token if unable to determine
         }
     }
 

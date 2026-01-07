@@ -93,7 +93,8 @@ export default function LoginPage() {
                     },
                     body: JSON.stringify({
                         username: formData.username,
-                        password: formData.password
+                        password: formData.password,
+                        rememberMe: formData.rememberMe
                     })
                 })
 
