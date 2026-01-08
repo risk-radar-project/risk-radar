@@ -67,6 +67,8 @@ const STATUS_NAMES: Record<string, string> = {
     REJECTED: "Odrzucone"
 }
 
+const PAGE_SIZE_OPTIONS = [10, 15, 20, 25, 50, 100, 250, 500, 1000]
+
 export default function AdminReportsPage() {
     const [reports, setReports] = useState<Report[]>([])
     const [loading, setLoading] = useState(true)
@@ -80,7 +82,7 @@ export default function AdminReportsPage() {
     const [totalElements, setTotalElements] = useState(0)
     const [editingReport, setEditingReport] = useState<Report | null>(null)
     const [viewingReport, setViewingReport] = useState<Report | null>(null)
-    const pageSize = 10
+    const [pageSize, setPageSize] = useState(10)
 
     const fetchReports = useCallback(async () => {
         setLoading(true)
@@ -145,7 +147,7 @@ export default function AdminReportsPage() {
         } finally {
             setLoading(false)
         }
-    }, [currentPage, statusFilter, categoryFilter])
+    }, [currentPage, statusFilter, categoryFilter, pageSize])
 
     useEffect(() => {
         fetchReports()
@@ -325,6 +327,20 @@ export default function AdminReportsPage() {
                         {Object.entries(CATEGORY_NAMES).map(([key, name]) => (
                             <option key={key} value={key}>
                                 {name}
+                            </option>
+                        ))}
+                    </select>
+                    <select
+                        value={pageSize}
+                        onChange={(e) => {
+                            setPageSize(Number(e.target.value))
+                            setCurrentPage(0)
+                        }}
+                        className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-zinc-100 focus:border-zinc-700 focus:outline-none"
+                    >
+                        {PAGE_SIZE_OPTIONS.map((size) => (
+                            <option key={size} value={size}>
+                                {size} na stronę
                             </option>
                         ))}
                     </select>

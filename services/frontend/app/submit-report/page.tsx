@@ -5,6 +5,7 @@ import Link from "next/link"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { categorizeReport, type CategorizationResponse, type SubmissionResult } from "@/lib/api/ai"
+import { validateReport, validateAndSanitize } from "@/lib/validation/report-validation"
 
 // Dynamically import map component (client-side only)
 const LocationPickerMap = dynamic(() => import("@/components/location-picker-map"), {
@@ -153,26 +154,32 @@ export default function SubmitReportPage() {
     // Handle input changes with debounced categorization
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target
-        setFormData((prev) => ({ ...prev, [name]: value }))
+
+        // Sanitize input before storing
+        const sanitizedValue = name === "title" || name === "description" ? validateAndSanitize(value) : value
+        setFormData((prev) => ({ ...prev, [name]: sanitizedValue }))
 
         // Client-side validation
         const newFieldErrors = { ...fieldErrors }
 
         if (name === "title") {
-            if (value.length > 500) {
-                newFieldErrors.title = "Tytuł nie może przekraczać 500 znaków"
+            const titleLength = sanitizedValue.length
+            if (titleLength < 3) {
+                newFieldErrors.title = "Tytuł musi mieć co najmniej 3 znaki"
+            } else if (titleLength > 255) {
+                newFieldErrors.title = "Tytuł nie może przekraczać 255 znaków"
             } else {
                 delete newFieldErrors.title
             }
         }
 
         if (name === "description") {
-            // Backend limit is 10000 characters
-            if (value.length > 10000) {
-                newFieldErrors.description = "Opis nie może przekraczać 10000 znaków"
-            } else if (value.length > 8000) {
+            const descLength = sanitizedValue.length
+            if (descLength > 2000) {
+                newFieldErrors.description = "Opis nie może przekraczać 2000 znaków"
+            } else if (descLength > 1800) {
                 // Soft warning when approaching limit
-                newFieldErrors.description = `Opis jest bardzo długi. Pozostało ${10000 - value.length} znaków.`
+                newFieldErrors.description = `Opis jest bardzo długi. Pozostało ${2000 - descLength} znaków.`
             } else {
                 delete newFieldErrors.description
             }
@@ -187,8 +194,8 @@ export default function SubmitReportPage() {
             }
 
             categorizationDebounceRef.current = setTimeout(() => {
-                const newTitle = name === "title" ? value : formData.title
-                const newDescription = name === "description" ? value : formData.description
+                const newTitle = name === "title" ? sanitizedValue : formData.title
+                const newDescription = name === "description" ? sanitizedValue : formData.description
                 triggerCategorization(newTitle, newDescription)
             }, 800) // 800ms debounce
         }
@@ -231,23 +238,33 @@ export default function SubmitReportPage() {
         setError(null)
         setSubmissionResult(null)
 
-        // Validate title length
-        if (formData.title.length > 500) {
-            setFieldErrors({ ...fieldErrors, title: "Tytuł nie może przekraczać 500 znaków" })
-            setIsSubmitting(false)
-            return
-        }
+        // Comprehensive validation using Zod schema
+        const validationResult = validateReport({
+            title: formData.title,
+            description: formData.description,
+            category: formData.category,
+            latitude: formData.latitude,
+            longitude: formData.longitude,
+            imageIds: [] // Images handled separately
+        })
 
-        // Validate description length
-        if (formData.description.length > 10000) {
-            setFieldErrors({ ...fieldErrors, description: "Opis nie może przekraczać 10000 znaków" })
-            setIsSubmitting(false)
-            return
-        }
-
-        // Validate location
-        if (formData.latitude === null || formData.longitude === null) {
-            setError("Proszę wybrać lokalizację na mapie")
+        if (!validationResult.success) {
+            // Display validation errors
+            const errorEntries = Object.entries(validationResult.errors || {})
+            if (errorEntries.length > 0) {
+                const [field, message] = errorEntries[0]
+                if (field === "latitude" || field === "longitude") {
+                    setError("Proszę wybrać prawidłową lokalizację na mapie")
+                } else {
+                    setError(message as string)
+                }
+                setFieldErrors(
+                    Object.fromEntries(errorEntries.filter(([key]) => key !== "latitude" && key !== "longitude")) as Record<
+                        string,
+                        string
+                    >
+                )
+            }
             setIsSubmitting(false)
             return
         }
