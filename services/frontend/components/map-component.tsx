@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import "leaflet.markercluster/dist/MarkerCluster.css"
 import "leaflet.markercluster/dist/MarkerCluster.Default.css"
 import "leaflet.markercluster"
+import { useAuth } from "@/hooks/use-auth"
 
 const MEDIA_SERVICE_BASE_URL = "/api/image/"
 
@@ -54,12 +55,8 @@ interface MapComponentProps {
     initialZoom?: number
 }
 
-export default function MapComponent({ 
-    initialReports = [], 
-    initialLat, 
-    initialLng, 
-    initialZoom 
-}: MapComponentProps) {
+export default function MapComponent({ initialReports = [], initialLat, initialLng, initialZoom }: MapComponentProps) {
+    const { isAuthenticated } = useAuth()
     const mapRef = useRef<L.Map | null>(null)
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const markersRef = useRef<L.MarkerClusterGroup | null>(null)
@@ -73,6 +70,7 @@ export default function MapComponent({
     const [searchResults, setSearchResults] = useState<SearchResult[]>([])
     const [showResults, setShowResults] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
+    const [searchFocused, setSearchFocused] = useState(false)
 
     // AI Assistant state
     const [aiLoading, setAiLoading] = useState(false)
@@ -85,8 +83,6 @@ export default function MapComponent({
     } | null>(null)
     // AI Area Selection Mode
     const [aiSelectMode, setAiSelectMode] = useState(false)
-    const [selectedAreaLocation, setSelectedAreaLocation] = useState<{ lat: number; lng: number } | null>(null)
-    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
     // AI Menu expanded state
     const [aiMenuOpen, setAiMenuOpen] = useState(false)
     const selectedAreaMarkerRef = useRef<L.Marker | null>(null)
@@ -180,8 +176,7 @@ export default function MapComponent({
         // Determine start view
         const startLat = initialLat || 50.06
         const startLng = initialLng || 19.94
-        // If query params are provided, zoom in closer (e.g. 16), otherwise default to 9
-        const startZoom = initialZoom || (initialLat && initialLng ? 16 : 9)
+        const startZoom = initialZoom || (initialLat && initialLng ? 16 : 13)
 
         // Initialize map centered on Kraków (where reports are located) or specific point
         const map = L.map(mapContainerRef.current, {
@@ -358,34 +353,34 @@ export default function MapComponent({
             map.remove()
             mapRef.current = null
         }
-    }, [initialReports])
+    }, [initialReports, initialLat, initialLng, initialZoom])
 
     // Format address to show only essential parts
     const formatAddress = (result: SearchResult): string => {
         if (!result.address) {
             // Fallback to first 2-3 parts of display_name
-            const parts = result.display_name.split(', ')
-            return parts.slice(0, 3).join(', ')
+            const parts = result.display_name.split(", ")
+            return parts.slice(0, 3).join(", ")
         }
 
         const parts: string[] = []
-        
+
         // Add street and number
         if (result.address.road) {
             let street = result.address.road
             if (result.address.house_number) {
-                street += ' ' + result.address.house_number
+                street += " " + result.address.house_number
             }
             parts.push(street)
         }
-        
+
         // Add city/town/village
         const location = result.address.city || result.address.town || result.address.village || result.address.municipality
         if (location) {
             parts.push(location)
         }
-        
-        return parts.length > 0 ? parts.join(', ') : result.display_name.split(', ').slice(0, 2).join(', ')
+
+        return parts.length > 0 ? parts.join(", ") : result.display_name.split(", ").slice(0, 2).join(", ")
     }
 
     // Search for cities using Nominatim API
@@ -424,7 +419,7 @@ export default function MapComponent({
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value
         setSearchQuery(value)
-        
+
         // Show results panel when typing
         if (value.length >= 2) {
             setShowResults(true)
@@ -524,7 +519,7 @@ export default function MapComponent({
         } catch (e) {
             console.error("IP geolocation failed:", e)
         }
-        
+
         try {
             // Backup: ipapi.co
             const response = await fetch("https://ipapi.co/json/")
@@ -535,12 +530,12 @@ export default function MapComponent({
         } catch (e) {
             console.error("Backup IP geolocation failed:", e)
         }
-        
+
         return null
     }
 
     // Perform AI analysis at given coordinates
-    const performAIAnalysis = async (lat: number, lng: number, isUserLocation: boolean = false) => {
+    const performAIAnalysis = useCallback(async (lat: number, lng: number, isUserLocation: boolean = false) => {
         // Add marker and circle to map
         if (mapRef.current) {
             // Remove previous markers/circles
@@ -668,7 +663,7 @@ export default function MapComponent({
             setAiLoading(false)
             setAiSelectMode(false)
         }
-    }
+    }, [])
 
     // AI Assistant - analyze nearby threats at user location
     const handleAIAnalysisMyLocation = async () => {
@@ -679,14 +674,13 @@ export default function MapComponent({
         setAiSelectMode(false)
 
         const location = await getLocationWithFallback()
-        
+
         if (!location) {
             alert("Nie można pobrać Twojej lokalizacji. Użyj opcji 'Wybierz na mapie' aby ręcznie wskazać obszar.")
             setAiLoading(false)
             return
         }
 
-        setUserLocation(location)
         await performAIAnalysis(location.lat, location.lng, true)
     }
 
@@ -705,7 +699,6 @@ export default function MapComponent({
             if (!aiSelectMode) return
 
             const { lat, lng } = e.latlng
-            setSelectedAreaLocation({ lat, lng })
             setAiLoading(true)
             await performAIAnalysis(lat, lng, false)
         }
@@ -725,7 +718,7 @@ export default function MapComponent({
                 mapRef.current.getContainer().style.cursor = ""
             }
         }
-    }, [aiSelectMode])
+    }, [aiSelectMode, performAIAnalysis])
 
     // Cancel area selection mode
     const handleCancelSelectMode = () => {
@@ -808,13 +801,17 @@ export default function MapComponent({
                 {/* Main Content */}
                 <main className={`relative flex flex-1 flex-col transition-all duration-300`}>
                     {/* Search Bar */}
-                    <div className="absolute inset-x-0 top-0 z-30 flex justify-center p-4">
-                        <div className="search-container flex w-full max-w-lg flex-col">
+                    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center p-4">
+                        <div className="search-container pointer-events-auto flex w-full max-w-lg flex-col">
                             <div
-                                className={`flex h-24 w-full flex-1 items-stretch shadow-lg backdrop-blur-sm transition-all ${showResults || isSearching ? "rounded-t-xl" : "rounded-xl"}`}
+                                className={`flex h-24 w-full flex-1 items-stretch shadow-lg backdrop-blur-sm transition-all ${
+                                    showResults || isSearching ? "rounded-t-xl" : "rounded-xl"
+                                } ${searchFocused ? "ring-2 ring-[#d97706]" : ""}`}
                             >
                                 <div
-                                    className={`flex items-center justify-center bg-[#362c20]/90 px-5 text-[#e0dcd7]/70 backdrop-blur-sm ${showResults || isSearching ? "rounded-tl-xl" : "rounded-l-xl"}`}
+                                    className={`flex items-center justify-center px-5 text-[#e0dcd7]/70 backdrop-blur-sm transition-colors ${
+                                        showResults || isSearching ? "rounded-tl-xl" : "rounded-l-xl"
+                                    } ${searchFocused ? "bg-[#362c20]" : "bg-[#362c20]/90"}`}
                                 >
                                     <span className="material-symbols-outlined text-4xl">search</span>
                                 </div>
@@ -822,14 +819,20 @@ export default function MapComponent({
                                     <input
                                         value={searchQuery}
                                         onChange={handleSearchChange}
-                                        onFocus={() => searchResults.length > 0 && setShowResults(true)}
-                                        className={`form-input flex h-full w-full min-w-0 flex-1 resize-none overflow-hidden border-none bg-[#362c20]/90 px-8 py-4 text-lg leading-normal font-normal text-[#e0dcd7] backdrop-blur-sm placeholder:text-[#e0dcd7]/70 focus:outline-0 ${showResults || isSearching ? "rounded-tr-xl" : "rounded-r-xl"}`}
+                                        onFocus={() => {
+                                            setSearchFocused(true)
+                                            if (searchResults.length > 0) {
+                                                setShowResults(true)
+                                            }
+                                        }}
+                                        onBlur={() => setSearchFocused(false)}
+                                        className={`form-input flex h-full w-full min-w-0 flex-1 resize-none overflow-hidden border-none bg-[#362c20]/90 px-8 py-4 text-lg leading-normal font-normal text-[#e0dcd7] backdrop-blur-sm placeholder:text-[#e0dcd7]/70 focus:bg-[#362c20] focus:outline-none ${showResults || isSearching ? "rounded-tr-xl" : "rounded-r-xl"}`}
                                         placeholder="Wyszukaj lokalizację..."
                                     />
                                     {searchQuery && (
                                         <button
                                             onClick={handleClearSearch}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#e0dcd7]/70 transition-colors hover:text-[#e0dcd7]"
+                                            className="absolute top-1/2 right-4 -translate-y-1/2 text-[#e0dcd7]/70 transition-colors hover:text-[#e0dcd7]"
                                             title="Wyczyść"
                                         >
                                             <span className="material-symbols-outlined text-2xl">close</span>
@@ -840,7 +843,11 @@ export default function MapComponent({
 
                             {/* Search Results Dropdown */}
                             {showResults && searchResults.length > 0 && (
-                                <div className="max-h-80 w-full overflow-y-auto rounded-b-xl bg-[#362c20]/90 shadow-lg backdrop-blur-sm">
+                                <div
+                                    className={`max-h-80 w-full overflow-y-auto rounded-b-xl bg-[#362c20]/90 shadow-lg backdrop-blur-sm ${
+                                        searchFocused ? "ring-t-0 ring-2 ring-[#d97706]" : ""
+                                    }`}
+                                >
                                     {searchResults.map((result) => (
                                         <button
                                             key={result.place_id}
@@ -860,7 +867,11 @@ export default function MapComponent({
 
                             {/* Loading indicator */}
                             {isSearching && (
-                                <div className="w-full rounded-b-xl bg-[#362c20]/90 px-5 py-5 shadow-lg backdrop-blur-sm">
+                                <div
+                                    className={`w-full rounded-b-xl bg-[#362c20]/90 px-5 py-5 shadow-lg backdrop-blur-sm ${
+                                        searchFocused ? "ring-t-0 ring-2 ring-[#d97706]" : ""
+                                    }`}
+                                >
                                     <div className="flex items-center gap-2 text-[#e0dcd7]">
                                         <span className="text-sm">Wyszukiwanie...</span>
                                     </div>
@@ -869,7 +880,11 @@ export default function MapComponent({
 
                             {/* No results message */}
                             {!isSearching && showResults && searchResults.length === 0 && searchQuery.length >= 2 && (
-                                <div className="w-full rounded-b-xl bg-[#362c20]/90 px-5 py-5 shadow-lg backdrop-blur-sm">
+                                <div
+                                    className={`w-full rounded-b-xl bg-[#362c20]/90 px-5 py-5 shadow-lg backdrop-blur-sm ${
+                                        searchFocused ? "ring-t-0 ring-2 ring-[#d97706]" : ""
+                                    }`}
+                                >
                                     <div className="flex items-center gap-2 text-[#e0dcd7]/70">
                                         <span className="material-symbols-outlined text-xl">search_off</span>
                                         <span className="text-sm">Nie znaleziono wyników</span>
@@ -884,86 +899,97 @@ export default function MapComponent({
                         <div ref={mapContainerRef} className="z-[1] h-full w-full" />
                     </div>
 
-                    {/* AI Assistant Buttons - Left Bottom Corner */}
-                    <div className="ai-assistant-container absolute bottom-6 left-6 z-20 flex flex-col items-start gap-2">
-                        {/* Area Selection Mode Active Banner */}
-                        {aiSelectMode && (
-                            <div className="animate-in fade-in mb-2 flex items-center gap-2 rounded-xl bg-[#362c20]/95 px-4 py-3 text-white shadow-lg backdrop-blur-sm">
-                                <span className="text-xl">🎯</span>
-                                <div className="flex-1">
-                                    <p className="text-sm font-semibold">Tryb wyboru obszaru</p>
-                                    <p className="text-xs text-white/70">Kliknij na mapę, aby wybrać punkt do analizy</p>
-                                </div>
-                                <button
-                                    onClick={() => { handleCancelSelectMode(); setAiMenuOpen(false); }}
-                                    className="rounded-lg bg-white/10 p-1.5 transition-colors hover:bg-white/20"
-                                    title="Anuluj"
-                                >
-                                    <span className="material-symbols-outlined text-lg">close</span>
-                                </button>
-                            </div>
-                        )}
+                    {/* AI Assistant Buttons - Top Right Corner */}
+                    {isAuthenticated && (
+                        <div className="ai-assistant-container absolute top-6 right-6 z-20 flex flex-col items-end gap-2">
+                            {/* Main AI Assistant Button */}
+                            <button
+                                onClick={() => setAiMenuOpen(!aiMenuOpen)}
+                                disabled={aiLoading || aiSelectMode}
+                                className={`flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg ${
+                                    aiLoading
+                                        ? "cursor-wait bg-[#8b5cf6]/70"
+                                        : aiSelectMode
+                                          ? "cursor-not-allowed bg-gray-400"
+                                          : aiMenuOpen
+                                            ? "bg-[#7c3aed] ring-2 ring-white"
+                                            : "bg-gradient-to-r from-[#8b5cf6] to-[#7c3aed] hover:from-[#7c3aed] hover:to-[#6d28d9]"
+                                } font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-xl`}
+                                title="Sprawdź bezpieczeństwo okolicy z AI"
+                            >
+                                {aiLoading ? (
+                                    <>
+                                        <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                                        <span>Analizuję...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="text-xl">✨</span>
+                                        <span>AI Asystent</span>
+                                        <span className="material-symbols-outlined text-lg">
+                                            {aiMenuOpen ? "expand_less" : "expand_more"}
+                                        </span>
+                                    </>
+                                )}
+                            </button>
 
-                        {/* AI Menu Options - shown when menu is open */}
-                        {aiMenuOpen && !aiSelectMode && !aiLoading && (
-                            <div className="animate-in fade-in slide-in-from-bottom-2 mb-2 flex flex-col gap-2 duration-200">
-                                {/* Option 1: My Location */}
-                                <button
-                                    onClick={() => { handleAIAnalysisMyLocation(); setAiMenuOpen(false); }}
-                                    className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#3b82f6] to-[#2563eb] px-4 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:from-[#2563eb] hover:to-[#1d4ed8] hover:shadow-xl"
-                                    title="Analizuj bezpieczeństwo w mojej lokalizacji"
-                                >
-                                    <span className="material-symbols-outlined">my_location</span>
-                                    <span>Moja lokalizacja</span>
-                                </button>
-
-                                {/* Option 2: Select on map */}
-                                <button
-                                    onClick={() => { handleAISelectArea(); setAiMenuOpen(false); }}
-                                    className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#d97706] to-[#ea580c] px-4 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:from-[#ea580c] hover:to-[#dc2626] hover:shadow-xl"
-                                    title="Wybierz obszar na mapie do analizy"
-                                >
+                            {/* Area Selection Mode Active Banner */}
+                            {aiSelectMode && (
+                                <div className="animate-in fade-in mt-2 flex items-center gap-2 rounded-xl bg-[#362c20]/95 px-4 py-3 text-white shadow-lg backdrop-blur-sm">
                                     <span className="text-xl">🎯</span>
-                                    <span>Wybierz na mapie</span>
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Main AI Assistant Button */}
-                        <button
-                            onClick={() => setAiMenuOpen(!aiMenuOpen)}
-                            disabled={aiLoading || aiSelectMode}
-                            className={`flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg ${
-                                aiLoading
-                                    ? "cursor-wait bg-[#8b5cf6]/70"
-                                    : aiSelectMode
-                                      ? "cursor-not-allowed bg-gray-400"
-                                      : aiMenuOpen
-                                        ? "bg-[#7c3aed] ring-2 ring-white"
-                                        : "bg-gradient-to-r from-[#8b5cf6] to-[#7c3aed] hover:from-[#7c3aed] hover:to-[#6d28d9]"
-                            } font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-xl`}
-                            title="Sprawdź bezpieczeństwo okolicy z AI"
-                        >
-                            {aiLoading ? (
-                                <>
-                                    <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                                    <span>Analizuję...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="text-xl">✨</span>
-                                    <span>AI Asystent</span>
-                                    <span className="material-symbols-outlined text-lg">
-                                        {aiMenuOpen ? "expand_more" : "expand_less"}
-                                    </span>
-                                </>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-semibold">Tryb wyboru obszaru</p>
+                                        <p className="text-xs text-white/70">Kliknij na mapę, aby wybrać punkt do analizy</p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            handleCancelSelectMode()
+                                            setAiMenuOpen(false)
+                                        }}
+                                        className="rounded-lg bg-white/10 p-1.5 transition-colors hover:bg-white/20"
+                                        title="Anuluj"
+                                    >
+                                        <span className="material-symbols-outlined text-lg">close</span>
+                                    </button>
+                                </div>
                             )}
-                        </button>
-                    </div>
+
+                            {/* AI Menu Options - shown when menu is open */}
+                            {aiMenuOpen && !aiSelectMode && !aiLoading && (
+                                <div className="animate-in fade-in slide-in-from-top-2 mt-2 flex flex-col gap-2 duration-200">
+                                    {/* Option 1: My Location */}
+                                    <button
+                                        onClick={() => {
+                                            handleAIAnalysisMyLocation()
+                                            setAiMenuOpen(false)
+                                        }}
+                                        className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#3b82f6] to-[#2563eb] px-4 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:from-[#2563eb] hover:to-[#1d4ed8] hover:shadow-xl"
+                                        title="Analizuj bezpieczeństwo w mojej lokalizacji"
+                                    >
+                                        <span className="material-symbols-outlined">my_location</span>
+                                        <span>Moja lokalizacja</span>
+                                    </button>
+
+                                    {/* Option 2: Select on map */}
+                                    <button
+                                        onClick={() => {
+                                            handleAISelectArea()
+                                            setAiMenuOpen(false)
+                                        }}
+                                        className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#d97706] to-[#ea580c] px-4 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:from-[#ea580c] hover:to-[#dc2626] hover:shadow-xl"
+                                        title="Wybierz obszar na mapie do analizy"
+                                    >
+                                        <span className="text-xl">🎯</span>
+                                        <span>Wybierz na mapie</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* AI Response Bubble */}
                     {aiResponse?.visible && (
-                        <div className="animate-in fade-in slide-in-from-top-4 absolute right-6 top-24 z-30 max-w-sm duration-300">
+                        <div className="animate-in fade-in slide-in-from-top-4 absolute top-24 right-6 z-30 max-w-sm duration-300">
                             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
                                 {/* Header with danger level */}
                                 <div
@@ -1015,7 +1041,7 @@ export default function MapComponent({
                             </div>
 
                             {/* Speech bubble arrow pointing up */}
-                            <div className="absolute -top-2 right-8 h-4 w-4 rotate-45 transform border-l border-t border-gray-200 bg-white"></div>
+                            <div className="absolute -top-2 right-8 h-4 w-4 rotate-45 transform border-t border-l border-gray-200 bg-white"></div>
                         </div>
                     )}
 

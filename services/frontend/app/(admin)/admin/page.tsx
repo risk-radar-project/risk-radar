@@ -179,21 +179,22 @@ export default function AdminDashboard() {
                 </div>
                 <div className="divide-y divide-zinc-800">
                     {recentReports.map((report) => {
+                        const truncatedTitle = report.title.length > 140 ? `${report.title.slice(0, 137)}...` : report.title
                         const statusStyle = STATUS_STYLES[report.status] || STATUS_STYLES.PENDING
                         const StatusIcon = statusStyle.icon
                         return (
                             <div key={report.id} className="p-4 transition-colors hover:bg-zinc-800/50">
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="truncate font-medium text-zinc-100">{report.title}</h3>
+                                        <h3 className="truncate font-medium text-zinc-100" title={report.title}>
+                                            {truncatedTitle}
+                                        </h3>
+                                        <div className="mt-1 flex items-center gap-3">
                                             {report.aiIsFake && (
                                                 <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-medium text-red-400">
                                                     AI: Podejrzane
                                                 </span>
                                             )}
-                                        </div>
-                                        <div className="mt-1 flex items-center gap-3">
                                             <span className="text-xs text-zinc-500">
                                                 {CATEGORY_NAMES[report.category] || report.category}
                                             </span>

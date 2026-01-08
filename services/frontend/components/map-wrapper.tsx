@@ -21,33 +21,29 @@ interface MapWrapperProps {
 function MapContent({ initialReports }: MapWrapperProps) {
     const pathname = usePathname()
     const searchParams = useSearchParams()
-    
+
     const latParam = searchParams.get("lat")
     const lngParam = searchParams.get("lng")
-    
+
     const initialLat = latParam ? parseFloat(latParam) : undefined
     const initialLng = lngParam ? parseFloat(lngParam) : undefined
 
-    const mapKey = useMemo(
-        () => `map-${pathname}-${latParam}-${lngParam}`, 
-        [pathname, latParam, lngParam]
-    )
+    const mapKey = useMemo(() => `map-${pathname}-${latParam}-${lngParam}`, [pathname, latParam, lngParam])
 
     return (
         <div className="h-screen w-full">
-            <MapComponent 
-                key={mapKey} 
-                initialReports={initialReports} 
-                initialLat={initialLat}
-                initialLng={initialLng}
-            />
+            <MapComponent key={mapKey} initialReports={initialReports} initialLat={initialLat} initialLng={initialLng} />
         </div>
     )
 }
 
 export default function MapWrapper(props: MapWrapperProps) {
     return (
-        <Suspense fallback={<div className="flex h-screen items-center justify-center bg-[#2a221a] text-[#e0dcd7]">Ładowanie...</div>}>
+        <Suspense
+            fallback={
+                <div className="flex h-screen items-center justify-center bg-[#2a221a] text-[#e0dcd7]">Ładowanie...</div>
+            }
+        >
             <MapContent {...props} />
         </Suspense>
     )
