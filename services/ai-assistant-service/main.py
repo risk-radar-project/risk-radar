@@ -75,7 +75,7 @@ async def fetch_nearby_reports(latitude: float, longitude: float, radius_km: flo
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
-                f"{REPORT_SERVICE_URL}/reports/nearby",
+                f"{REPORT_SERVICE_URL}/nearby",
                 params={
                     "latitude": latitude,
                     "longitude": longitude,

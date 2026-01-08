@@ -720,8 +720,23 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         }
     }, [aiSelectMode, performAIAnalysis])
 
+    // Clear selected area marker and circle
+    const clearSelectedAreaMarker = () => {
+        if (mapRef.current) {
+            if (selectedAreaMarkerRef.current) {
+                mapRef.current.removeLayer(selectedAreaMarkerRef.current)
+                selectedAreaMarkerRef.current = null
+            }
+            if (selectedAreaCircleRef.current) {
+                mapRef.current.removeLayer(selectedAreaCircleRef.current)
+                selectedAreaCircleRef.current = null
+            }
+        }
+    }
+
     // Cancel area selection mode
     const handleCancelSelectMode = () => {
+        clearSelectedAreaMarker()
         setAiSelectMode(false)
     }
 
@@ -766,6 +781,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         setAiResponse(null)
         setAiSelectMode(false)
         setAiMenuOpen(false)
+        clearSelectedAreaMarker()
 
         // Remove circles from map (keep markers visible)
         if (mapRef.current) {
