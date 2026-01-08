@@ -31,22 +31,22 @@ export function useHydrateSession() {
                     email: (payload.email as string) || "",
                     roles: payload.roles || []
                 }
-                // Also attach permissions if possible (need to update SessionUser type later if strictly required, 
+                // Also attach permissions if possible (need to update SessionUser type later if strictly required,
                 // but ClientAdminGuard uses roles and permissions from `user` object which is typed as `SessionUser`...
-                // Wait, SessionUser in store might not have permissions field defined in type. 
-                // Let's cast or ensure compatibility. 
+                // Wait, SessionUser in store might not have permissions field defined in type.
+                // Let's cast or ensure compatibility.
                 // ClientAdminGuard uses `user.permissions` which was causing TS error before.
-                
+
                 // Let's create a richer object, cast as SessionUser for now to satisfy store
                 // We really should update SessionUser type, but for now let's just make it work
                 setUser({
                     ...user,
                     permissions: payload.permissions || []
-                } as SessionUser & { permissions: string[] }) 
+                } as SessionUser & { permissions: string[] })
                 return
             }
         }
-        
+
         // 3. Nothing found
         clear()
     }, [clear, setUser])

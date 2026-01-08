@@ -1,7 +1,4 @@
 "use client"
-
-import Link from "next/link"
-
 export function AppFooter() {
     return (
         <footer className="h-10 border-t border-[#e0dcd7]/10 bg-[#362c20]/90 text-sm text-[#e0dcd7]/70 backdrop-blur-sm">

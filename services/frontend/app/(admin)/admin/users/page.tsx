@@ -61,7 +61,28 @@ export default function AdminUsersPage() {
                     lastActive: null
                 }))
                 setUsers(mappedUsers)
-                setTotalPages(data.totalPages)
+
+                // Safe number helper
+                const toNumber = (value: unknown, fallback: number): number => {
+                    const num = Number(value)
+                    return !isNaN(num) && isFinite(num) ? num : fallback
+                }
+
+                const pageInfo = (data.page as Record<string, unknown> | undefined) ?? data
+                const apiTotalPages = toNumber(pageInfo?.totalPages ?? data.totalPages, 0)
+                const apiTotalElements = toNumber(pageInfo?.totalElements ?? data.totalElements, 0)
+                const apiPageSize = toNumber(pageInfo?.size ?? data.size, pageSize)
+
+                const effectiveSize = apiPageSize > 0 ? apiPageSize : pageSize
+                const computedPages = Math.max(1, Math.ceil((apiTotalElements || 0) / effectiveSize))
+                const pages = apiTotalPages > 0 ? apiTotalPages : computedPages
+
+                setTotalPages(pages)
+
+                // Clamp current page if out of bounds
+                if (currentPage >= pages) {
+                    setCurrentPage(Math.max(0, pages - 1))
+                }
             }
         } catch (error) {
             console.error("Failed to fetch users", error)
@@ -330,6 +351,77 @@ export default function AdminUsersPage() {
                     >
                         <ChevronLeft className="h-4 w-4 text-zinc-400" />
                     </button>
+
+                    {/* Page numbers */}
+                    <div className="flex items-center gap-1">
+                        {(() => {
+                            const pages = []
+                            const maxVisible = 5
+                            let start = Math.max(0, currentPage - Math.floor(maxVisible / 2))
+                            const end = Math.min(totalPages, start + maxVisible)
+
+                            if (end - start < maxVisible) {
+                                start = Math.max(0, end - maxVisible)
+                            }
+
+                            if (start > 0) {
+                                pages.push(
+                                    <button
+                                        key={0}
+                                        onClick={() => setCurrentPage(0)}
+                                        className="min-w-[32px] rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm hover:bg-zinc-800"
+                                    >
+                                        1
+                                    </button>
+                                )
+                                if (start > 1) {
+                                    pages.push(
+                                        <span key="start-ellipsis" className="px-1 text-zinc-500">
+                                            ...
+                                        </span>
+                                    )
+                                }
+                            }
+
+                            for (let i = start; i < end; i++) {
+                                pages.push(
+                                    <button
+                                        key={i}
+                                        onClick={() => setCurrentPage(i)}
+                                        className={`min-w-[32px] rounded-lg border px-2 py-1 text-sm ${
+                                            i === currentPage
+                                                ? "border-blue-500 bg-blue-500/20 text-blue-400"
+                                                : "border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
+                                        }`}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                )
+                            }
+
+                            if (end < totalPages) {
+                                if (end < totalPages - 1) {
+                                    pages.push(
+                                        <span key="end-ellipsis" className="px-1 text-zinc-500">
+                                            ...
+                                        </span>
+                                    )
+                                }
+                                pages.push(
+                                    <button
+                                        key={totalPages - 1}
+                                        onClick={() => setCurrentPage(totalPages - 1)}
+                                        className="min-w-[32px] rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm hover:bg-zinc-800"
+                                    >
+                                        {totalPages}
+                                    </button>
+                                )
+                            }
+
+                            return pages
+                        })()}
+                    </div>
+
                     <button
                         onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
                         disabled={currentPage >= totalPages - 1}

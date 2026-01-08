@@ -24,12 +24,20 @@ interface Report {
     imageIds?: string[]
 }
 
+interface PaginatedResponsePageMeta {
+    size: number
+    number: number
+    totalElements: number
+    totalPages: number
+}
+
 interface PaginatedResponse {
     content: Report[]
-    totalPages: number
-    totalElements: number
-    number: number
-    size: number
+    totalPages?: number
+    totalElements?: number
+    number?: number
+    size?: number
+    page?: PaginatedResponsePageMeta
 }
 
 // Using Next.js API route handlers to proxy requests to report-service
@@ -66,7 +74,8 @@ export default function AdminReportsPage() {
     const [search, setSearch] = useState("")
     const [statusFilter, setStatusFilter] = useState<string>("all")
     const [categoryFilter, setCategoryFilter] = useState<string>("all")
-    const [currentPage, setCurrentPage] = useState(1)
+    // 0-based paging, to align with backend and my-reports
+    const [currentPage, setCurrentPage] = useState(0)
     const [totalPages, setTotalPages] = useState(1)
     const [totalElements, setTotalElements] = useState(0)
     const [editingReport, setEditingReport] = useState<Report | null>(null)
@@ -78,7 +87,7 @@ export default function AdminReportsPage() {
         setError(null)
         try {
             const params = new URLSearchParams({
-                page: String(currentPage - 1),
+                page: String(currentPage),
                 size: String(pageSize),
                 sort: "createdAt",
                 direction: "desc"
@@ -100,9 +109,35 @@ export default function AdminReportsPage() {
                 throw new Error(`HTTP error! status: ${response.status}`)
             }
             const data: PaginatedResponse = await response.json()
+
+            console.log("[Admin Reports] API Response:", JSON.stringify(data, null, 2))
+
             setReports(data.content)
-            setTotalPages(data.totalPages || 1)
-            setTotalElements(data.totalElements)
+
+            // Safe number helper (mirrors my-reports)
+            const toNumber = (value: unknown, fallback: number): number => {
+                const num = Number(value)
+                return !isNaN(num) && isFinite(num) ? num : fallback
+            }
+
+            const pageInfo = (data.page as Record<string, unknown> | undefined) ?? data
+
+            const elements = toNumber(pageInfo?.totalElements ?? data.totalElements ?? data.content.length, 0)
+            const apiTotalPages = toNumber(pageInfo?.totalPages ?? data.totalPages, 0)
+            const apiPageSize = toNumber(pageInfo?.size ?? data.size, pageSize)
+
+            const effectiveSize = apiPageSize > 0 ? apiPageSize : pageSize
+            const computedPages = Math.max(1, Math.ceil((elements || 0) / effectiveSize))
+            const pages = apiTotalPages > 0 ? apiTotalPages : computedPages
+
+            console.log("[Admin Reports] Computed:", { elements, apiTotalPages, computedPages, pages, effectiveSize })
+
+            setTotalPages(pages)
+            setTotalElements(elements)
+            // Don't override currentPage from state unless we need to clamp it
+            if (currentPage >= pages) {
+                setCurrentPage(Math.max(0, pages - 1))
+            }
         } catch (err) {
             console.error("Failed to fetch reports:", err)
             setError("Nie udało się pobrać zgłoszeń. Sprawdź czy serwis jest uruchomiony.")
@@ -385,19 +420,90 @@ export default function AdminReportsPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between">
                 <p className="text-sm text-zinc-500">
-                    Strona {currentPage} z {totalPages || 1}
+                    Strona {currentPage + 1} z {totalPages || 1}
                 </p>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                        disabled={currentPage === 0}
                         className="rounded-lg border border-zinc-800 bg-zinc-900 p-2 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <ChevronLeft className="h-4 w-4 text-zinc-400" />
                     </button>
+
+                    {/* Page numbers */}
+                    <div className="flex items-center gap-1">
+                        {(() => {
+                            const pages = []
+                            const maxVisible = 5
+                            let start = Math.max(0, currentPage - Math.floor(maxVisible / 2))
+                            const end = Math.min(totalPages, start + maxVisible)
+
+                            if (end - start < maxVisible) {
+                                start = Math.max(0, end - maxVisible)
+                            }
+
+                            if (start > 0) {
+                                pages.push(
+                                    <button
+                                        key={0}
+                                        onClick={() => setCurrentPage(0)}
+                                        className="min-w-[32px] rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm hover:bg-zinc-800"
+                                    >
+                                        1
+                                    </button>
+                                )
+                                if (start > 1) {
+                                    pages.push(
+                                        <span key="start-ellipsis" className="px-1 text-zinc-500">
+                                            ...
+                                        </span>
+                                    )
+                                }
+                            }
+
+                            for (let i = start; i < end; i++) {
+                                pages.push(
+                                    <button
+                                        key={i}
+                                        onClick={() => setCurrentPage(i)}
+                                        className={`min-w-[32px] rounded-lg border px-2 py-1 text-sm ${
+                                            i === currentPage
+                                                ? "border-blue-500 bg-blue-500/20 text-blue-400"
+                                                : "border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
+                                        }`}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                )
+                            }
+
+                            if (end < totalPages) {
+                                if (end < totalPages - 1) {
+                                    pages.push(
+                                        <span key="end-ellipsis" className="px-1 text-zinc-500">
+                                            ...
+                                        </span>
+                                    )
+                                }
+                                pages.push(
+                                    <button
+                                        key={totalPages - 1}
+                                        onClick={() => setCurrentPage(totalPages - 1)}
+                                        className="min-w-[32px] rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm hover:bg-zinc-800"
+                                    >
+                                        {totalPages}
+                                    </button>
+                                )
+                            }
+
+                            return pages
+                        })()}
+                    </div>
+
                     <button
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages || totalPages === 0}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                        disabled={currentPage >= totalPages - 1 || totalPages === 0}
                         className="rounded-lg border border-zinc-800 bg-zinc-900 p-2 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <ChevronRight className="h-4 w-4 text-zinc-400" />

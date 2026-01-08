@@ -77,7 +77,10 @@ function ResetPasswordContent() {
         const hasMinLength = password.length >= 8
 
         if (!hasMinLength || !hasUpperCase || !hasLowerCase || !hasNumbers || !hasSpecialChar) {
-            setMessage({ type: "error", text: "Hasło musi mieć min. 8 znaków, dużą i małą literę, cyfrę oraz znak specjalny" })
+            setMessage({
+                type: "error",
+                text: "Hasło musi mieć min. 8 znaków, dużą i małą literę, cyfrę oraz znak specjalny"
+            })
             return
         }
 
@@ -134,12 +137,10 @@ function ResetPasswordContent() {
             )}
 
             {isValidating ? (
-                <div className="text-center text-[#baab9c] py-8">Sprawdzanie ważności linku...</div>
+                <div className="py-8 text-center text-[#baab9c]">Sprawdzanie ważności linku...</div>
             ) : tokenInvalid ? (
                 <div className="flex flex-col gap-4">
-                    <p className="text-center text-[#baab9c]">
-                        Link wygasł lub jest nieprawidłowy.
-                    </p>
+                    <p className="text-center text-[#baab9c]">Link wygasł lub jest nieprawidłowy.</p>
                 </div>
             ) : mode === "request" ? (
                 <form onSubmit={handleRequestSubmit} className="flex flex-col gap-4">

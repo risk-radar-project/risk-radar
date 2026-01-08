@@ -52,12 +52,12 @@ export async function requestPasswordReset(email: string): Promise<ApiResponse<{
             const body = await response.json()
             // We ignore backend error messages here for security/UX reasons (prefer generic Polish messages)
             // or map them if strictly necessary. For now, generic Polish error.
-             const err = body.error ?? body.message
-             if (err && String(err).includes("not found")) {
-                 errorMessage = "Nie znaleziono użytkownika o podanym adresie email"
-             } else if (err) {
-                 // Keep generic or basic mapping
-             }
+            const err = body.error ?? body.message
+            if (err && String(err).includes("not found")) {
+                errorMessage = "Nie znaleziono użytkownika o podanym adresie email"
+            } else if (err) {
+                // Keep generic or basic mapping
+            }
         } catch {
             // ignore JSON parse failures
         }
@@ -113,11 +113,11 @@ export async function confirmPasswordReset(token: string, newPassword: string): 
         try {
             const body = await response.json()
             const err = body.error ?? body.message
-             if (err && String(err).includes("Invalid or expired")) {
-                 errorMessage = "Link jest nieprawidłowy lub wygasł"
-             } else if (err && String(err).includes("New password cannot be the same")) {
-                 errorMessage = "Nowe hasło nie może być takie samo jak poprzednie"
-             }
+            if (err && String(err).includes("Invalid or expired")) {
+                errorMessage = "Link jest nieprawidłowy lub wygasł"
+            } else if (err && String(err).includes("New password cannot be the same")) {
+                errorMessage = "Nowe hasło nie może być takie samo jak poprzednie"
+            }
         } catch {
             // ignore
         }
