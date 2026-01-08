@@ -26,6 +26,8 @@ const ROLE_STYLES: Record<string, string> = {
     admin: "bg-purple-500/20 text-purple-400"
 }
 
+const PAGE_SIZE_OPTIONS = [10, 15, 20, 25, 50, 100, 250, 500, 1000]
+
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(true)
@@ -35,7 +37,7 @@ export default function AdminUsersPage() {
     const [currentPage, setCurrentPage] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
     const [viewingUser, setViewingUser] = useState<User | null>(null)
-    const pageSize = 10
+    const [pageSize, setPageSize] = useState(10)
 
     const fetchUsers = async () => {
         setLoading(true)
@@ -94,7 +96,7 @@ export default function AdminUsersPage() {
     useEffect(() => {
         fetchUsers()
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentPage])
+    }, [currentPage, pageSize])
 
     function getRoleFromList(roles: string[]) {
         if (!roles) return "user"
@@ -224,6 +226,20 @@ export default function AdminUsersPage() {
                         <option value="all">Wszystkie statusy</option>
                         <option value="active">Aktywni</option>
                         <option value="banned">Zablokowani</option>
+                    </select>
+                    <select
+                        value={pageSize}
+                        onChange={(e) => {
+                            setPageSize(Number(e.target.value))
+                            setCurrentPage(0)
+                        }}
+                        className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-zinc-100 focus:border-zinc-700 focus:outline-none"
+                    >
+                        {PAGE_SIZE_OPTIONS.map((size) => (
+                            <option key={size} value={size}>
+                                {size} na stronę
+                            </option>
+                        ))}
                     </select>
                 </div>
             </div>

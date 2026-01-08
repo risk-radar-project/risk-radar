@@ -87,6 +87,8 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
     const [aiMenuOpen, setAiMenuOpen] = useState(false)
     const selectedAreaMarkerRef = useRef<L.Marker | null>(null)
     const selectedAreaCircleRef = useRef<L.Circle | null>(null)
+    const [isRefreshingReports, setIsRefreshingReports] = useState(false)
+    const fetchReportsRef = useRef<(() => Promise<void> | void) | null>(null)
 
     // Create user location icon (blue pulsing dot)
     const createUserLocationIcon = () => {
@@ -239,43 +241,77 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         }
         const defaultIcon = categoryIcons["OTHER"]
 
-        // Create popup content
-        const createPopupContent = (report: Report): string => {
+        // Create popup content with XSS protection
+        const createPopupContent = (report: Report): HTMLElement => {
+            const container = document.createElement("div")
+            container.className = "report-popup-content"
+
+            // Sanitize category name
             const categoryKey = report.category
             const polishCategoryName = CATEGORY_DISPLAY_NAMES[categoryKey] || "Nieznana kategoria"
+            const categoryTitle = document.createElement("b")
+            categoryTitle.textContent = `Kategoria: ${polishCategoryName}`
+            container.appendChild(categoryTitle)
+            container.appendChild(document.createElement("br"))
 
-            let content = `
-                <b>Kategoria: ${polishCategoryName}</b><br>
-                <b>${report.title}</b><br>
-                ${report.description || "Brak opisu."}
-            `
+            // Sanitize report title
+            const titleElement = document.createElement("b")
+            titleElement.textContent = report.title
+            container.appendChild(titleElement)
+            container.appendChild(document.createElement("br"))
 
+            // Sanitize description
+            const description = document.createElement("p")
+            description.textContent = report.description || "Brak opisu."
+            description.style.margin = "8px 0"
+            container.appendChild(description)
+
+            // Add images safely
             const imageIds = report.imageIds || []
-
             if (imageIds.length > 0) {
-                let imageHtml = `<div class="report-image-container">`
+                const imageContainer = document.createElement("div")
+                imageContainer.className = "report-image-container"
+                imageContainer.style.marginTop = "8px"
 
                 imageIds.forEach((imageId) => {
                     const thumbImageUrl = `${MEDIA_SERVICE_BASE_URL}${imageId}?variant=thumb`
                     const fullImageUrl = `${MEDIA_SERVICE_BASE_URL}${imageId}?variant=preview`
 
-                    imageHtml += `
-                        <img
-                            src="${thumbImageUrl}"
-                            class="report-image"
-                            alt="Evidence image for ${report.title}"
-                            title="Kliknij, aby zobaczyć pełne zdjęcie (ID: ${imageId})"
-                            onclick="window.openLightbox('${fullImageUrl}')"
-                            onerror="this.outerHTML='<span class=\\'image-placeholder\\'>Błąd Ładowania Obrazu</span>'"
-                        />
-                    `
+                    const img = document.createElement("img")
+                    img.src = thumbImageUrl
+                    img.className = "report-image"
+                    img.alt = `Evidence image for ${report.title}`
+                    img.title = `Kliknij, aby zobaczyć pełne zdjęcie (ID: ${imageId})`
+                    img.style.cursor = "pointer"
+                    img.style.maxWidth = "100%"
+                    img.style.marginRight = "4px"
+                    img.style.marginBottom = "4px"
+                    img.style.borderRadius = "4px"
+
+                    // Safe event handler using addEventListener
+                    img.addEventListener("click", () => {
+                        if (typeof window !== "undefined") {
+                            setLightboxImage(fullImageUrl)
+                        }
+                    })
+
+                    // Safe error handling
+                    img.addEventListener("error", () => {
+                        const errorSpan = document.createElement("span")
+                        errorSpan.textContent = "Błąd Ładowania Obrazu"
+                        errorSpan.className = "image-placeholder"
+                        if (img.parentNode) {
+                            img.parentNode.replaceChild(errorSpan, img)
+                        }
+                    })
+
+                    imageContainer.appendChild(img)
                 })
 
-                imageHtml += `</div>`
-                content += imageHtml
+                container.appendChild(imageContainer)
             }
 
-            return content
+            return container
         }
 
         // Add marker to map
@@ -295,29 +331,29 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
 
             const popupContent = createPopupContent(report)
 
-            const marker = L.marker([report.latitude, report.longitude], { icon: selectedIcon }).bindPopup(popupContent, {
-                maxWidth: 400
-            })
+            const marker = L.marker([report.latitude, report.longitude], { icon: selectedIcon }).bindPopup(
+                L.popup({ maxWidth: 400 }).setContent(popupContent)
+            )
 
             // Add to cluster group
             markersRef.current?.addLayer(marker)
         }
 
-        // Fetch reports
-        const fetchReports = async () => {
-            // If initial reports are provided (even if empty array), use them
-            // Empty array means the server tried to fetch but there were no reports or backend was down
-            if (initialReports !== undefined) {
-                if (initialReports.length > 0) {
-                    initialReports.forEach((report) => addMarkerToMap(report))
-                }
-                // Map will load without markers if array is empty - this is OK
-                return
+        // Fetch reports (force = true bypasses static initial data)
+        const fetchReports = async (force = false) => {
+            if (force) {
+                setIsRefreshingReports(true)
             }
 
-            // Fallback fetch ONLY if initialReports was not provided at all
             try {
-                // Fetch from our local API route (proxy)
+                // When initialReports provided, we use them on first load unless force-refresh is requested
+                if (!force && initialReports !== undefined) {
+                    if (initialReports.length > 0) {
+                        initialReports.forEach((report) => addMarkerToMap(report))
+                    }
+                    return
+                }
+
                 const response = await fetch("/api/reports")
 
                 if (!response.ok) {
@@ -328,16 +364,33 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                 const data = await response.json()
 
                 if (Array.isArray(data)) {
+                    if (force) {
+                        // On forced refresh, clear existing markers so removals are reflected
+                        markersRef.current?.clearLayers()
+                        displayedReportIdsRef.current.clear()
+                    }
+
                     data.forEach((report: Report) => {
                         addMarkerToMap(report)
                     })
                 }
             } catch (error) {
                 console.error("Błąd połączenia:", error)
+            } finally {
+                if (force) {
+                    setIsRefreshingReports(false)
+                }
             }
         }
 
+        // initial load
         fetchReports()
+        fetchReportsRef.current = () => fetchReports(true)
+
+        // auto-refresh every 60s
+        const intervalId = window.setInterval(() => {
+            fetchReports(true)
+        }, 60000)
 
         // Handle image clicks in popups
         type WindowWithLightbox = Window & { openLightbox?: (url: string) => void }
@@ -352,6 +405,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
             delete win.openLightbox
             map.remove()
             mapRef.current = null
+            window.clearInterval(intervalId)
         }
     }, [initialReports, initialLat, initialLng, initialZoom])
 
@@ -406,7 +460,17 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                 }
             )
             const data: SearchResult[] = await response.json()
-            setSearchResults(data)
+
+            // Deduplicate results by formatted address (keep first occurrence)
+            const seen = new Set<string>()
+            const uniqueResults = data.filter((result) => {
+                const key = formatAddress(result).toLowerCase()
+                if (seen.has(key)) return false
+                seen.add(key)
+                return true
+            })
+
+            setSearchResults(uniqueResults)
             setShowResults(true)
         } catch (error) {
             console.error("Błąd wyszukiwania:", error)
@@ -445,7 +509,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         const lon = parseFloat(result.lon)
 
         if (mapRef.current) {
-            mapRef.current.flyTo([lat, lon], 13, {
+            mapRef.current.flyTo([lat, lon], 16, {
                 duration: 1.5
             })
         }
@@ -809,6 +873,11 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [aiMenuOpen])
 
+    // Manual refresh handler
+    const handleRefreshReports = () => {
+        fetchReportsRef.current?.()
+    }
+
     return (
         <>
             {/* Styles moved to globals.css */}
@@ -924,13 +993,13 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                                 disabled={aiLoading || aiSelectMode}
                                 className={`flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg ${
                                     aiLoading
-                                        ? "cursor-wait bg-[#8b5cf6]/70"
+                                        ? "cursor-wait bg-[#362c20]/70"
                                         : aiSelectMode
                                           ? "cursor-not-allowed bg-gray-400"
                                           : aiMenuOpen
-                                            ? "bg-[#7c3aed] ring-2 ring-white"
-                                            : "bg-gradient-to-r from-[#8b5cf6] to-[#7c3aed] hover:from-[#7c3aed] hover:to-[#6d28d9]"
-                                } font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-xl`}
+                                            ? "bg-[#362c20] ring-2 ring-[#d97706]"
+                                            : "bg-[#362c20]/90 hover:bg-[#362c20] hover:ring-1 hover:ring-[#d97706]"
+                                } font-semibold text-[#e0dcd7] transition-all duration-300 hover:scale-105 hover:shadow-xl`}
                                 title="Sprawdź bezpieczeństwo okolicy z AI"
                             >
                                 {aiLoading ? (
@@ -1007,6 +1076,8 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                     {aiResponse?.visible && (
                         <div className="animate-in fade-in slide-in-from-top-4 absolute top-24 right-6 z-30 max-w-sm duration-300">
                             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+                                {/* Colored accent bar */}
+                                <div className="h-1 bg-gradient-to-r from-[#06b6d4] to-[#0891b2]"></div>
                                 {/* Header with danger level */}
                                 <div
                                     className={`${getDangerColor(aiResponse.dangerLevel)} flex items-center justify-between px-4 py-3`}
@@ -1064,6 +1135,15 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                     {/* Map Controls */}
                     <div className="absolute right-6 bottom-6 z-20 flex items-end justify-end gap-3">
                         <div className="flex flex-col items-end gap-3">
+                            <button
+                                onClick={handleRefreshReports}
+                                className="flex size-10 items-center justify-center rounded-lg bg-[#362c20] text-[#e0dcd7] shadow-lg transition-all hover:bg-[#362c20]/80 hover:shadow-xl"
+                                title="Odśwież raporty"
+                            >
+                                <span className="material-symbols-outlined text-lg">
+                                    {isRefreshingReports ? "progress_activity" : "refresh"}
+                                </span>
+                            </button>
                             <div className="flex flex-col gap-0.5 shadow-lg">
                                 <button
                                     onClick={handleZoomIn}
