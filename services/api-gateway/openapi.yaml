@@ -770,7 +770,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiSuccess'
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        title: { type: string }
+                        body: { type: string }
+                        isRead: { type: boolean }
+                        createdAt: { type: string, format: date-time }
+                        metadata: { type: object }
+                  pagination:
+                    type: object
+                    properties:
+                      page: { type: integer }
+                      limit: { type: integer }
+                      total: { type: integer }
+                      totalPages: { type: integer }
         '401': { $ref: '#/components/responses/Error' }
         '400': { $ref: '#/components/responses/Error' }
   /api/notifications/notifications/{id}/read:

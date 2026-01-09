@@ -4,6 +4,7 @@ export const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localh
 export const API_BASE_URL = `${GATEWAY_URL}/api/users`
 export const REPORTS_API_URL = `${GATEWAY_URL}/api/reports`
 export const MEDIA_API_URL = `${GATEWAY_URL}/api/media`
+export const NOTIFICATIONS_API_URL = `${GATEWAY_URL}/api/notifications`
 
 export async function getFreshAccessToken(): Promise<string | null> {
     if (typeof window === "undefined") return null

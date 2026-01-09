@@ -38,6 +38,8 @@ func (h Handler) Build(route config.RuntimeRoute) *httputil.ReverseProxy {
 		},
 		Transport: h.Transport,
 		ModifyResponse: func(resp *http.Response) error {
+			// Ensure only gateway CORS headers are present to avoid duplicates
+			stripUpstreamCORSHeaders(resp)
 			if shouldSkipBody(resp) {
 				return nil
 			}
@@ -199,4 +201,20 @@ func flattenData(resp *http.Response) error {
 	resp.Header.Del("Content-Encoding") // Ensure no compression header remains
 	resp.Header.Del("Content-Length")   // Ensure old length is removed
 	return nil
+}
+
+// Remove CORS headers added by upstream services so the gateway can set a single, correct value.
+func stripUpstreamCORSHeaders(resp *http.Response) {
+	if resp == nil {
+		return
+	}
+	h := resp.Header
+	// Access-Control-* headers that may be set upstream
+	h.Del("Access-Control-Allow-Origin")
+	h.Del("Access-Control-Allow-Credentials")
+	h.Del("Access-Control-Allow-Headers")
+	h.Del("Access-Control-Allow-Methods")
+	h.Del("Access-Control-Expose-Headers")
+	// Some servers add Vary: Origin for CORS; keep generic Vary but remove duplicates later in the chain
+	// We don't delete Vary entirely to preserve caching semantics
 }

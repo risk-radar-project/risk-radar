@@ -101,4 +101,24 @@ describe("inboxRepository", () => {
         expect(await inboxRepository.markAsUnread("n1", "user-1")).toBe(true);
         expect(await inboxRepository.markAsUnread("n1", "user-1")).toBe(false);
     });
+
+    it("counts notifications by user", async () => {
+        queryMock.mockResolvedValueOnce({ rows: [{ count: 5 }] });
+        const count = await inboxRepository.countByUser("user-1");
+        expect(count).toBe(5);
+        expect(queryMock).toHaveBeenCalledWith(
+            expect.stringContaining("SELECT COUNT(*)"),
+            ["user-1"]
+        );
+    });
+
+    it("counts notifications with filter", async () => {
+        queryMock.mockResolvedValueOnce({ rows: [{ count: 2 }] });
+        const count = await inboxRepository.countByUser("user-1", false);
+        expect(count).toBe(2);
+        expect(queryMock).toHaveBeenCalledWith(
+            expect.stringContaining("is_read = $"),
+            ["user-1", false]
+        );
+    });
 });

@@ -20,7 +20,7 @@ export async function listNotifications(req: Request, res: Response): Promise<vo
         ? isReadParam === "true"
         : undefined;
 
-    const notifications = await inboxService.list(userId, page, limit, isRead);
+    const result = await inboxService.list(userId, page, limit, isRead);
 
     await auditClient.recordUserAction({
         action: "notifications.inbox.list",
@@ -28,11 +28,20 @@ export async function listNotifications(req: Request, res: Response): Promise<vo
         metadata: {
             page,
             limit,
-            isRead: typeof isRead === "boolean" ? isRead : null
+            isRead: typeof isRead === "boolean" ? isRead : null,
+            total: result.total
         }
     });
 
-    res.json({ data: notifications });
+    res.json({
+        data: result.data,
+        pagination: {
+            page,
+            limit,
+            total: result.total,
+            totalPages: Math.ceil(result.total / limit)
+        }
+    });
 }
 
 export async function markAsRead(req: Request, res: Response): Promise<void> {

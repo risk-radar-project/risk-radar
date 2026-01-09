@@ -5,7 +5,7 @@ const mockListNotifications = jest.fn<(userId: string,
     page: number,
     limit: number,
     isRead?: boolean
-) => Promise<unknown[]>>();
+) => Promise<{ data: unknown[]; total: number }>>();
 const mockMarkAsRead = jest.fn<(id: string, userId: string) => Promise<boolean>>();
 const mockMarkAsUnread = jest.fn<(id: string, userId: string) => Promise<boolean>>();
 
@@ -58,7 +58,7 @@ function createResponse(): Response {
 describe("notifications controller", () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        mockListNotifications.mockResolvedValue([]);
+        mockListNotifications.mockResolvedValue({ data: [], total: 0 });
         mockRecordUserAction.mockResolvedValue(undefined);
     });
 
@@ -78,16 +78,24 @@ describe("notifications controller", () => {
         it("returns notifications and records audit", async () => {
             const req = createRequest({ userId: "user-1", page: "2", limit: "5", isRead: "true" });
             const res = createResponse();
-            mockListNotifications.mockResolvedValue([{ id: "n1" }]);
+            mockListNotifications.mockResolvedValue({ data: [{ id: "n1" }], total: 1 });
 
             await listNotifications(req, res);
 
             expect(mockListNotifications).toHaveBeenCalledWith("user-1", 2, 5, true);
-            expect(res.json).toHaveBeenCalledWith({ data: [{ id: "n1" }] });
+            expect(res.json).toHaveBeenCalledWith({
+                data: [{ id: "n1" }],
+                pagination: {
+                    page: 2,
+                    limit: 5,
+                    total: 1,
+                    totalPages: 1
+                }
+            });
             expect(mockRecordUserAction).toHaveBeenCalledWith({
                 action: "notifications.inbox.list",
                 actorId: "user-1",
-                metadata: { page: 2, limit: 5, isRead: true }
+                metadata: { page: 2, limit: 5, isRead: true, total: 1 }
             });
         });
     });

@@ -47,6 +47,21 @@ class InboxRepository {
         return inserted.id;
     }
 
+    async countByUser(userId: string, isRead?: boolean): Promise<number> {
+        const params: (string | boolean)[] = [userId];
+        let query = "SELECT COUNT(*) as count FROM notifications_inbox WHERE user_id = $1";
+        
+        if (typeof isRead === "boolean") {
+            params.push(isRead);
+            query += ` AND is_read = $${params.length}`;
+        }
+        
+        const result = await database.query<{ count: string | number }>(query, params);
+        if (result.rows.length === 0) return 0;
+        const row = result.rows[0];
+        return Number(row?.count || 0);
+    }
+
     async listByUser(
         userId: string,
         limit: number,
