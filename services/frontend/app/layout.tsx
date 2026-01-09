@@ -58,7 +58,7 @@ export default async function RootLayout({
                 <QueryClientWrapper>
                     <AuthGuard>
                         <PathAwareShell>{children}</PathAwareShell>
-                        <Toaster />
+                        <Toaster theme="dark" richColors closeButton />
                     </AuthGuard>
                 </QueryClientWrapper>
             </body>

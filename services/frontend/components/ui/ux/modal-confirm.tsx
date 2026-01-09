@@ -29,13 +29,18 @@ export function ModalConfirm({
 }: ModalConfirmProps) {
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent>
+            <DialogContent className="border-zinc-800 bg-zinc-900 text-zinc-100 sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
-                    <DialogDescription>{description}</DialogDescription>
+                    <DialogDescription className="text-zinc-400">{description}</DialogDescription>
                 </DialogHeader>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={onClose} disabled={isLoading}>
+                <DialogFooter className="gap-2 sm:gap-0">
+                    <Button
+                        variant="ghost"
+                        onClick={onClose}
+                        disabled={isLoading}
+                        className="text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                    >
                         {cancelText}
                     </Button>
                     <Button variant={variant} onClick={onConfirm} disabled={isLoading}>
