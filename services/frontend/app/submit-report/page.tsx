@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation"
 import { categorizeReport, type CategorizationResponse, type SubmissionResult } from "@/lib/api/ai"
 import { validateReport, validateAndSanitize } from "@/lib/validation/report-validation"
 
+import { getFreshAccessToken } from "@/lib/auth/auth-service"
+
 // Dynamically import map component (client-side only)
 const LocationPickerMap = dynamic(() => import("@/components/location-picker-map"), {
     ssr: false,
@@ -121,9 +123,28 @@ export default function SubmitReportPage() {
         description: "",
         latitude: null as number | null,
         longitude: null as number | null,
-        category: "OTHER" as ReportCategory,
-        images: [] as File[]
+        category: "OTHER" as ReportCategory
     })
+
+    // Image Upload State
+    interface UploadedImage {
+        id: string
+        previewUrl: string
+        file: File
+        status: "uploading" | "completed" | "error"
+    }
+    const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
+    // We'll use a ref to prevent stale state issues during async uploads
+    const uploadedImagesRef = useRef<UploadedImage[]>([])
+
+    // Check if any images are currently uploading
+    const isUploading = uploadedImages.some((img) => img.status === "uploading")
+    const [isDragging, setIsDragging] = useState(false)
+
+    // Update ref when state changes
+    useEffect(() => {
+        uploadedImagesRef.current = uploadedImages
+    }, [uploadedImages])
 
     // Debounced AI Categorization - triggered on title/description change
     const triggerCategorization = useCallback(async (title: string, description: string) => {
@@ -210,10 +231,136 @@ export default function SubmitReportPage() {
         }
     }, [])
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            setFormData((prev) => ({ ...prev, images: Array.from(e.target.files || []) }))
+    const handleFiles = async (files: File[]) => {
+        const currentCount = uploadedImages.length
+        const maxImages = 5
+        const remainingSlots = maxImages - currentCount
+
+        if (remainingSlots <= 0) {
+            setError("Maksymalnie można dodać 5 zdjęć.")
+            return
         }
+
+        const filesToUpload = files.slice(0, remainingSlots)
+
+        if (files.length > remainingSlots) {
+            setError(`Wybrano ${files.length} zdjęć, ale dodano tylko ${remainingSlots} (limit: ${maxImages}).`)
+        }
+
+        // Optimistic update - add placeholders
+        const newPlaceholders: UploadedImage[] = filesToUpload.map((file) => ({
+            id: `temp-${Date.now()}-${Math.random()}`, // Temporary ID
+            previewUrl: URL.createObjectURL(file), // Local preview while uploading
+            file,
+            status: "uploading"
+        }))
+
+        setUploadedImages((prev) => [...prev, ...newPlaceholders])
+
+        // Ensure we have a valid token (refresh if needed)
+        let accessToken = localStorage.getItem("access_token")
+        try {
+            const freshToken = await getFreshAccessToken()
+            if (freshToken) accessToken = freshToken
+        } catch (e) {
+            console.warn("Failed to refresh token before upload", e)
+        }
+
+        // Upload each file
+        for (const placeholder of newPlaceholders) {
+            const formData = new FormData()
+            formData.append("file", placeholder.file)
+
+            try {
+                const response = await fetch("/api/media/upload", {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`
+                        // Note: Content-Type header is NOT set here to allow browser to set boundary
+                    }
+                })
+
+                if (!response.ok) {
+                    let errorMsg = `Upload failed: ${response.status} ${response.statusText}`
+                    try {
+                        const errData = await response.json()
+                        if (errData.error) errorMsg += ` - ${errData.error}`
+                    } catch {
+                        // ignore json parse error
+                    }
+                    throw new Error(errorMsg)
+                }
+
+                const data = await response.json()
+
+                // Update specific image status
+                setUploadedImages((prev) =>
+                    prev.map((img) =>
+                        img.id === placeholder.id
+                            ? {
+                                  ...img,
+                                  id: data.id,
+                                  status: "completed",
+                                  previewUrl: `/api/image/${data.id}?variant=thumb`
+                              }
+                            : img
+                    )
+                )
+            } catch (err) {
+                console.error("Image upload error", err)
+                // Mark as error
+                setUploadedImages((prev) =>
+                    prev.map((img) => (img.id === placeholder.id ? { ...img, status: "error" } : img))
+                )
+                setError("Nie udało się przesłać niektórych zdjęć.")
+            }
+        }
+    }
+
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return
+
+        const files = Array.from(e.target.files)
+        await handleFiles(files)
+
+        // Reset file input
+        e.target.value = ""
+    }
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (uploadedImages.length < 5 && !isUploading) {
+            setIsDragging(true)
+        }
+    }
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDragging(false)
+    }
+
+    const handleDrop = async (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDragging(false)
+
+        if (uploadedImages.length >= 5 || isUploading) return
+
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const droppedFiles = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith("image/"))
+            if (droppedFiles.length > 0) {
+                await handleFiles(droppedFiles)
+            } else {
+                setError("Proszę upuścić tylko pliki obrazów (JPG, PNG).")
+            }
+        }
+    }
+
+    const handleRemoveImage = (id: string) => {
+        setUploadedImages((prev) => prev.filter((img) => img.id !== id))
     }
 
     const handleLocationSelect = useCallback((lat: number, lng: number) => {
@@ -234,9 +381,19 @@ export default function SubmitReportPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        // Block submit if uploads are in progress
+        if (isUploading) {
+            setError("Proszę poczekać na zakończenie przesyłania zdjęć.")
+            return
+        }
+
         setIsSubmitting(true)
         setError(null)
         setSubmissionResult(null)
+
+        // Get successfully uploaded image IDs
+        const finalImageIds = uploadedImages.filter((img) => img.status === "completed").map((img) => img.id)
 
         // Comprehensive validation using Zod schema
         const validationResult = validateReport({
@@ -245,7 +402,7 @@ export default function SubmitReportPage() {
             category: formData.category,
             latitude: formData.latitude,
             longitude: formData.longitude,
-            imageIds: [] // Images handled separately
+            imageIds: finalImageIds
         })
 
         if (!validationResult.success) {
@@ -272,31 +429,8 @@ export default function SubmitReportPage() {
         const accessToken = localStorage.getItem("access_token")
 
         try {
-            // First, upload images if any
-            const imageIds: string[] = []
-            if (formData.images.length > 0) {
-                for (const image of formData.images) {
-                    const imageFormData = new FormData()
-                    imageFormData.append("file", image)
-
-                    const imageResponse = await fetch("/api/media/upload", {
-                        method: "POST",
-                        body: imageFormData,
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`
-                        }
-                    })
-
-                    if (!imageResponse.ok) {
-                        throw new Error("Nie udało się przesłać zdjęć")
-                    }
-
-                    const imageData = await imageResponse.json()
-                    if (imageData.id) {
-                        imageIds.push(imageData.id)
-                    }
-                }
-            }
+            // Images are already uploaded
+            const imageIds = finalImageIds
 
             // Get userId from JWT token
             let userId = "ea2698bc-9348-44f5-b64b-0b973da92da7" // Fallback
@@ -704,31 +838,127 @@ export default function SubmitReportPage() {
                     {/* Images */}
                     <div>
                         <label htmlFor="images" className="mb-2 block font-semibold text-[#e0dcd7]">
-                            Zdjęcia (opcjonalne)
+                            Zdjęcia (maksymalnie 5)
                         </label>
-                        <input
-                            type="file"
-                            id="images"
-                            accept="image/*"
-                            multiple
-                            onChange={handleImageChange}
-                            className="w-full rounded-lg border border-[#e0dcd7]/20 bg-[#2a221a] px-4 py-3 text-[#e0dcd7] transition-colors file:mr-4 file:rounded file:border-0 file:bg-[#d97706] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-[#d97706]/80 focus:border-[#d97706] focus:outline-none"
-                        />
-                        {formData.images.length > 0 && (
-                            <p className="mt-2 text-sm text-[#e0dcd7]/70">
-                                Wybrano {formData.images.length} {formData.images.length === 1 ? "zdjęcie" : "zdjęć"}
+
+                        <div className="space-y-4">
+                            {/* Hidden File Input */}
+                            <input
+                                type="file"
+                                id="images"
+                                accept="image/*"
+                                multiple
+                                onChange={handleImageChange}
+                                disabled={uploadedImages.length >= 5 || isUploading}
+                                className="hidden"
+                            />
+
+                            {/* Custom Upload Button / Drop Zone */}
+                            <label
+                                htmlFor="images"
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                                className={`flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed bg-[#2a221a] py-8 transition-all duration-200 ${
+                                    uploadedImages.length >= 5 || isUploading
+                                        ? "cursor-not-allowed border-[#e0dcd7]/20 opacity-50"
+                                        : isDragging
+                                          ? "scale-[1.02] border-[#d97706] bg-[#d97706]/10 shadow-[0_0_15px_rgba(217,119,6,0.3)]"
+                                          : "border-[#e0dcd7]/20 hover:border-[#d97706] hover:bg-[#d97706]/5"
+                                }`}
+                            >
+                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                    <span
+                                        className={`material-symbols-outlined mb-2 text-4xl transition-colors ${
+                                            isDragging ? "text-[#d97706]" : "text-[#e0dcd7]"
+                                        }`}
+                                    >
+                                        {isDragging ? "cloud_upload" : "add_photo_alternate"}
+                                    </span>
+                                    <p className="mb-2 text-sm text-[#e0dcd7]">
+                                        {isDragging ? (
+                                            <span className="font-bold text-[#d97706]">Upuść zdjęcia tutaj!</span>
+                                        ) : (
+                                            <span className="font-semibold">Kliknij lub przeciągnij zdjęcia</span>
+                                        )}
+                                    </p>
+                                    <p className="text-xs text-[#e0dcd7]/60">JPG, PNG (maks. 5 zdjęć)</p>
+                                </div>
+                            </label>
+
+                            {/* Persistent Error Message for Limits */}
+                            {error && error.includes("Wybrano") && (
+                                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
+                                    <div className="flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-lg">warning</span>
+                                        <span>{error}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Image Previews */}
+                            {uploadedImages.length > 0 && (
+                                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
+                                    {uploadedImages.map((img) => (
+                                        <div
+                                            key={img.id}
+                                            className="relative aspect-square overflow-hidden rounded-lg bg-[#2a221a] ring-1 ring-[#e0dcd7]/20"
+                                        >
+                                            {/* Preview Image */}
+                                            <img
+                                                src={img.previewUrl}
+                                                alt="Podgląd"
+                                                className={`h-full w-full object-cover transition-opacity ${img.status === "uploading" ? "opacity-50" : "opacity-100"}`}
+                                            />
+
+                                            {/* Status Indicators */}
+                                            {img.status === "uploading" && (
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <span className="material-symbols-outlined animate-spin text-[#d97706]">
+                                                        sync
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {img.status === "error" && (
+                                                <div className="absolute inset-0 flex items-center justify-center bg-red-500/50">
+                                                    <span className="material-symbols-outlined text-white">error</span>
+                                                </div>
+                                            )}
+
+                                            {/* Remove Overlay (on hover or always visible for better UX) */}
+                                            <div className="absolute top-1 right-1 z-10">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveImage(img.id)}
+                                                    className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 shadow-sm transition-transform hover:scale-110 hover:bg-red-700"
+                                                    title="Usuń zdjęcie"
+                                                >
+                                                    <span className="material-symbols-outlined text-sm font-bold text-white">
+                                                        close
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <p className="text-xs text-[#e0dcd7]/60">
+                                {uploadedImages.length}/5 zdjęć. Obsługiwane formaty: JPG, PNG.
                             </p>
-                        )}
+                        </div>
                     </div>
 
                     {/* Submit Button */}
                     <button
                         type="submit"
-                        disabled={isSubmitting || !formData.latitude || !formData.longitude}
+                        disabled={isSubmitting || !formData.latitude || !formData.longitude || isUploading}
                         className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#d97706] px-6 py-4 text-lg font-bold text-white transition-colors hover:bg-[#d97706]/80 disabled:cursor-not-allowed disabled:opacity-50"
                     >
+                        {isUploading && <span className="material-symbols-outlined animate-spin">sync</span>}
                         <span className="material-symbols-outlined">send</span>
-                        {isSubmitting ? "Wysyłanie..." : "Wyślij Zgłoszenie"}
+                        {isSubmitting ? "Wysyłanie..." : isUploading ? "Wysyłanie zdjęć..." : "Wyślij Zgłoszenie"}
                     </button>
 
                     {isSubmitting && <p className="text-center text-sm text-[#e0dcd7]/60">Wysyłanie zgłoszenia...</p>}
