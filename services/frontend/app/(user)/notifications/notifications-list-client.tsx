@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { RefreshCw, ArrowUpDown, Check, Mail, MailOpen, Eye, ChevronLeft, ChevronRight, Calendar, Info } from "lucide-react"
+import { RefreshCw, ArrowUpDown, Check, Mail, MailOpen, Eye, Calendar, Info } from "lucide-react"
 import { useNotifications, useMarkNotificationAsRead, useMarkNotificationAsUnread } from "@/hooks/use-notifications"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/ux/skeleton"
@@ -176,14 +176,10 @@ export function NotificationsListClient({ filter }: NotificationsListClientProps
 
     const notifications = data?.data || []
     const pagination = data?.pagination
-    const totalElements = pagination?.total ?? notifications.length
     const totalPages = pagination ? Math.ceil(pagination.total / pageSize) : 1
     const currentPage = pagination?.page ?? page
 
     const hasNotifications = notifications.length > 0
-    const startItem = (currentPage - 1) * pageSize + 1
-    const endItem = Math.min(currentPage * pageSize, totalElements)
-
     const displayNotifications = [...notifications].sort((a, b) => {
         const da = new Date(a.createdAt).getTime()
         const db = new Date(b.createdAt).getTime()

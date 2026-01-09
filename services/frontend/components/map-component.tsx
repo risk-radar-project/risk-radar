@@ -64,6 +64,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     const userLocationMarkerRef = useRef<L.Marker | null>(null)
     const userLocationCircleRef = useRef<L.Circle | null>(null)
+    const addressCacheRef = useRef<Map<string, string>>(new Map())
 
     const [lightboxImage, setLightboxImage] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
@@ -241,37 +242,110 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         }
         const defaultIcon = categoryIcons["OTHER"]
 
+        const formatReverseAddress = (
+            address?: Partial<{
+                road: string
+                house_number: string
+                city: string
+                town: string
+                village: string
+                municipality: string
+                neighbourhood: string
+            }>
+        ) => {
+            if (!address) return null
+
+            const street = address.road
+                ? [address.road, address.house_number].filter(Boolean).join(" ").trim()
+                : address.house_number || null
+
+            const locality = address.city || address.town || address.village || address.municipality || address.neighbourhood
+
+            const parts = [street, locality].filter(Boolean)
+            return parts.length > 0 ? parts.join(", ") : null
+        }
+
+        const fetchApproxAddress = async (report: Report) => {
+            const cacheKey = report.id
+            const cached = addressCacheRef.current.get(cacheKey)
+            if (cached) return cached
+
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${report.latitude}&lon=${report.longitude}&zoom=18&addressdetails=1`,
+                    {
+                        headers: {
+                            "User-Agent": "RiskRadar-Map-Frontend",
+                            "Accept-Language": "pl"
+                        }
+                    }
+                )
+
+                if (!response.ok) return null
+
+                const data = await response.json()
+                const formatted = formatReverseAddress(data.address) || data.display_name?.split(", ").slice(0, 2).join(", ")
+
+                if (formatted) {
+                    addressCacheRef.current.set(cacheKey, formatted)
+                }
+
+                return formatted || null
+            } catch (error) {
+                console.error("Reverse geocoding error:", error)
+                return null
+            }
+        }
+
         // Create popup content with XSS protection
         const createPopupContent = (report: Report): HTMLElement => {
             const container = document.createElement("div")
-            container.className = "report-popup-content"
+            // Container doesn't need extra padding as internal elements handle it
 
-            // Sanitize category name
+            // --- HEADER ---
+            const header = document.createElement("div")
+            header.className = "popup-header"
+
+            const titleElement = document.createElement("span")
+            titleElement.style.fontWeight = "600"
+            titleElement.style.color = "#f4f4f5" // zinc-100
+            titleElement.textContent = report.title
+            header.appendChild(titleElement)
+
+            container.appendChild(header)
+
+            // --- BODY ---
+            const body = document.createElement("div")
+            body.className = "popup-body"
+
+            // Category Badge
             const categoryKey = report.category
             const polishCategoryName = CATEGORY_DISPLAY_NAMES[categoryKey] || "Nieznana kategoria"
-            const categoryTitle = document.createElement("b")
-            categoryTitle.textContent = `Kategoria: ${polishCategoryName}`
-            container.appendChild(categoryTitle)
-            container.appendChild(document.createElement("br"))
 
-            // Sanitize report title
-            const titleElement = document.createElement("b")
-            titleElement.textContent = report.title
-            container.appendChild(titleElement)
-            container.appendChild(document.createElement("br"))
+            const badge = document.createElement("div")
+            badge.className = "popup-badge"
+            badge.textContent = polishCategoryName
+            badge.style.marginBottom = "12px"
+            body.appendChild(badge)
 
-            // Sanitize description
+            // Description
             const description = document.createElement("p")
             description.textContent = report.description || "Brak opisu."
-            description.style.margin = "8px 0"
-            container.appendChild(description)
+            description.style.fontSize = "0.875rem" // text-sm
+            description.style.color = "#d4d4d8" // zinc-300
+            description.style.margin = "0 0 12px 0"
+            description.style.lineHeight = "1.4"
+            body.appendChild(description)
 
-            // Add images safely
+            // Images
             const imageIds = report.imageIds || []
             if (imageIds.length > 0) {
                 const imageContainer = document.createElement("div")
                 imageContainer.className = "report-image-container"
-                imageContainer.style.marginTop = "8px"
+                imageContainer.style.display = "grid"
+                imageContainer.style.gridTemplateColumns = "repeat(auto-fill, minmax(64px, 1fr))"
+                imageContainer.style.gap = "8px"
+                imageContainer.style.marginTop = "12px"
 
                 imageIds.forEach((imageId) => {
                     const thumbImageUrl = `${MEDIA_SERVICE_BASE_URL}${imageId}?variant=thumb`
@@ -280,13 +354,15 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                     const img = document.createElement("img")
                     img.src = thumbImageUrl
                     img.className = "report-image"
-                    img.alt = `Evidence image for ${report.title}`
-                    img.title = `Kliknij, aby zobaczyć pełne zdjęcie (ID: ${imageId})`
-                    img.style.cursor = "pointer"
-                    img.style.maxWidth = "100%"
-                    img.style.marginRight = "4px"
-                    img.style.marginBottom = "4px"
+                    img.alt = `Zdjęcie zgłoszenia`
+                    img.title = "Kliknij, aby powiększyć"
+                    img.style.width = "100%"
+                    img.style.height = "64px"
+                    img.style.objectFit = "cover"
                     img.style.borderRadius = "4px"
+                    img.style.cursor = "zoom-in"
+                    img.style.border = "1px solid #3f3f46" // zinc-700
+                    img.style.transition = "opacity 0.2s"
 
                     // Safe event handler using addEventListener
                     img.addEventListener("click", () => {
@@ -295,21 +371,42 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                         }
                     })
 
+                    img.addEventListener("mouseenter", () => {
+                        img.style.opacity = "0.8"
+                    })
+                    img.addEventListener("mouseleave", () => {
+                        img.style.opacity = "1"
+                    })
+
                     // Safe error handling
                     img.addEventListener("error", () => {
-                        const errorSpan = document.createElement("span")
-                        errorSpan.textContent = "Błąd Ładowania Obrazu"
-                        errorSpan.className = "image-placeholder"
-                        if (img.parentNode) {
-                            img.parentNode.replaceChild(errorSpan, img)
-                        }
+                        img.style.display = "none"
                     })
 
                     imageContainer.appendChild(img)
                 })
 
-                container.appendChild(imageContainer)
+                body.appendChild(imageContainer)
             }
+
+            container.appendChild(body)
+
+            // --- FOOTER ---
+            const footer = document.createElement("div")
+            footer.className = "popup-footer"
+
+            const footerText = document.createElement("span")
+            footerText.textContent = "Risk Radar"
+            footer.appendChild(footerText)
+
+            const footerCoords = document.createElement("span")
+            footerCoords.textContent = `${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)}`
+            footerCoords.className = "popup-location"
+            footerCoords.style.fontFamily = "monospace"
+            footerCoords.style.opacity = "0.7"
+            footer.appendChild(footerCoords)
+
+            container.appendChild(footer)
 
             return container
         }
@@ -334,6 +431,28 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
             const marker = L.marker([report.latitude, report.longitude], { icon: selectedIcon }).bindPopup(
                 L.popup({ maxWidth: 400 }).setContent(popupContent)
             )
+
+            marker.on("popupopen", async () => {
+                const target = popupContent.querySelector<HTMLElement>(".popup-location")
+                if (!target) return
+
+                const cached = addressCacheRef.current.get(report.id)
+                if (cached) {
+                    target.textContent = cached
+                    target.style.fontFamily = "inherit"
+                    target.style.opacity = "0.9"
+                    return
+                }
+
+                target.textContent = `${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)}`
+
+                const resolved = await fetchApproxAddress(report)
+                if (resolved && target.isConnected) {
+                    target.textContent = resolved
+                    target.style.fontFamily = "inherit"
+                    target.style.opacity = "0.9"
+                }
+            })
 
             // Add to cluster group
             markersRef.current?.addLayer(marker)
