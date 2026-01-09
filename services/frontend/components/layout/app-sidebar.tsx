@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { JwtPayload, parseJwt } from "@/lib/auth/jwt-utils"
 import { GATEWAY_URL } from "@/lib/auth/auth-service"
 import { cn } from "@/lib/utils"
+import { useUnreadNotificationsCount } from "@/hooks/use-notifications"
 
 interface AppSidebarProps {
     isOpen: boolean
@@ -18,6 +19,8 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
     const isAdminPanelOpenInit = pathname.startsWith("/admin") || pathname.startsWith("/reports")
     const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(isAdminPanelOpenInit)
     const [user, setUser] = useState<JwtPayload | null>(null)
+
+    const { data: unreadCount } = useUnreadNotificationsCount()
 
     useEffect(() => {
         setMounted(true)
@@ -147,6 +150,24 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                     >
                         <span className="material-symbols-outlined">description</span>
                         <p className="text-base leading-normal">Moje zgłoszenia</p>
+                    </Link>
+
+                    <Link
+                        className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7] transition-colors hover:bg-white/10",
+                            pathname.startsWith("/notifications") && "bg-white/5"
+                        )}
+                        href="/notifications"
+                    >
+                        <div className="relative">
+                            <span className="material-symbols-outlined">notifications</span>
+                            {unreadCount && unreadCount > 0 ? (
+                                <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                                    {unreadCount > 99 ? "99+" : unreadCount}
+                                </span>
+                            ) : null}
+                        </div>
+                        <p className="text-base leading-normal">Powiadomienia</p>
                     </Link>
 
                     {/* Admin / Management Section */}

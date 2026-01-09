@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import supertest from "supertest";
 
 const mockInboxService = {
-    list: jest.fn<(userId: string, page: number, limit: number, isRead?: boolean) => Promise<unknown[]>>(),
+    list: jest.fn<(
+        userId: string,
+        page: number,
+        limit: number,
+        isRead?: boolean
+    ) => Promise<{ data: unknown[]; total: number }>>(),
     markAsRead: jest.fn<(notificationId: string, userId: string) => Promise<boolean>>()
 };
 const mockNotificationDispatcher = {
@@ -23,7 +28,7 @@ describe("notifications routes", () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        mockInboxService.list.mockResolvedValue([{ id: "n1" }]);
+        mockInboxService.list.mockResolvedValue({ data: [{ id: "n1" }], total: 1 });
         mockInboxService.markAsRead.mockResolvedValue(true);
         mockNotificationDispatcher.dispatch.mockResolvedValue(undefined);
         app = createApp();
@@ -42,7 +47,15 @@ describe("notifications routes", () => {
 
         expect(res.status).toBe(200);
         expect(mockInboxService.list).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111", 1, 20, undefined);
-        expect(res.body).toEqual({ data: [{ id: "n1" }] });
+        expect(res.body).toEqual({
+            data: [{ id: "n1" }],
+            pagination: {
+                page: 1,
+                limit: 20,
+                total: 1,
+                totalPages: 1
+            }
+        });
     });
 
     it("marks notification as read", async () => {

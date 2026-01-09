@@ -31,8 +31,8 @@ export const templateDefinitions: TemplateDefinition[] = [
         templateKey: "AUDIT_SECURITY_EVENT_DETECTED_IN_APP",
         eventType: "AUDIT_SECURITY_EVENT_DETECTED",
         channel: "in_app",
-        title: placeholder,
-        body: placeholder
+        title: "{{title}}",
+        body: "{{body}}"
     },
     {
         templateKey: "AUDIT_SECURITY_EVENT_DETECTED_EMAIL",
@@ -45,8 +45,8 @@ export const templateDefinitions: TemplateDefinition[] = [
         templateKey: "ROLE_ASSIGNED_IN_APP",
         eventType: "ROLE_ASSIGNED",
         channel: "in_app",
-        title: placeholder,
-        body: placeholder
+        title: "{{title}}",
+        body: "{{body}}"
     },
     {
         templateKey: "ROLE_ASSIGNED_EMAIL",
@@ -59,22 +59,22 @@ export const templateDefinitions: TemplateDefinition[] = [
         templateKey: "ROLE_REVOKED_IN_APP",
         eventType: "ROLE_REVOKED",
         channel: "in_app",
-        title: placeholder,
-        body: placeholder
+        title: "{{title}}",
+        body: "{{body}}"
     },
     {
         templateKey: "MEDIA_APPROVED_IN_APP",
         eventType: "MEDIA_APPROVED",
         channel: "in_app",
-        title: placeholder,
-        body: placeholder
+        title: "{{title}}",
+        body: "{{body}}"
     },
     {
         templateKey: "MEDIA_REJECTED_IN_APP",
         eventType: "MEDIA_REJECTED",
         channel: "in_app",
-        title: placeholder,
-        body: placeholder
+        title: "{{title}}",
+        body: "{{body}}"
     },
     {
         templateKey: "MEDIA_REJECTED_EMAIL",
@@ -87,8 +87,8 @@ export const templateDefinitions: TemplateDefinition[] = [
         templateKey: "MEDIA_FLAGGED_NSFW_IN_APP",
         eventType: "MEDIA_FLAGGED_NSFW",
         channel: "in_app",
-        title: placeholder,
-        body: placeholder
+        title: "{{title}}",
+        body: "{{body}}"
     },
     {
         templateKey: "MEDIA_FLAGGED_NSFW_EMAIL",
@@ -101,22 +101,22 @@ export const templateDefinitions: TemplateDefinition[] = [
         templateKey: "MEDIA_CENSORED_IN_APP",
         eventType: "MEDIA_CENSORED",
         channel: "in_app",
-        title: placeholder,
-        body: placeholder
+        title: "{{title}}",
+        body: "{{body}}"
     },
     {
         templateKey: "MEDIA_DELETED_SYSTEM_IN_APP",
         eventType: "MEDIA_DELETED_SYSTEM",
         channel: "in_app",
-        title: placeholder,
-        body: placeholder
+        title: "{{title}}",
+        body: "{{body}}"
     },
     {
         templateKey: "MEDIA_STORAGE_THRESHOLD_IN_APP",
         eventType: "MEDIA_STORAGE_THRESHOLD",
         channel: "in_app",
-        title: placeholder,
-        body: placeholder
+        title: "{{title}}",
+        body: "{{body}}"
     },
     {
         templateKey: "MEDIA_STORAGE_THRESHOLD_EMAIL",
@@ -136,8 +136,8 @@ export const templateDefinitions: TemplateDefinition[] = [
         templateKey: "USER_BANNED_IN_APP",
         eventType: "USER_BANNED",
         channel: "in_app",
-        title: placeholder,
-        body: placeholder
+        title: "{{title}}",
+        body: "{{body}}"
     },
     {
         templateKey: "USER_BANNED_EMAIL",
@@ -150,8 +150,8 @@ export const templateDefinitions: TemplateDefinition[] = [
         templateKey: "USER_UNBANNED_IN_APP",
         eventType: "USER_UNBANNED",
         channel: "in_app",
-        title: placeholder,
-        body: placeholder
+        title: "{{title}}",
+        body: "{{body}}"
     },
     {
         templateKey: "REPORT_CATEGORIZED_IN_APP",

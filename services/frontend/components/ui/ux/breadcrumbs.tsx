@@ -15,6 +15,7 @@ const PATH_MAP: Record<string, string> = {
     profile: "Profil",
     "my-reports": "Moje zgłoszenia",
     "submit-report": "Dodaj zgłoszenie",
+    notifications: "Powiadomienia",
     terms: "Regulamin"
 }
 
