@@ -40,7 +40,11 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
     const roles = user?.roles || []
 
     const isAdmin =
-        permissions.includes("PERM_*:*") || permissions.includes("PERM_SYSTEM:ADMIN") || roles.includes("ROLE_ADMIN")
+        permissions.includes("*:*") ||
+        permissions.includes("PERM_*:*") ||
+        permissions.includes("PERM_SYSTEM:ADMIN") ||
+        permissions.includes("system:admin") ||
+        roles.includes("ROLE_ADMIN")
 
     const canValidate =
         isAdmin ||
@@ -246,6 +250,19 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                                             >
                                                 <span className="material-symbols-outlined text-lg">group</span>
                                                 <p className="text-sm leading-normal">Użytkownicy</p>
+                                            </Link>
+
+                                            <Link
+                                                className={cn(
+                                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
+                                                    pathname.startsWith("/admin/roles") && "bg-white/5 text-[#d97706]"
+                                                )}
+                                                href="/admin/roles"
+                                            >
+                                                <span className="material-symbols-outlined text-lg">
+                                                    admin_panel_settings
+                                                </span>
+                                                <p className="text-sm leading-normal">Role i Permisje</p>
                                             </Link>
                                         </>
                                     )}

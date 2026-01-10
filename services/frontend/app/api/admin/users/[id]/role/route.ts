@@ -12,9 +12,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const USER_SERVICE = process.env.USER_SERVICE_URL || "http://user-service:8080"
     const targetUrl = `${USER_SERVICE}/users/${id}/roles`
 
-    console.log(`[role/route] Forwarding to: ${targetUrl}`)
-    console.log(`[role/route] Body:`, body)
-
     try {
         const res = await fetch(targetUrl, {
             method: "POST",
@@ -25,11 +22,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             body: JSON.stringify(body)
         })
 
-        console.log(`[role/route] Response status: ${res.status}`)
-
         if (!res.ok) {
             const err = await res.json().catch(() => ({ error: "Unknown error" }))
-            console.log(`[role/route] Error response:`, err)
             return NextResponse.json(err, { status: res.status })
         }
 

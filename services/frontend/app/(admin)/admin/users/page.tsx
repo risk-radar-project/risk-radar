@@ -7,28 +7,33 @@ import { TableHeader } from "@/components/ui/table/table-header"
 import { TableRow } from "@/components/ui/table/table-row"
 import { TableCell } from "@/components/ui/table/table-cell"
 import { Search, Filter, ChevronLeft, ChevronRight, Ban, ShieldCheck, Eye, X, UserCircle } from "lucide-react"
+import { useRoles } from "@/hooks/use-authz"
 
 interface User {
     id: string
     username: string
     email: string
-    role: "user" | "volunteer" | "moderator" | "admin"
+    role: string
     isBanned: boolean
     createdAt: string
     reportsCount: number
     lastActive?: string
 }
 
-const ROLE_STYLES: Record<string, string> = {
-    user: "bg-zinc-700/50 text-zinc-300",
-    volunteer: "bg-green-500/20 text-green-400",
-    moderator: "bg-blue-500/20 text-blue-400",
-    admin: "bg-purple-500/20 text-purple-400"
+const getRoleStyle = (roleName: string) => {
+    const normalize = roleName.toLowerCase()
+    if (normalize.includes("admin")) return "bg-purple-500/20 text-purple-400"
+    if (normalize.includes("moderator")) return "bg-blue-500/20 text-blue-400"
+    if (normalize.includes("volunteer")) return "bg-green-500/20 text-green-400"
+    // Default style for other roles
+    if (normalize !== "user") return "bg-yellow-500/20 text-yellow-400"
+    return "bg-zinc-700/50 text-zinc-300"
 }
 
 const PAGE_SIZE_OPTIONS = [10, 15, 20, 25, 50, 100, 250, 500, 1000]
 
 export default function AdminUsersPage() {
+    const { data: availableRoles } = useRoles()
     const [users, setUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState("")
@@ -99,13 +104,26 @@ export default function AdminUsersPage() {
     }, [currentPage, pageSize])
 
     function getRoleFromList(roles: string[]) {
-        if (!roles) return "user"
+        if (!roles || roles.length === 0) return "user"
+        // If we have available roles, try to match by name
+        if (availableRoles) {
+            // Logic: Backend might send ["ROLE_ADMIN"] or just names.
+            // We'll clean them up.
+            const cleanRoles = roles.map((r) => r.replace(/^ROLE_/, ""))
+            // Try to find a role that isn't 'USER' unless that's the only one
+            const specialRole = cleanRoles.find((r) => r.toUpperCase() !== "USER")
+            return specialRole || cleanRoles[0]
+        }
+
+        // Fallback legacy logic
         if (roles.includes("admin") || roles.includes("ADMIN") || roles.includes("ROLE_ADMIN")) return "admin"
         if (roles.includes("moderator") || roles.includes("MODERATOR") || roles.includes("ROLE_MODERATOR"))
             return "moderator"
         if (roles.includes("volunteer") || roles.includes("VOLUNTEER") || roles.includes("ROLE_VOLUNTEER"))
             return "volunteer"
-        return "user"
+
+        // Return the first one if nothing matches known, or user
+        return roles[0]?.replace(/^ROLE_/, "") || "user"
     }
 
     // Filter users (Client side for now regarding Search, as backend search is limited)
@@ -113,7 +131,10 @@ export default function AdminUsersPage() {
         const matchesSearch =
             user.username.toLowerCase().includes(search.toLowerCase()) ||
             user.email.toLowerCase().includes(search.toLowerCase())
-        const matchesRole = roleFilter === "all" || user.role === roleFilter
+
+        // Loose matching for role filter
+        const matchesRole = roleFilter === "all" || user.role.toLowerCase() === roleFilter.toLowerCase()
+
         const matchesStatus =
             statusFilter === "all" ||
             (statusFilter === "banned" && user.isBanned) ||
@@ -176,7 +197,7 @@ export default function AdminUsersPage() {
             if (res.ok) {
                 fetchUsers()
                 if (viewingUser && viewingUser.id === userId) {
-                    setViewingUser((prev) => (prev ? { ...prev, role: newRole as User["role"] } : null))
+                    setViewingUser((prev) => (prev ? { ...prev, role: newRole } : null))
                 }
             } else {
                 alert("Nie udało się zmienić roli")
@@ -213,10 +234,11 @@ export default function AdminUsersPage() {
                         className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-zinc-100 focus:border-zinc-700 focus:outline-none"
                     >
                         <option value="all">Wszystkie role</option>
-                        <option value="user">Użytkownicy</option>
-                        <option value="volunteer">Wolontariusze</option>
-                        <option value="moderator">Moderatorzy</option>
-                        <option value="admin">Administratorzy</option>
+                        {availableRoles?.map((role) => (
+                            <option key={role.id} value={role.name}>
+                                {role.name}
+                            </option>
+                        ))}
                     </select>
                     <select
                         value={statusFilter}
@@ -287,20 +309,26 @@ export default function AdminUsersPage() {
                                         <select
                                             value={user.role}
                                             onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                            className={`cursor-pointer rounded border-0 px-2 py-1 text-xs font-medium focus:ring-1 focus:ring-zinc-600 focus:outline-none ${ROLE_STYLES[user.role] || ROLE_STYLES["user"]}`}
+                                            className={`cursor-pointer rounded border-0 px-2 py-1 text-xs font-medium focus:ring-1 focus:ring-zinc-600 focus:outline-none ${getRoleStyle(user.role)}`}
                                         >
-                                            <option value="user" className="bg-zinc-800 text-zinc-300">
-                                                Użytkownik
-                                            </option>
-                                            <option value="volunteer" className="bg-zinc-800 text-zinc-300">
-                                                Wolontariusz
-                                            </option>
-                                            <option value="moderator" className="bg-zinc-800 text-zinc-300">
-                                                Moderator
-                                            </option>
-                                            <option value="admin" className="bg-zinc-800 text-zinc-300">
-                                                Administrator
-                                            </option>
+                                            {availableRoles ? (
+                                                availableRoles.map((role) => (
+                                                    <option
+                                                        key={role.id}
+                                                        value={role.name}
+                                                        className="bg-zinc-800 text-zinc-300"
+                                                    >
+                                                        {role.name}
+                                                    </option>
+                                                ))
+                                            ) : (
+                                                // Fallback if roles not loaded
+                                                <>
+                                                    <option value={user.role} className="bg-zinc-800 text-zinc-300">
+                                                        {user.role}
+                                                    </option>
+                                                </>
+                                            )}
                                         </select>
                                     </TableCell>
                                     <TableCell>

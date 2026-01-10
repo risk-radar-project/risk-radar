@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 const PATH_MAP: Record<string, string> = {
     admin: "Panel Zarządzania",
     dashboard: "Dashboard",
+    roles: "Role",
     users: "Użytkownicy",
     reports: "Zgłoszenia",
     stats: "Statystyki",
