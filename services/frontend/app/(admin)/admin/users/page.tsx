@@ -8,6 +8,7 @@ import { TableRow } from "@/components/ui/table/table-row"
 import { TableCell } from "@/components/ui/table/table-cell"
 import { Search, Filter, ChevronLeft, ChevronRight, Ban, ShieldCheck, Eye, X, UserCircle } from "lucide-react"
 import { useRoles } from "@/hooks/use-authz"
+import { parseJwt } from "@/lib/auth/jwt-utils"
 
 interface User {
     id: string
@@ -43,6 +44,19 @@ export default function AdminUsersPage() {
     const [totalPages, setTotalPages] = useState(0)
     const [viewingUser, setViewingUser] = useState<User | null>(null)
     const [pageSize, setPageSize] = useState(10)
+    const [currentUserRoles, setCurrentUserRoles] = useState<string[]>([])
+
+    useEffect(() => {
+        const token = localStorage.getItem("access_token")
+        if (token) {
+            const payload = parseJwt(token)
+            if (payload?.roles) {
+                setCurrentUserRoles(payload.roles)
+            }
+        }
+    }, [])
+
+    const isModerator = currentUserRoles.includes("ROLE_MODERATOR") && !currentUserRoles.includes("ROLE_ADMIN")
 
     const fetchUsers = async () => {
         setLoading(true)
@@ -309,18 +323,21 @@ export default function AdminUsersPage() {
                                         <select
                                             value={user.role}
                                             onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                            className={`cursor-pointer rounded border-0 px-2 py-1 text-xs font-medium focus:ring-1 focus:ring-zinc-600 focus:outline-none ${getRoleStyle(user.role)}`}
+                                            disabled={isModerator && user.role.toLowerCase() === "admin"}
+                                            className={`cursor-pointer rounded border-0 px-2 py-1 text-xs font-medium focus:ring-1 focus:ring-zinc-600 focus:outline-none ${getRoleStyle(user.role)} disabled:opacity-50 disabled:cursor-not-allowed`}
                                         >
                                             {availableRoles ? (
-                                                availableRoles.map((role) => (
-                                                    <option
-                                                        key={role.id}
-                                                        value={role.name}
-                                                        className="bg-zinc-800 text-zinc-300"
-                                                    >
-                                                        {role.name}
-                                                    </option>
-                                                ))
+                                                availableRoles
+                                                    .filter(role => (!isModerator || role.name.toUpperCase() !== "ADMIN") || (user.role.toLowerCase() === 'admin' && role.name.toUpperCase() === 'ADMIN'))
+                                                    .map((role) => (
+                                                        <option
+                                                            key={role.id}
+                                                            value={role.name}
+                                                            className="bg-zinc-800 text-zinc-300"
+                                                        >
+                                                            {role.name}
+                                                        </option>
+                                                    ))
                                             ) : (
                                                 // Fallback if roles not loaded
                                                 <>
@@ -359,11 +376,10 @@ export default function AdminUsersPage() {
                                             {user.role !== "admin" && (
                                                 <button
                                                     onClick={() => handleBanToggle(user.id, user.username, user.isBanned)}
-                                                    className={`rounded p-1.5 hover:bg-zinc-700 ${
-                                                        user.isBanned
-                                                            ? "text-green-400 hover:text-green-300"
-                                                            : "text-zinc-400 hover:text-red-400"
-                                                    }`}
+                                                    className={`rounded p-1.5 hover:bg-zinc-700 ${user.isBanned
+                                                        ? "text-green-400 hover:text-green-300"
+                                                        : "text-zinc-400 hover:text-red-400"
+                                                        }`}
                                                     title={user.isBanned ? "Odbanuj" : "Zbanuj"}
                                                 >
                                                     {user.isBanned ? (
@@ -432,11 +448,10 @@ export default function AdminUsersPage() {
                                     <button
                                         key={i}
                                         onClick={() => setCurrentPage(i)}
-                                        className={`min-w-[32px] rounded-lg border px-2 py-1 text-sm ${
-                                            i === currentPage
-                                                ? "border-blue-500 bg-blue-500/20 text-blue-400"
-                                                : "border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
-                                        }`}
+                                        className={`min-w-[32px] rounded-lg border px-2 py-1 text-sm ${i === currentPage
+                                            ? "border-blue-500 bg-blue-500/20 text-blue-400"
+                                            : "border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
+                                            }`}
                                     >
                                         {i + 1}
                                     </button>
@@ -501,12 +516,28 @@ export default function AdminUsersPage() {
                                     <select
                                         value={viewingUser.role}
                                         onChange={(e) => handleRoleChange(viewingUser.id, e.target.value)}
-                                        className="w-full rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-300 focus:border-zinc-600 focus:outline-none"
+                                        disabled={isModerator && viewingUser.role.toLowerCase() === "admin"}
+                                        className="w-full rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-300 focus:border-zinc-600 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        <option value="user">Użytkownik</option>
-                                        <option value="volunteer">Wolontariusz</option>
-                                        <option value="moderator">Moderator</option>
-                                        <option value="admin">Administrator</option>
+                                        {availableRoles ? (
+                                            availableRoles
+                                                .filter(role => !isModerator || role.name.toUpperCase() !== "ADMIN")
+                                                .map((role) => (
+                                                    <option
+                                                        key={role.id}
+                                                        value={role.name} // Assuming backend expects name
+                                                    >
+                                                        {role.name}
+                                                    </option>
+                                                ))
+                                        ) : (
+                                            <>
+                                                <option value="user">Użytkownik</option>
+                                                <option value="volunteer">Wolontariusz</option>
+                                                <option value="moderator">Moderator</option>
+                                                {!isModerator && <option value="admin">Administrator</option>}
+                                            </>
+                                        )}
                                     </select>
                                 </div>
                                 <div>
@@ -535,11 +566,10 @@ export default function AdminUsersPage() {
                                         onClick={() => {
                                             handleBanToggle(viewingUser.id, viewingUser.username, viewingUser.isBanned)
                                         }}
-                                        className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition-colors ${
-                                            viewingUser.isBanned
-                                                ? "bg-green-600 text-white hover:bg-green-500"
-                                                : "bg-red-600 text-white hover:bg-red-500"
-                                        }`}
+                                        className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition-colors ${viewingUser.isBanned
+                                            ? "bg-green-600 text-white hover:bg-green-500"
+                                            : "bg-red-600 text-white hover:bg-red-500"
+                                            }`}
                                     >
                                         {viewingUser.isBanned ? (
                                             <>
