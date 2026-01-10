@@ -13,6 +13,7 @@ import (
 type RoleService struct {
 	roleRepo       db.RoleRepositoryInterface
 	permissionRepo db.PermissionRepositoryInterface
+	userRoleRepo   db.UserRoleRepositoryInterface
 }
 
 // CreateRoleRequest represents the request to create a role
@@ -60,10 +61,11 @@ func (e *PermissionNotFoundError) Key() string {
 }
 
 // NewRoleService creates a new role service
-func NewRoleService(roleRepo db.RoleRepositoryInterface, permissionRepo db.PermissionRepositoryInterface) *RoleService {
+func NewRoleService(roleRepo db.RoleRepositoryInterface, permissionRepo db.PermissionRepositoryInterface, userRoleRepo db.UserRoleRepositoryInterface) *RoleService {
 	return &RoleService{
 		roleRepo:       roleRepo,
 		permissionRepo: permissionRepo,
+		userRoleRepo:   userRoleRepo,
 	}
 }
 
@@ -82,9 +84,15 @@ func (s *RoleService) GetRoles() ([]db.RoleWithPermissions, error) {
 			return nil, fmt.Errorf("failed to get permissions for role %s: %w", role.ID, err)
 		}
 
+		userCount, err := s.userRoleRepo.CountByRoleID(role.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to measure usage of role %s: %w", role.ID, err)
+		}
+
 		result = append(result, db.RoleWithPermissions{
 			Role:        role,
 			Permissions: permissions,
+			UsersCount:  userCount,
 		})
 	}
 
@@ -106,9 +114,15 @@ func (s *RoleService) GetRole(roleID uuid.UUID) (*db.RoleWithPermissions, error)
 		return nil, fmt.Errorf("failed to get permissions for role: %w", err)
 	}
 
+	userCount, err := s.userRoleRepo.CountByRoleID(role.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to measure usage of role: %w", err)
+	}
+
 	result := &db.RoleWithPermissions{
 		Role:        *role,
 		Permissions: permissions,
+		UsersCount:  userCount,
 	}
 
 	return result, nil
@@ -199,9 +213,15 @@ func (s *RoleService) UpdateRole(roleID uuid.UUID, req UpdateRoleRequest) (*db.R
 		permissions = append(permissions, perm)
 	}
 
+	userCount, err := s.userRoleRepo.CountByRoleID(roleID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to measure usage of role post-update: %w", err)
+	}
+
 	result := &db.RoleWithPermissions{
 		Role:        *role,
 		Permissions: permissions,
+		UsersCount:  userCount,
 	}
 
 	return result, nil
@@ -216,6 +236,15 @@ func (s *RoleService) DeleteRole(roleID uuid.UUID) error {
 	}
 	if role == nil {
 		return fmt.Errorf("role not found")
+	}
+
+	// Check if role is assigned to any user
+	count, err := s.userRoleRepo.CountByRoleID(roleID)
+	if err != nil {
+		return fmt.Errorf("failed to check role usage: %w", err)
+	}
+	if count > 0 {
+		return fmt.Errorf("role cannot be deleted because it is assigned to %d users", count)
 	}
 
 	// Delete role (permissions will be deleted due to CASCADE)

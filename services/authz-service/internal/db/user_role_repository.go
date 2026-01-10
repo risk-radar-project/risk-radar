@@ -18,6 +18,21 @@ func NewUserRoleRepository(db *sql.DB) *UserRoleRepository {
 	return &UserRoleRepository{db: db}
 }
 
+// CountByRoleID counts the number of users assigned to a specific role
+func (r *UserRoleRepository) CountByRoleID(roleID uuid.UUID) (int, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM user_roles
+		WHERE role_id = $1
+	`
+	var count int
+	err := r.db.QueryRow(query, roleID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count users for role %s: %w", roleID, err)
+	}
+	return count, nil
+}
+
 // GetUserRoles retrieves all roles for a user
 func (r *UserRoleRepository) GetUserRoles(userID uuid.UUID) ([]Role, error) {
 	query := `

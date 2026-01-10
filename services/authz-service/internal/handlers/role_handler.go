@@ -305,6 +305,8 @@ func (h *RoleHandler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	if err := h.roleService.DeleteRole(roleID); err != nil {
 		if strings.Contains(err.Error(), "role not found") {
 			utils.WriteError(w, http.StatusNotFound, "Role not found", err)
+		} else if strings.Contains(err.Error(), "role cannot be deleted") {
+			utils.WriteError(w, http.StatusConflict, err.Error(), err)
 		} else {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to delete role", err)
 		}
