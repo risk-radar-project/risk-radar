@@ -19,8 +19,8 @@ const (
 var (
 	// Allow alphanumeric, spaces, hyphens, underscores
 	roleNameRegex = regexp.MustCompile(`^[a-zA-Z0-9\s\-_]+$`)
-	// Allow alphanumeric, colons, hyphens, underscores, dots, slashes
-	actionResourceRegex = regexp.MustCompile(`^[a-zA-Z0-9:\-_.\/]+$`)
+	// Allow alphanumeric, colons, hyphens, underscores, dots, slashes, asterisks
+	actionResourceRegex = regexp.MustCompile(`^[a-zA-Z0-9:\-_.\/*]+$`)
 )
 
 // ValidationError represents a validation error

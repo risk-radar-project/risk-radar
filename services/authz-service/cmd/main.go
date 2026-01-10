@@ -58,7 +58,7 @@ func main() {
 	permissionRepo := db.NewPermissionRepository(database.DB)
 	userRoleRepo := db.NewUserRoleRepository(database.DB)
 
-	roleService := services.NewRoleService(roleRepo, permissionRepo)
+	roleService := services.NewRoleService(roleRepo, permissionRepo, userRoleRepo)
 	authzService := services.NewAuthzService(userRoleRepo, permissionRepo)
 	permissionService := services.NewPermissionService(permissionRepo)
 

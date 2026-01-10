@@ -44,4 +44,5 @@ type UserRole struct {
 type RoleWithPermissions struct {
 	Role        Role         `json:"role"`
 	Permissions []Permission `json:"permissions"`
+	UsersCount  int          `json:"users_count"`
 }

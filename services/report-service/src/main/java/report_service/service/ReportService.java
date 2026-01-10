@@ -14,12 +14,14 @@ import report_service.entity.ReportStatus;
 import report_service.entity.ReportCategory;
 import report_service.repository.ReportRepository;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.HashMap;
 
 @Slf4j
 @Service
@@ -28,13 +30,18 @@ public class ReportService {
     private final ReportRepository reportRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestTemplate restTemplate;
 
     @Value("${report.kafka.topic}")
     private String reportTopic;
 
+    @Value("${media.service.url:http://media-service:8080}")
+    private String mediaServiceUrl;
+
     public ReportService(ReportRepository reportRepository, KafkaTemplate<String, Object> kafkaTemplate) {
         this.reportRepository = reportRepository;
         this.kafkaTemplate = kafkaTemplate;
+        this.restTemplate = new RestTemplate();
     }
 
     public void createReport(ReportRequest request) {
@@ -54,10 +61,32 @@ public class ReportService {
             throw new IllegalStateException("Report was not saved correctly – no ID returned.");
         }
 
+        // Confirm images in media-service
+        if (savedReport.getImageIds() != null && !savedReport.getImageIds().isEmpty()) {
+            confirmImages(savedReport.getImageIds());
+        }
+
         Map<String, String> payload = reportToPayload(savedReport);
         log.info("Sending report saved to topic: " + reportTopic);
 
         kafkaTemplate.send(reportTopic, payload);
+    }
+
+    private void confirmImages(List<UUID> imageIds) {
+        try {
+            Map<String, Object> body = new HashMap<>();
+            body.put("ids", imageIds);
+            
+            String url = mediaServiceUrl + "/temporary/keep";
+            log.info("Confirming {} images at {}", imageIds.size(), url);
+            
+            restTemplate.postForObject(url, body, Void.class);
+            log.info("Images confirmed successfully");
+        } catch (Exception e) {
+            log.error("Failed to confirm images in media-service", e);
+            // We assume report creation should not fail if image confirmation fails
+            // In production, this should be retried or handled via event bus
+        }
     }
 
     public void updateReportStatus(UUID id, ReportStatus status) {

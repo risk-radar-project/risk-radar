@@ -8,6 +8,7 @@ type UserRoleRepositoryInterface interface {
 	AssignRole(userID, roleID uuid.UUID) error
 	RemoveRole(userID, roleID uuid.UUID) error
 	HasRole(userID, roleID uuid.UUID) (bool, error)
+	CountByRoleID(roleID uuid.UUID) (int, error)
 }
 
 // PermissionRepositoryInterface defines the interface for permission operations

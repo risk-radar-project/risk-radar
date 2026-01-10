@@ -6,7 +6,6 @@ import com.riskRadar.user_service.entity.User;
 import com.riskRadar.user_service.exception.UserAlreadyExistsException;
 import com.riskRadar.user_service.exception.UserOperationException;
 import com.riskRadar.user_service.service.*;
-import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -134,7 +133,7 @@ public class AuthController {
                                                 new UsernamePasswordAuthenticationToken(request.username(),
                                                                 request.password()));
                         } catch (org.springframework.security.authentication.LockedException e) {
-                                System.out.println("Account is locked for user: " + request.username());
+                                log.warn("Account is locked for user: {}", request.username());
                                 auditLogClient.logAction(Map.of(
                                                 "service", "user-service",
                                                 "action", "login",
@@ -493,20 +492,34 @@ public class AuthController {
                                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid or expired token"));
                         }
 
-                        Claims claims = jwtService.extractAllAccessClaims(token);
+                        // Validate token structure (ensures it's not malformed)
+                        jwtService.extractAllAccessClaims(token);
                         String username = jwtService.extractAccessUsername(token);
 
                         User user = userService.getUserByUsernameOrEmail(username);
 
-                        List<String> roles = claims.get("roles", List.class);
-                        List<String> permissions = claims.get("permissions", List.class);
+                        // Get fresh roles from database instead of JWT claims
+                        com.riskRadar.user_service.dto.UserResponse userResponse = userService.getUserById(user.getId());
+
+                        List<String> permissions = List.of();
+                        try {
+                                Permission[] permissionsResponse = authzClient.getPermissionsByUserId(user.getId());
+                                if (permissionsResponse != null) {
+                                        permissions = Arrays.stream(permissionsResponse)
+                                                        .filter(Objects::nonNull)
+                                                        .map(Permission::name)
+                                                        .toList();
+                                }
+                        } catch (Exception e) {
+                                log.error("Failed to fetch permissions for user: {}", user.getId(), e);
+                        }
 
                         return ResponseEntity.ok(Map.of(
                                         "id", user.getId().toString(),
                                         "username", user.getUsername(),
                                         "email", user.getEmail(),
-                                        "roles", roles != null ? roles : List.of(),
-                                        "permissions", permissions != null ? permissions : List.of()
+                                        "roles", userResponse.roles(),
+                                        "permissions", permissions
                         ));
                 } catch (Exception e) {
                         log.error("Failed to fetch current user", e);
