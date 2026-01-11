@@ -343,9 +343,10 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                 const imageContainer = document.createElement("div")
                 imageContainer.className = "report-image-container"
                 imageContainer.style.display = "grid"
-                imageContainer.style.gridTemplateColumns = "repeat(auto-fill, minmax(64px, 1fr))"
+                imageContainer.style.gridTemplateColumns = "repeat(3, 1fr)"
                 imageContainer.style.gap = "8px"
                 imageContainer.style.marginTop = "12px"
+                imageContainer.style.maxWidth = "100%"
 
                 imageIds.forEach((imageId) => {
                     const thumbImageUrl = `${MEDIA_SERVICE_BASE_URL}${imageId}?variant=thumb`
@@ -357,7 +358,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                     img.alt = `Zdjęcie zgłoszenia`
                     img.title = "Kliknij, aby powiększyć"
                     img.style.width = "100%"
-                    img.style.height = "64px"
+                    img.style.aspectRatio = "1"
                     img.style.objectFit = "cover"
                     img.style.borderRadius = "4px"
                     img.style.cursor = "zoom-in"
