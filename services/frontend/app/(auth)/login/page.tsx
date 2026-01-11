@@ -269,7 +269,7 @@ export default function LoginPage() {
                 </div>
                 <Button
                     type="submit"
-                    className="bg-primary hover:bg-primary/90 focus:ring-primary focus:ring-offset-background-dark flex h-14 w-full items-center justify-center rounded-lg px-6 text-base font-bold text-white shadow-sm focus:ring-2 focus:ring-offset-2 focus:outline-none"
+                    className="flex h-14 w-full items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 px-6 text-base font-bold text-white shadow-sm transition-colors hover:bg-zinc-800 focus:ring-2 focus:ring-zinc-700 focus:ring-offset-2 focus:ring-offset-[#1a1410] focus:outline-none"
                     disabled={isLoading || isAlreadyLoggedIn}
                 >
                     {isLoading ? (

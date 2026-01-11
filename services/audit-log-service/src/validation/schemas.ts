@@ -32,6 +32,8 @@ export const getLogsQuerySchema = Joi.object({
     log_type: Joi.string().valid('ACTION', 'SECURITY', 'SYSTEM', 'ERROR', 'INFO').optional(),
     start_date: Joi.string().isoDate().optional(),
     end_date: Joi.string().isoDate().optional(),
+    sort_by: Joi.string().valid('timestamp', 'service', 'action', 'actor', 'status', 'log_type').optional().default('timestamp'),
+    order: Joi.string().valid('asc', 'desc').optional().default('desc'),
 });
 
 export const getLogByIdSchema = Joi.object({

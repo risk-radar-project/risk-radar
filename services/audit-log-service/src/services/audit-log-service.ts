@@ -105,18 +105,18 @@ export class AuditLogService {
             let paramIndex = 1;
 
             if (filters.service) {
-                conditions.push(`service = $${paramIndex++}`);
-                values.push(filters.service);
+                conditions.push(`service ILIKE $${paramIndex++}`);
+                values.push(`%${filters.service}%`);
             }
 
             if (filters.action) {
-                conditions.push(`action = $${paramIndex++}`);
-                values.push(filters.action);
+                conditions.push(`action ILIKE $${paramIndex++}`);
+                values.push(`%${filters.action}%`);
             }
 
             if (filters.actor_id) {
-                conditions.push(`actor->>'id' = $${paramIndex++}`);
-                values.push(filters.actor_id);
+                conditions.push(`actor->>'id' ILIKE $${paramIndex++}`);
+                values.push(`%${filters.actor_id}%`);
             }
 
             if (filters.target_id) {
@@ -152,25 +152,44 @@ export class AuditLogService {
             const countResult = await database.query(countQuery, values);
             const total = parseInt(countResult.rows[0].count, 10);
 
+            // Sorting logic
+            const sortFieldRaw = (filters as any).sort_by || 'timestamp';
+            const sortOrderRaw = (filters as any).order?.toUpperCase() || 'DESC';
+            const allowedSortFields = ['timestamp', 'service', 'action', 'status', 'log_type'];
+            
+            // Safe filtering of sort field
+            let sortClause = 'ORDER BY timestamp DESC';
+            const safeOrder = (sortOrderRaw === 'ASC' || sortOrderRaw === 'DESC') ? sortOrderRaw : 'DESC';
+
+            if (allowedSortFields.includes(sortFieldRaw)) {
+                sortClause = `ORDER BY "${sortFieldRaw}" ${safeOrder}`;
+            } else if (sortFieldRaw === 'actor') {
+                 // Sort by actor->>'id' or just rely on timestamp if deemed too complex/slow
+                 sortClause = `ORDER BY actor->>'id' ${safeOrder}`;
+            }
+
             // Get logs
             const logsQuery = `
                 SELECT * FROM audit_logs 
                 ${whereClause}
-                ORDER BY timestamp DESC 
+                ${sortClause}
                 LIMIT $${paramIndex++} OFFSET $${paramIndex++}
             `;
             values.push(limit, offset);
 
             const logsResult = await database.query(logsQuery, values);
             const logs = logsResult.rows.map(this.mapDbRowToLogEntry);
+            const totalPages = Math.ceil(total / limit);
 
             return {
                 data: logs,
                 pagination: {
                     page,
-                    limit,
+                    pageSize: limit,
                     total,
-                    totalPages: Math.ceil(total / limit),
+                    totalPages,
+                    hasNext: page < totalPages,
+                    hasPrev: page > 1,
                 },
             };
 

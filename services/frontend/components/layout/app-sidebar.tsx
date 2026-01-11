@@ -264,6 +264,17 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                                                 </span>
                                                 <p className="text-sm leading-normal">Role i Permisje</p>
                                             </Link>
+
+                                            <Link
+                                                className={cn(
+                                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
+                                                    pathname.startsWith("/admin/audit") && "bg-white/5 text-[#d97706]"
+                                                )}
+                                                href="/admin/audit"
+                                            >
+                                                <span className="material-symbols-outlined text-lg">history</span>
+                                                <p className="text-sm leading-normal">Dziennik Zdarzeń</p>
+                                            </Link>
                                         </>
                                     )}
                                 </div>
