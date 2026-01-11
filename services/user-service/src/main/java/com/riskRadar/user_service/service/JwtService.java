@@ -27,9 +27,9 @@ public class JwtService {
     @Value("${jwt.refresh-secret}")
     private String refreshSecretEncoded;
 
-    private static final long ACCESS_TOKEN_EXPIRATION_MS = 1000 * 60 * 15; // 15 minut
-    private static final long REFRESH_TOKEN_EXPIRATION_MS = 1000 * 60 * 60 * 24 * 7; // 7 dni
-    private static final long REFRESH_TOKEN_EXTENDED_EXPIRATION_MS = 1000L * 60 * 60 * 24 * 30; // 30 dni (Remember Me)
+    private static final long ACCESS_TOKEN_EXPIRATION_MS = 1000 * 60 * 15; // 15 minutes
+    private static final long REFRESH_TOKEN_EXPIRATION_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+    private static final long REFRESH_TOKEN_EXTENDED_EXPIRATION_MS = 1000L * 60 * 60 * 24 * 30; // 30 days (Remember Me)
 
     @PostConstruct
     public void init() {
@@ -103,7 +103,6 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration, accessKey);
     }
 
-
     public String extractRefreshUsername(String token) {
         try {
             return extractClaim(token, Claims::getSubject, refreshKey);
@@ -121,13 +120,13 @@ public class JwtService {
             Date expiration = extractRefreshExpiration(token);
             Date issued = extractClaim(token, Claims::getIssuedAt, refreshKey);
             long tokenLifetime = expiration.getTime() - issued.getTime();
-            // Consider token extended if lifetime is more than 14 days (halfway between 7 and 30)
+            // Consider token extended if lifetime is more than 14 days (halfway between 7
+            // and 30)
             return tokenLifetime > (1000L * 60 * 60 * 24 * 14);
         } catch (Exception e) {
             return false; // Default to standard token if unable to determine
         }
     }
-
 
     // Generic extraction
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver, Key key) {

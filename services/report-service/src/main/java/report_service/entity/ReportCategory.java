@@ -1,8 +1,8 @@
 package report_service.entity;
 
 /**
- * Kategoryzacja zgłoszeń miejskich wraz z przyjazną nazwą
- * oraz identyfikatorem ikony z biblioteki Google Material Symbols.
+ * Categorization of city reports with user-friendly names
+ * and icon identifiers from Google Material Symbols library.
  */
 public enum ReportCategory {
 
@@ -20,9 +20,9 @@ public enum ReportCategory {
     private final String iconName;
 
     /**
-     * Konstruktor enuma
-     * @param displayName Polska nazwa do wyświetlenia w UI
-     * @param iconName Nazwa kodowa ikony z Google Material Symbols
+     * Enum constructor
+     * @param displayName Display name for UI (in Polish)
+     * @param iconName Icon code name from Google Material Symbols
      */
     ReportCategory(String displayName, String iconName) {
         this.displayName = displayName;
@@ -30,16 +30,16 @@ public enum ReportCategory {
     }
 
     /**
-     * Zwraca polską nazwę kategorii.
-     * @return String np. "Wandalizm"
+     * Returns the category display name.
+     * @return String e.g. "Wandalizm"
      */
     public String getDisplayName() {
         return displayName;
     }
 
     /**
-     * Zwraca nazwę ikony Google Material Symbols.
-     * @return String np. "format_paint"
+     * Returns the Google Material Symbols icon name.
+     * @return String e.g. "format_paint"
      */
     public String getIconName() {
         return iconName;

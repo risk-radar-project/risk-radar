@@ -57,7 +57,6 @@ public class RedisService {
         String value = redisTemplate.opsForValue().get(redisKey);
         return value != null;
     }
-    // For password reset
 
     public void saveWithTTL(String key, String value, long ttl, TimeUnit unit) {
         redisTemplate.opsForValue().set(key, value, ttl, unit);

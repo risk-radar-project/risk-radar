@@ -10,11 +10,11 @@ const PUBLIC_PATHS = ["/", "/login", "/register", "/terms", "/reset-password"]
 // Map paths to required permissions
 // NOTE: More specific paths must come BEFORE generic ones (e.g., /admin/verification before /admin)
 const ROUTE_PERMISSIONS: Record<string, string[]> = {
-    "/admin/verification": ["PERM_REPORTS:VALIDATE", "PERM_*:*", "ROLE_ADMIN", "ROLE_MODERATOR", "ROLE_VOLUNTEER"],
+    "/admin/users": ["PERM_USERS:VIEW", "PERM_*:*", "ROLE_ADMIN", "ROLE_MODERATOR"],
+    "/admin/verification": ["PERM_REPORTS:VALIDATE", "PERM_*:*", "ROLE_ADMIN", "ROLE_VOLUNTEER"],
     "/admin": ["PERM_SYSTEM:ADMIN", "PERM_*:*", "ROLE_ADMIN"],
     "/stats": ["PERM_STATS:VIEW", "PERM_*:*", "ROLE_ADMIN"],
     "/audit": ["PERM_AUDIT:VIEW", "PERM_*:*", "ROLE_ADMIN"],
-    "/users": ["PERM_USERS:VIEW", "PERM_*:*", "ROLE_ADMIN"],
     "/reports": ["PERM_REPORTS:VALIDATE", "PERM_*:*", "ROLE_ADMIN", "ROLE_MODERATOR", "ROLE_VOLUNTEER"],
     "/submit-report": ["PERM_REPORTS:CREATE", "ROLE_USER", "ROLE_VOLUNTEER", "ROLE_MODERATOR", "ROLE_ADMIN"]
 }

@@ -62,8 +62,8 @@ class ReportServiceTest {
         testReportId = UUID.randomUUID();
 
         testRequest = new ReportRequest(
-                "Pożar w lesie",
-                "Pali się las na północy.",
+                "Forest fire",
+                "Fire burning in the northern forest.",
                 54.123,
                 18.456,
                 testUserId,

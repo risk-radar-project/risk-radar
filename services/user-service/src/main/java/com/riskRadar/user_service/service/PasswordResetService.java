@@ -31,7 +31,6 @@ public class PasswordResetService {
 
         logger.info("Password reset token generated for email: {}", email);
 
-        // Return token - will be used for email delivery by external service
         return resetToken;
     }
 

@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const page = searchParams.get("page") || "0"
     const size = searchParams.get("size") || "10"
 
-    const USER_SERVICE = process.env.USER_SERVICE_URL || "http://user-service:8080"
+    const USER_SERVICE = process.env.USER_SERVICE_URL || "http://127.0.0.1:8080"
 
     try {
         const res = await fetch(`${USER_SERVICE}/users?page=${page}&size=${size}`, {
