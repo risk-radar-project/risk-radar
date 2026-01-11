@@ -4,6 +4,7 @@ import { writePaginated } from '../utils/http-utils';
 import { auditLogService } from '../services/audit-log-service';
 import { getWebSocketHandler } from '../websocket/websocket-handler';
 import { LoginHistoryQuery } from '../types';
+import { authzClient } from '../clients/authz-client';
 
 // Create Audit Log
 export async function createLog(
@@ -36,6 +37,18 @@ export async function getLogs(
     next: NextFunction,
 ): Promise<void> {
     try {
+        const userId = req.headers['x-user-id'] as string;
+        if (!userId) {
+            res.status(401).json({ error: 'Missing user ID' });
+            return;
+        }
+
+        const allowed = await authzClient.hasPermission(userId, 'audit:view');
+        if (!allowed) {
+            res.status(403).json({ error: 'Insufficient permissions' });
+            return;
+        }
+
         const filters = {
             ...(req.query.service ? { service: String(req.query.service) } : {}),
             ...(req.query.action ? { action: String(req.query.action) } : {}),

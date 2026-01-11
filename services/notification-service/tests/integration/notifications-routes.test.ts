@@ -13,12 +13,18 @@ const mockInboxService = {
 const mockNotificationDispatcher = {
     dispatch: jest.fn<(payload: unknown) => Promise<void>>()
 };
+const mockAuthzClient = {
+    hasPermission: jest.fn<(userId: string, permission: string) => Promise<boolean>>().mockResolvedValue(true)
+};
 
 jest.mock("../../src/services/inbox-service", () => ({
     inboxService: mockInboxService
 }));
 jest.mock("../../src/services/notification-dispatcher", () => ({
     notificationDispatcher: mockNotificationDispatcher
+}));
+jest.mock("../../src/clients/authz-client", () => ({
+    authzClient: mockAuthzClient
 }));
 
 import { createApp } from "../../src/app";
@@ -31,6 +37,7 @@ describe("notifications routes", () => {
         mockInboxService.list.mockResolvedValue({ data: [{ id: "n1" }], total: 1 });
         mockInboxService.markAsRead.mockResolvedValue(true);
         mockNotificationDispatcher.dispatch.mockResolvedValue(undefined);
+        mockAuthzClient.hasPermission.mockResolvedValue(true);
         app = createApp();
     });
 
@@ -70,6 +77,7 @@ describe("notifications routes", () => {
     it("validates fallback payload", async () => {
         const res = await supertest(app)
             .post("/notifications/send")
+            .set("X-User-ID", "11111111-1111-4111-8111-111111111111")
             .send({ eventType: "USER_REGISTERED", userId: "bad-id" });
 
         expect(res.status).toBe(400);
@@ -84,6 +92,7 @@ describe("notifications routes", () => {
         };
         const res = await supertest(app)
             .post("/notifications/send")
+            .set("X-User-ID", "11111111-1111-4111-8111-111111111111")
             .send(payload);
 
         expect(res.status).toBe(202);

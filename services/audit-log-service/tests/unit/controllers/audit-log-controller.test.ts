@@ -28,6 +28,12 @@ jest.mock('../../../src/services/audit-log-service', () => ({
     },
 }));
 
+jest.mock('../../../src/clients/authz-client', () => ({
+    authzClient: {
+        hasPermission: jest.fn().mockResolvedValue(true),
+    },
+}));
+
 jest.mock('../../../src/websocket/websocket-handler', () => ({
     getWebSocketHandler: jest.fn(() => ({
         broadcastNewLog: mockBroadcastNewLog,
@@ -59,7 +65,7 @@ describe('Audit Controller', () => {
         // Add missing properties for anonymizeLogs tests
         mockReq.query = {};
         mockReq.ip = '127.0.0.1';
-        mockReq.headers = { 'user-agent': 'test-agent' };
+        mockReq.headers = { 'user-agent': 'test-agent', 'x-user-id': 'user-123' };
         mockRes.end = jest.fn().mockReturnThis();
 
         // Get mocked services
@@ -135,7 +141,7 @@ describe('Audit Controller', () => {
                 data: logs,
                 pagination: {
                     page: 1,
-                    limit: 50, // Default from controller
+                    pageSize: 50, // Default from controller
                     total: 2,
                     totalPages: 1,
                 },
@@ -187,7 +193,7 @@ describe('Audit Controller', () => {
                 data: [createValidAuditLog()],
                 pagination: {
                     page: 2,
-                    limit: 10,
+                    pageSize: 10,
                     total: 15,
                     totalPages: 2,
                 },

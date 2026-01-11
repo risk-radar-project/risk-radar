@@ -7,6 +7,7 @@ import { JwtPayload, parseJwt } from "@/lib/auth/jwt-utils"
 import { GATEWAY_URL } from "@/lib/auth/auth-service"
 import { cn } from "@/lib/utils"
 import { useUnreadNotificationsCount } from "@/hooks/use-notifications"
+import { usePermission } from "@/hooks/use-permission"
 
 interface AppSidebarProps {
     isOpen: boolean
@@ -18,7 +19,7 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
     const [mounted, setMounted] = useState(false)
     const isAdminPanelOpenInit = pathname.startsWith("/admin") || pathname.startsWith("/reports")
     const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(isAdminPanelOpenInit)
-    const [user, setUser] = useState<JwtPayload | null>(null)
+    const { user, hasPermission } = usePermission()
 
     const { data: unreadCount } = useUnreadNotificationsCount()
 
@@ -28,29 +29,12 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
         if (pathname.startsWith("/admin") || pathname.startsWith("/reports")) {
             setIsAdminPanelOpen(true)
         }
-        const token = localStorage.getItem("access_token")
-        if (token) {
-            setUser(parseJwt(token))
-        }
-    }, [pathname]) // Re-check on nav change
+    }, [pathname])
 
     if (!mounted) return null
 
-    const permissions = user?.permissions || []
-    const roles = user?.roles || []
-
-    const isAdmin =
-        permissions.includes("*:*") ||
-        permissions.includes("PERM_*:*") ||
-        permissions.includes("PERM_SYSTEM:ADMIN") ||
-        permissions.includes("system:admin") ||
-        roles.includes("ROLE_ADMIN")
-
-    const canValidate =
-        isAdmin ||
-        roles.includes("ROLE_MODERATOR") ||
-        roles.includes("ROLE_VOLUNTEER") ||
-        permissions.includes("PERM_REPORTS:VALIDATE")
+    const isAdmin = hasPermission("system:admin")
+    const canValidate = hasPermission("reports:validate")
 
     const handleLogout = async () => {
         try {
@@ -215,7 +199,7 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                                         </Link>
                                     )}
 
-                                    {(isAdmin || roles.includes("ROLE_VOLUNTEER")) && (
+                                    {canValidate && (
                                         <Link
                                             className={cn(
                                                 "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
@@ -243,7 +227,7 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                                         </Link>
                                     )}
 
-                                    {(isAdmin || roles.includes("ROLE_MODERATOR")) && (
+                                    {hasPermission("users:view") && (
                                         <Link
                                             className={cn(
                                                 "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
@@ -294,8 +278,8 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                         {user && (
                             <div className="mb-2 px-2 text-xs text-[#e0dcd7]/50">
                                 Zalogowany jako: <br />
-                                <span className="block truncate font-semibold text-[#e0dcd7]" title={user.sub}>
-                                    {user.sub || user.userId || "Użytkownik"}
+                                <span className="block truncate font-semibold text-[#e0dcd7]" title={user.email}>
+                                    {user.username || user.email || "Użytkownik"}
                                 </span>
                             </div>
                         )}

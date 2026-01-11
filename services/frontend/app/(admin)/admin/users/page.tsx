@@ -8,6 +8,7 @@ import { TableRow } from "@/components/ui/table/table-row"
 import { TableCell } from "@/components/ui/table/table-cell"
 import { Search, Filter, ChevronLeft, ChevronRight, Ban, ShieldCheck, Eye, X, UserCircle } from "lucide-react"
 import { useRoles } from "@/hooks/use-authz"
+import { usePermission } from "@/hooks/use-permission"
 import { parseJwt } from "@/lib/auth/jwt-utils"
 
 interface User {
@@ -44,19 +45,14 @@ export default function AdminUsersPage() {
     const [totalPages, setTotalPages] = useState(0)
     const [viewingUser, setViewingUser] = useState<User | null>(null)
     const [pageSize, setPageSize] = useState(10)
-    const [currentUserRoles, setCurrentUserRoles] = useState<string[]>([])
 
-    useEffect(() => {
-        const token = localStorage.getItem("access_token")
-        if (token) {
-            const payload = parseJwt(token)
-            if (payload?.roles) {
-                setCurrentUserRoles(payload.roles)
-            }
-        }
-    }, [])
+    const { hasPermission } = usePermission()
+    const canManageAdmins = hasPermission("system:admin")
+    // isModerator was used to restrict editing admins.
+    // New logic: Only admins (canManageAdmins) can edit admins.
 
-    const isModerator = currentUserRoles.includes("ROLE_MODERATOR") && !currentUserRoles.includes("ROLE_ADMIN")
+    // Legacy isModerator check is roughly equivalent to: !canManageAdmins (if we assume only Mods/Admins access this page)
+    // But let's check exact usages for replacement.
 
     const fetchUsers = async () => {
         setLoading(true)
@@ -323,14 +319,14 @@ export default function AdminUsersPage() {
                                         <select
                                             value={user.role}
                                             onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                            disabled={isModerator && user.role.toLowerCase() === "admin"}
+                                            disabled={user.role.toLowerCase() === "admin" && !canManageAdmins}
                                             className={`cursor-pointer rounded border-0 px-2 py-1 text-xs font-medium focus:ring-1 focus:ring-zinc-600 focus:outline-none ${getRoleStyle(user.role)} disabled:cursor-not-allowed disabled:opacity-50`}
                                         >
                                             {availableRoles ? (
                                                 availableRoles
                                                     .filter(
                                                         (role) =>
-                                                            !isModerator ||
+                                                            canManageAdmins ||
                                                             role.name.toUpperCase() !== "ADMIN" ||
                                                             (user.role.toLowerCase() === "admin" &&
                                                                 role.name.toUpperCase() === "ADMIN")
@@ -522,12 +518,12 @@ export default function AdminUsersPage() {
                                     <select
                                         value={viewingUser.role}
                                         onChange={(e) => handleRoleChange(viewingUser.id, e.target.value)}
-                                        disabled={isModerator && viewingUser.role.toLowerCase() === "admin"}
+                                        disabled={viewingUser.role.toLowerCase() === "admin" && !canManageAdmins}
                                         className="w-full rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-300 focus:border-zinc-600 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         {availableRoles ? (
                                             availableRoles
-                                                .filter((role) => !isModerator || role.name.toUpperCase() !== "ADMIN")
+                                                .filter((role) => canManageAdmins || role.name.toUpperCase() !== "ADMIN")
                                                 .map((role) => (
                                                     <option
                                                         key={role.id}
@@ -541,7 +537,7 @@ export default function AdminUsersPage() {
                                                 <option value="user">Użytkownik</option>
                                                 <option value="volunteer">Wolontariusz</option>
                                                 <option value="moderator">Moderator</option>
-                                                {!isModerator && <option value="admin">Administrator</option>}
+                                                {canManageAdmins && <option value="admin">Administrator</option>}
                                             </>
                                         )}
                                     </select>

@@ -86,6 +86,9 @@ export interface Config {
     mailFrom: string;
     userServiceBaseUrl: string;
     auditServiceBaseUrl: string;
+    authzServiceBaseUrl: string;
+    authzHttpTimeoutMs: number;
+    authzHttpRetries: number;
     auditHttpTimeoutMs: number;
     auditHttpRetries: number;
     auditKafka: {
@@ -126,6 +129,9 @@ export const config: Config = {
     mailFrom: process.env.MAIL_FROM || "Powiadomienia <no-reply@riskradar.local>",
     userServiceBaseUrl: process.env.USER_SERVICE_BASE_URL || "http://user-service:8080",
     auditServiceBaseUrl: process.env.AUDIT_LOG_SERVICE_BASE_URL || "http://audit-log-service:8080",
+    authzServiceBaseUrl: process.env.AUTHZ_SERVICE_BASE_URL || "http://authz-service:8080",
+    authzHttpTimeoutMs: parseNumber(process.env.AUTHZ_HTTP_TIMEOUT_MS, 3000),
+    authzHttpRetries: parseNumber(process.env.AUTHZ_HTTP_RETRIES, 2),
     auditHttpTimeoutMs: parseNumber(process.env.AUDIT_HTTP_TIMEOUT_MS, 3000),
     auditHttpRetries: parseNumber(process.env.AUDIT_HTTP_RETRIES, 2),
     auditKafka: {
