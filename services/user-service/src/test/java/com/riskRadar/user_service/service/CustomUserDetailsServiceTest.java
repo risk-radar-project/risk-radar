@@ -73,6 +73,11 @@ class CustomUserDetailsServiceTest {
     void createUser_success() {
         when(userRepository.findByUsernameOrEmail("user", "user@test.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("pass")).thenReturn("encoded");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setId(UUID.randomUUID());
+            return u;
+        });
 
         service.createUser("user", "pass", "user@test.com");
 

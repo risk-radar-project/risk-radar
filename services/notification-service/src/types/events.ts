@@ -17,9 +17,14 @@ export interface NotificationEvent {
         | "MEDIA_DELETED_SYSTEM"
         | "MEDIA_STORAGE_THRESHOLD"
         | "USER_REGISTERED"
+        | "PASSWORD_CHANGED"
         | "USER_PASSWORD_RESET_REQUESTED"
         | "USER_BANNED"
         | "USER_UNBANNED"
+        | "REPORT_CREATED"
+        | "REPORT_STATUS_CHANGED"
+        | "REPORT_AI_VERIFIED"
+        | "REPORT_AI_FLAGGED"
         | "REPORT_CATEGORIZED"
         | "FAKE_REPORT_DETECTED";
     userId: string;

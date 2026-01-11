@@ -50,7 +50,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     @Transactional
-    public void createUser(String username, String rawPassword, String email) {
+    public com.riskRadar.user_service.entity.User createUser(String username, String rawPassword, String email) {
         if (userRepository.findByUsernameOrEmail(username, email).isPresent()) {
             throw new UserAlreadyExistsException("User with this username or email already exists");
         }
@@ -60,10 +60,12 @@ public class CustomUserDetailsService implements UserDetailsService {
         user.setEmail(email);
         user.setBanned(false);
         user.setPassword(passwordEncoder.encode(rawPassword));
-        userRepository.save(user);
+        user = userRepository.save(user);
 
         // Assign default role via authz-service
         eventPublisher.publishEvent(new UserCreatedEvent(user.getId()));
+        
+        return user;
     }
 
     @TransactionalEventListener

@@ -86,6 +86,13 @@ public class PasswordResetController {
 
             userService.updatePassword(email, request.newPassword());
             passwordResetService.invalidateResetToken(request.token());
+            
+            // Send email about successful password change
+            try {
+                notificationClient.sendPasswordChangedNotification(userService.getUserByUsernameOrEmail(email).getId(), email);
+            } catch (Exception e) {
+                logger.error("Failed to send password changed notification", e);
+            }
 
             logger.info("Password successfully reset for email: {}", email);
 

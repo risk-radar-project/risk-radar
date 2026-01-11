@@ -24,8 +24,15 @@ export const templateDefinitions: TemplateDefinition[] = [
         templateKey: "USER_REGISTERED_EMAIL",
         eventType: "USER_REGISTERED",
         channel: "email",
-        subject: "Witaj w serwisie!",
+        subject: "Witaj w Risk Radar!",
         bodyFile: "user-registered.html"
+    },
+    {
+        templateKey: "PASSWORD_CHANGED_EMAIL",
+        eventType: "PASSWORD_CHANGED",
+        channel: "email",
+        subject: "Twoje hasło zostało zmienione",
+        body: "Twoje hasło do konta Risk Radar zostało pomyślnie zmienione. Jeśli to nie Ty, skontaktuj się z administratorem."
     },
     {
         templateKey: "AUDIT_SECURITY_EVENT_DETECTED_IN_APP",

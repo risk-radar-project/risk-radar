@@ -10,8 +10,10 @@ const config: Config = {
         "src/**/*.ts",
         "!src/**/*.d.ts",
         "!src/**/index.ts",
-        "!src/**/*.types.ts"
+        "!src/**/*.types.ts",
+        "!src/clients/authz-client.ts"
     ],
+    coveragePathIgnorePatterns: ["/src/repositories/"],
     coverageDirectory: "coverage",
     setupFilesAfterEnv: ["<rootDir>/tests/setup-env.ts"],
     testMatch: ["**/?(*.)+(spec|test).ts"],

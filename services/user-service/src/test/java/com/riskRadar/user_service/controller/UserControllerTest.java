@@ -5,6 +5,7 @@ import com.riskRadar.user_service.dto.ChangeEmailRequest;
 import com.riskRadar.user_service.service.CustomUserDetailsService;
 import com.riskRadar.user_service.service.RedisService;
 import com.riskRadar.user_service.service.UserService;
+import com.riskRadar.user_service.service.NotificationClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -24,6 +25,7 @@ class UserControllerTest {
     private UserService userService;
     private CustomUserDetailsService userDetailsService;
     private RedisService redisService;
+    private NotificationClient notificationClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
@@ -31,7 +33,8 @@ class UserControllerTest {
         userService = mock(UserService.class);
         userDetailsService = mock(CustomUserDetailsService.class);
         redisService = mock(RedisService.class);
-        UserController userController = new UserController(userDetailsService, redisService, userService);
+        notificationClient = mock(NotificationClient.class);
+        UserController userController = new UserController(userDetailsService, redisService, userService, notificationClient);
         mockMvc = MockMvcBuilders.standaloneSetup(userController).build();
     }
 

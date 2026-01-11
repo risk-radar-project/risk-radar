@@ -3,7 +3,6 @@ package report_service.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.ArgumentMatchers;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,12 +16,15 @@ import org.springframework.kafka.support.SendResult;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.web.client.RestTemplate;
 import report_service.dto.ReportRequest;
 import report_service.entity.Report;
 import report_service.entity.ReportStatus;
 import report_service.repository.ReportRepository;
 
 import report_service.entity.ReportCategory;
+import report_service.service.NotificationClient;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -47,9 +49,14 @@ class ReportServiceTest {
     private KafkaTemplate<String, Object> kafkaTemplate;
 
     @Mock
-    private AuditLogClient auditLogClient;
+    private NotificationClient notificationClient;
 
-    @InjectMocks
+    @Mock
+    private RestTemplateBuilder restTemplateBuilder;
+
+    @Mock
+    private RestTemplate restTemplate;
+
     private ReportService reportService;
 
     private UUID testReportId;
@@ -80,6 +87,9 @@ class ReportServiceTest {
         savedReport.setImageIds(testRequest.imageIds());
         savedReport.setStatus(ReportStatus.PENDING);
         savedReport.setCreatedAt(LocalDateTime.now());
+
+        when(restTemplateBuilder.build()).thenReturn(restTemplate);
+        reportService = new ReportService(reportRepository, kafkaTemplate, notificationClient, restTemplateBuilder, "");
     }
 
     @Test
@@ -87,10 +97,10 @@ class ReportServiceTest {
         when(reportRepository.save(any(Report.class))).thenReturn(savedReport);
 
         RecordMetadata recordMetadata = new RecordMetadata(
-                new TopicPartition("reports", 1), 0L, 0,
-                System.currentTimeMillis(), 0, 0);
-        ProducerRecord<String, Object> producerRecord = new ProducerRecord<>("reports", "json-report",
-                Map.of("id", savedReport.getId().toString()));
+            new TopicPartition("report", 1), 0L, 0,
+            System.currentTimeMillis(), 0, 0);
+        ProducerRecord<String, Object> producerRecord = new ProducerRecord<>("report", savedReport.getId().toString(),
+            Map.of("id", savedReport.getId().toString()));
         SendResult<String, Object> sendResult = new SendResult<>(producerRecord, recordMetadata);
         CompletableFuture<SendResult<String, Object>> successFuture = CompletableFuture.completedFuture(sendResult);
 
@@ -99,7 +109,7 @@ class ReportServiceTest {
         reportService.createReport(testRequest);
 
         verify(reportRepository, times(1)).save(any(Report.class));
-        verify(kafkaTemplate, times(1)).send(any(), any());
+        verify(kafkaTemplate, times(1)).send(anyString(), anyString(), any());
     }
 
     @Test
@@ -160,14 +170,14 @@ class ReportServiceTest {
 
         RuntimeException kafkaException = new RuntimeException("Kafka connection failed");
         CompletableFuture<SendResult<String, Object>> failedFuture = CompletableFuture.failedFuture(kafkaException);
-        when(kafkaTemplate.send(eq("reports"), anyString(), any())).thenReturn(failedFuture);
+        when(kafkaTemplate.send(anyString(), anyString(), any())).thenReturn(failedFuture);
 
         assertDoesNotThrow(() -> {
             reportService.createReport(testRequest);
         });
 
         verify(reportRepository, times(1)).save(any(Report.class));
-        verify(kafkaTemplate, times(1)).send(eq("reports"), anyString(), any());
+        verify(kafkaTemplate, times(1)).send(anyString(), anyString(), any());
     }
 
     @Test

@@ -12,8 +12,15 @@ const eventTypes = [
     "MEDIA_STORAGE_THRESHOLD",
     "USER_REGISTERED",
     "USER_PASSWORD_RESET_REQUESTED",
+    "PASSWORD_CHANGED",
     "USER_BANNED",
-    "USER_UNBANNED"
+    "USER_UNBANNED",
+    "REPORT_CREATED",
+    "REPORT_STATUS_CHANGED",
+    "REPORT_AI_VERIFIED",
+    "REPORT_AI_FLAGGED",
+    "REPORT_CATEGORIZED",
+    "FAKE_REPORT_DETECTED"
 ] as const;
 
 const genericPayloadSchema = Joi.object().unknown(true);

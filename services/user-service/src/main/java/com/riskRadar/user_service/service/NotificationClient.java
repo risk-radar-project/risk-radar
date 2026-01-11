@@ -30,14 +30,70 @@ public class NotificationClient {
                         "email", email,
                         "resetUrl", resetUrl));
 
+        sendNotification(payload, "Failed to send password reset email request for user " + userId);
+    }
+
+    public void sendWelcomeNotification(UUID userId, String email, String username) {
+        var payload = Map.of(
+                "eventType", "USER_REGISTERED",
+                "userId", userId.toString(),
+                "payload", Map.of(
+                        "email", email,
+                        "username", username));
+
+        sendNotification(payload, "Failed to send welcome notification for user " + userId);
+    }
+
+    public void sendPasswordChangedNotification(UUID userId, String email) {
+        var payload = Map.of(
+                "eventType", "PASSWORD_CHANGED",
+                "userId", userId.toString(),
+                "payload", Map.of(
+                        "email", email));
+
+        sendNotification(payload, "Failed to send password changed notification for user " + userId);
+    }
+
+    public void sendBanNotification(UUID userId, String email, String reason) {
+        var payload = Map.of(
+                "eventType", "USER_BANNED",
+                "userId", userId.toString(),
+                "payload", Map.of(
+                        "email", email,
+                        "reason", reason));
+
+        sendNotification(payload, "Failed to send ban notification for user " + userId);
+    }
+
+    public void sendUnbanNotification(UUID userId, String email) {
+        var payload = Map.of(
+                "eventType", "USER_UNBANNED",
+                "userId", userId.toString(),
+                "payload", Map.of(
+                        "email", email));
+
+        sendNotification(payload, "Failed to send unban notification for user " + userId);
+    }
+
+    public void sendRoleAssignedNotification(UUID userId, String roleName) {
+        var payload = Map.of(
+                "eventType", "ROLE_ASSIGNED",
+                "userId", userId.toString(),
+                "payload", Map.of(
+                        "title", "Nowa rola przypisana",
+                        "body", "Otrzymałeś nową rolę: " + roleName));
+
+        sendNotification(payload, "Failed to send role assigned notification for user " + userId);
+    }
+
+    private void sendNotification(Object payload, String errorMessage) {
         webClient.post()
                 .uri("/notifications/send")
                 .bodyValue(payload)
                 .retrieve()
                 .bodyToMono(Void.class)
                 .subscribe(
-                        success -> log.info("Password reset email request sent for user {}", userId),
-                        error -> log.error("Failed to send password reset email request for user {}: {}", userId,
-                                error.getMessage()));
+                        success -> log.info("Notification sent successfully"),
+                        error -> log.error("{}: {}", errorMessage, error.getMessage()));
     }
 }
