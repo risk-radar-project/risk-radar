@@ -5,6 +5,7 @@ import { notificationDispatcher } from "../services/notification-dispatcher";
 import { logger } from "../utils/logger";
 import { NotificationEvent } from "../types/events";
 import { auditClient } from "../clients/audit-client";
+import { authzClient } from "../clients/authz-client";
 
 export async function listNotifications(req: Request, res: Response): Promise<void> {
     const userId: string = req.context?.userId ?? "";
@@ -109,6 +110,19 @@ export async function markAsUnread(req: Request, res: Response): Promise<void> {
 }
 
 export async function fallbackSend(req: Request, res: Response): Promise<void> {
+    const userId: string = req.context?.userId ?? "";
+    if (userId.length === 0) {
+        res.status(400).json({ error: "Missing X-User-ID header" });
+        return;
+    }
+
+    // Check permission - strictly require notifications:send capability
+    const allowed = await authzClient.hasPermission(userId, "notifications:send");
+    if (!allowed) {
+        res.status(403).json({ error: "Insufficient permissions" });
+        return;
+    }
+
     const payload = req.body as Partial<NotificationEvent>;
     const event: NotificationEvent = {
         eventId: payload.eventId || uuidv4(),

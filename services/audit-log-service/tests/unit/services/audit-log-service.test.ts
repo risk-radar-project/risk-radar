@@ -194,8 +194,8 @@ describe('AuditLogService', () => {
 
             // Assert
             expect(mockDatabase.query).toHaveBeenCalledWith(
-                expect.stringContaining('WHERE service = $1 AND action = $2'),
-                expect.arrayContaining(['test-service', 'test-action', 'user123', 'success'])
+                expect.stringContaining('WHERE service ILIKE $1 AND action ILIKE $2'),
+                expect.arrayContaining(['%test-service%', '%test-action%', '%user123%', 'success'])
             );
         });
 

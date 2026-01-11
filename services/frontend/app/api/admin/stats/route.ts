@@ -19,13 +19,10 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: "Invalid token" }, { status: 401 })
         }
 
-        const roles = payload.roles || []
         const permissions = payload.permissions || []
 
-        // Allow if admin or has stats:view permission
+        // Allow if has stats:view permission or super admin
         const isAdmin =
-            roles.includes("ADMIN") ||
-            roles.includes("ROLE_ADMIN") ||
             permissions.includes("*:*") ||
             permissions.includes("PERM_*:*") ||
             permissions.includes("stats:view") ||

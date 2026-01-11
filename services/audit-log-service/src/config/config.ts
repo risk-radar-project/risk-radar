@@ -11,6 +11,9 @@ export interface Config {
     defaultPageSize: number;
     maxPageSize: number;
     logRetentionDays: number;
+    authzServiceBaseUrl: string;
+    authzHttpTimeoutMs: number;
+    authzHttpRetries: number;
     websocketEnabled: boolean;
     kafkaEnabled: boolean;
     kafkaBrokers: string[];
@@ -86,6 +89,9 @@ export const config: Config = {
     defaultPageSize: parseInt(process.env.DEFAULT_PAGE_SIZE || '50', 10),
     maxPageSize: parseInt(process.env.MAX_PAGE_SIZE || '1000', 10),
     logRetentionDays: parsedRetention,
+    authzServiceBaseUrl: process.env.AUTHZ_SERVICE_BASE_URL || "http://authz-service:8080",
+    authzHttpTimeoutMs: parseInt(process.env.AUTHZ_HTTP_TIMEOUT_MS || '3000', 10),
+    authzHttpRetries: parseInt(process.env.AUTHZ_HTTP_RETRIES || '2', 10),
     websocketEnabled: process.env.WEBSOCKET_ENABLED === 'true',
     kafkaEnabled: kafkaBrokers.length > 0,
     kafkaBrokers,
