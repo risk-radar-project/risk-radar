@@ -5,14 +5,22 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, UserCircle } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useEffect } from "react"
 import { GATEWAY_URL } from "@/lib/auth/auth-service"
 
+const DEMO_ACCOUNTS = [
+    { label: "👑 Admin", username: "admin", password: "admin" },
+    { label: "🛡️ Moderator", username: "moderator", password: "moderator" },
+    { label: "🤝 Wolontariusz", username: "wolontariusz", password: "wolontariusz" },
+    { label: "👤 Użytkownik", username: "uzytkownik", password: "uzytkownik" }
+]
+
 export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false)
+    const [showDemoAccounts, setShowDemoAccounts] = useState(true)
     const [formData, setFormData] = useState({
         username: "",
         password: "",
@@ -65,6 +73,12 @@ export default function LoginPage() {
         if (errors[id as keyof typeof errors]) {
             setErrors((prev) => ({ ...prev, [id]: "" }))
         }
+    }
+
+    const handleDemoLogin = (username: string, password: string) => {
+        setFormData((prev) => ({ ...prev, username, password }))
+        setShowDemoAccounts(false)
+        setErrors({ username: "", password: "", form: "" })
     }
 
     const handleSubmit = async () => {
@@ -201,6 +215,35 @@ export default function LoginPage() {
                 }}
                 className="flex flex-col gap-4 py-3"
             >
+                {/* Demo Accounts Section */}
+                <div className="mb-2">
+                    <button
+                        type="button"
+                        onClick={() => setShowDemoAccounts(!showDemoAccounts)}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#54473b] bg-[#27211b]/50 px-4 py-2.5 text-sm font-medium text-[#baab9c] transition-colors hover:bg-[#27211b] hover:text-white"
+                        disabled={isLoading || isAlreadyLoggedIn}
+                    >
+                        <UserCircle className="h-4 w-4" />
+                        <span>{showDemoAccounts ? "Ukryj konta demo" : "Pokaż konta demo"}</span>
+                    </button>
+
+                    {showDemoAccounts && (
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                            {DEMO_ACCOUNTS.map((account) => (
+                                <button
+                                    key={account.username}
+                                    type="button"
+                                    onClick={() => handleDemoLogin(account.username, account.password)}
+                                    className="rounded-lg border border-[#54473b] bg-[#27211b] px-3 py-2 text-xs font-medium text-[#baab9c] transition-colors hover:border-[#d97706] hover:bg-[#d97706]/10 hover:text-[#d97706]"
+                                    disabled={isLoading || isAlreadyLoggedIn}
+                                >
+                                    {account.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
                 <div className="flex w-full flex-col">
                     <Label className="pb-2 text-base leading-normal font-medium text-white" htmlFor="username">
                         Email lub login
