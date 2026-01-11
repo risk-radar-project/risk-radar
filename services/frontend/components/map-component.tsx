@@ -343,7 +343,9 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                 const imageContainer = document.createElement("div")
                 imageContainer.className = "report-image-container"
                 imageContainer.style.display = "grid"
-                imageContainer.style.gridTemplateColumns = "repeat(3, 1fr)"
+                // Dynamic columns based on image count for better layout
+                const columns = imageIds.length === 1 ? 1 : imageIds.length === 2 ? 2 : 3
+                imageContainer.style.gridTemplateColumns = `repeat(${columns}, 1fr)`
                 imageContainer.style.gap = "8px"
                 imageContainer.style.marginTop = "12px"
                 imageContainer.style.maxWidth = "100%"
