@@ -8,6 +8,7 @@ import { TableRow } from "@/components/ui/table/table-row"
 import { TableCell } from "@/components/ui/table/table-cell"
 import { Search, Filter, ChevronLeft, ChevronRight, Ban, ShieldCheck, Eye, X, UserCircle } from "lucide-react"
 import { useRoles } from "@/hooks/use-authz"
+import { parseJwt } from "@/lib/auth/jwt-utils"
 
 interface User {
     id: string
@@ -43,6 +44,19 @@ export default function AdminUsersPage() {
     const [totalPages, setTotalPages] = useState(0)
     const [viewingUser, setViewingUser] = useState<User | null>(null)
     const [pageSize, setPageSize] = useState(10)
+    const [currentUserRoles, setCurrentUserRoles] = useState<string[]>([])
+
+    useEffect(() => {
+        const token = localStorage.getItem("access_token")
+        if (token) {
+            const payload = parseJwt(token)
+            if (payload?.roles) {
+                setCurrentUserRoles(payload.roles)
+            }
+        }
+    }, [])
+
+    const isModerator = currentUserRoles.includes("ROLE_MODERATOR") && !currentUserRoles.includes("ROLE_ADMIN")
 
     const fetchUsers = async () => {
         setLoading(true)
@@ -309,18 +323,27 @@ export default function AdminUsersPage() {
                                         <select
                                             value={user.role}
                                             onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                            className={`cursor-pointer rounded border-0 px-2 py-1 text-xs font-medium focus:ring-1 focus:ring-zinc-600 focus:outline-none ${getRoleStyle(user.role)}`}
+                                            disabled={isModerator && user.role.toLowerCase() === "admin"}
+                                            className={`cursor-pointer rounded border-0 px-2 py-1 text-xs font-medium focus:ring-1 focus:ring-zinc-600 focus:outline-none ${getRoleStyle(user.role)} disabled:cursor-not-allowed disabled:opacity-50`}
                                         >
                                             {availableRoles ? (
-                                                availableRoles.map((role) => (
-                                                    <option
-                                                        key={role.id}
-                                                        value={role.name}
-                                                        className="bg-zinc-800 text-zinc-300"
-                                                    >
-                                                        {role.name}
-                                                    </option>
-                                                ))
+                                                availableRoles
+                                                    .filter(
+                                                        (role) =>
+                                                            !isModerator ||
+                                                            role.name.toUpperCase() !== "ADMIN" ||
+                                                            (user.role.toLowerCase() === "admin" &&
+                                                                role.name.toUpperCase() === "ADMIN")
+                                                    )
+                                                    .map((role) => (
+                                                        <option
+                                                            key={role.id}
+                                                            value={role.name}
+                                                            className="bg-zinc-800 text-zinc-300"
+                                                        >
+                                                            {role.name}
+                                                        </option>
+                                                    ))
                                             ) : (
                                                 // Fallback if roles not loaded
                                                 <>
@@ -501,12 +524,28 @@ export default function AdminUsersPage() {
                                     <select
                                         value={viewingUser.role}
                                         onChange={(e) => handleRoleChange(viewingUser.id, e.target.value)}
-                                        className="w-full rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-300 focus:border-zinc-600 focus:outline-none"
+                                        disabled={isModerator && viewingUser.role.toLowerCase() === "admin"}
+                                        className="w-full rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-300 focus:border-zinc-600 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        <option value="user">Użytkownik</option>
-                                        <option value="volunteer">Wolontariusz</option>
-                                        <option value="moderator">Moderator</option>
-                                        <option value="admin">Administrator</option>
+                                        {availableRoles ? (
+                                            availableRoles
+                                                .filter((role) => !isModerator || role.name.toUpperCase() !== "ADMIN")
+                                                .map((role) => (
+                                                    <option
+                                                        key={role.id}
+                                                        value={role.name} // Assuming backend expects name
+                                                    >
+                                                        {role.name}
+                                                    </option>
+                                                ))
+                                        ) : (
+                                            <>
+                                                <option value="user">Użytkownik</option>
+                                                <option value="volunteer">Wolontariusz</option>
+                                                <option value="moderator">Moderator</option>
+                                                {!isModerator && <option value="admin">Administrator</option>}
+                                            </>
+                                        )}
                                     </select>
                                 </div>
                                 <div>

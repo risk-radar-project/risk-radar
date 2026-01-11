@@ -215,67 +215,71 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                                         </Link>
                                     )}
 
-                                    <Link
-                                        className={cn(
-                                            "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
-                                            (pathname.startsWith("/reports") ||
-                                                pathname.startsWith("/admin/verification")) &&
-                                                "bg-white/5 text-[#d97706]"
-                                        )}
-                                        href={isAdmin ? "/admin/verification" : "/reports"}
-                                    >
-                                        <span className="material-symbols-outlined text-lg">verified</span>
-                                        <p className="text-sm leading-normal">Weryfikacja</p>
-                                    </Link>
+                                    {(isAdmin || roles.includes("ROLE_VOLUNTEER")) && (
+                                        <Link
+                                            className={cn(
+                                                "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
+                                                (pathname.startsWith("/reports") ||
+                                                    pathname.startsWith("/admin/verification")) &&
+                                                    "bg-white/5 text-[#d97706]"
+                                            )}
+                                            href={isAdmin ? "/admin/verification" : "/reports"}
+                                        >
+                                            <span className="material-symbols-outlined text-lg">verified</span>
+                                            <p className="text-sm leading-normal">Weryfikacja</p>
+                                        </Link>
+                                    )}
 
                                     {isAdmin && (
-                                        <>
-                                            <Link
-                                                className={cn(
-                                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
-                                                    pathname.startsWith("/admin/reports") && "bg-white/5 text-[#d97706]"
-                                                )}
-                                                href="/admin/reports"
-                                            >
-                                                <span className="material-symbols-outlined text-lg">description</span>
-                                                <p className="text-sm leading-normal">Zgłoszenia</p>
-                                            </Link>
+                                        <Link
+                                            className={cn(
+                                                "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
+                                                pathname.startsWith("/admin/reports") && "bg-white/5 text-[#d97706]"
+                                            )}
+                                            href="/admin/reports"
+                                        >
+                                            <span className="material-symbols-outlined text-lg">description</span>
+                                            <p className="text-sm leading-normal">Zgłoszenia</p>
+                                        </Link>
+                                    )}
 
-                                            <Link
-                                                className={cn(
-                                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
-                                                    pathname.startsWith("/admin/users") && "bg-white/5 text-[#d97706]"
-                                                )}
-                                                href="/admin/users"
-                                            >
-                                                <span className="material-symbols-outlined text-lg">group</span>
-                                                <p className="text-sm leading-normal">Użytkownicy</p>
-                                            </Link>
+                                    {(isAdmin || roles.includes("ROLE_MODERATOR")) && (
+                                        <Link
+                                            className={cn(
+                                                "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
+                                                pathname.startsWith("/admin/users") && "bg-white/5 text-[#d97706]"
+                                            )}
+                                            href="/admin/users"
+                                        >
+                                            <span className="material-symbols-outlined text-lg">group</span>
+                                            <p className="text-sm leading-normal">Użytkownicy</p>
+                                        </Link>
+                                    )}
 
-                                            <Link
-                                                className={cn(
-                                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
-                                                    pathname.startsWith("/admin/roles") && "bg-white/5 text-[#d97706]"
-                                                )}
-                                                href="/admin/roles"
-                                            >
-                                                <span className="material-symbols-outlined text-lg">
-                                                    admin_panel_settings
-                                                </span>
-                                                <p className="text-sm leading-normal">Role i Permisje</p>
-                                            </Link>
+                                    {isAdmin && (
+                                        <Link
+                                            className={cn(
+                                                "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
+                                                pathname.startsWith("/admin/roles") && "bg-white/5 text-[#d97706]"
+                                            )}
+                                            href="/admin/roles"
+                                        >
+                                            <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+                                            <p className="text-sm leading-normal">Role i Permisje</p>
+                                        </Link>
+                                    )}
 
-                                            <Link
-                                                className={cn(
-                                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
-                                                    pathname.startsWith("/admin/audit") && "bg-white/5 text-[#d97706]"
-                                                )}
-                                                href="/admin/audit"
-                                            >
-                                                <span className="material-symbols-outlined text-lg">history</span>
-                                                <p className="text-sm leading-normal">Dziennik Zdarzeń</p>
-                                            </Link>
-                                        </>
+                                    {isAdmin && (
+                                        <Link
+                                            className={cn(
+                                                "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
+                                                pathname.startsWith("/admin/audit") && "bg-white/5 text-[#d97706]"
+                                            )}
+                                            href="/admin/audit"
+                                        >
+                                            <span className="material-symbols-outlined text-lg">receipt_long</span>
+                                            <p className="text-sm leading-normal">Dziennik Zdarzeń</p>
+                                        </Link>
                                     )}
                                 </div>
                             )}
