@@ -35,7 +35,7 @@ export default async function RootLayout({
     const serializedSession = JSON.stringify(session ?? null).replace(/</g, "\\u003c")
 
     return (
-        <html lang="en">
+        <html lang="en" className="dark">
             <head>
                 <link
                     rel="stylesheet"

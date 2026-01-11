@@ -221,7 +221,7 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                                                 "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
                                                 (pathname.startsWith("/reports") ||
                                                     pathname.startsWith("/admin/verification")) &&
-                                                "bg-white/5 text-[#d97706]"
+                                                    "bg-white/5 text-[#d97706]"
                                             )}
                                             href={isAdmin ? "/admin/verification" : "/reports"}
                                         >
@@ -247,8 +247,7 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                                         <Link
                                             className={cn(
                                                 "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
-                                                pathname.startsWith("/admin/users") &&
-                                                "bg-white/5 text-[#d97706]"
+                                                pathname.startsWith("/admin/users") && "bg-white/5 text-[#d97706]"
                                             )}
                                             href="/admin/users"
                                         >
@@ -265,10 +264,21 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                                             )}
                                             href="/admin/roles"
                                         >
-                                            <span className="material-symbols-outlined text-lg">
-                                                admin_panel_settings
-                                            </span>
+                                            <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
                                             <p className="text-sm leading-normal">Role i Permisje</p>
+                                        </Link>
+                                    )}
+
+                                    {isAdmin && (
+                                        <Link
+                                            className={cn(
+                                                "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
+                                                pathname.startsWith("/admin/audit") && "bg-white/5 text-[#d97706]"
+                                            )}
+                                            href="/admin/audit"
+                                        >
+                                            <span className="material-symbols-outlined text-lg">receipt_long</span>
+                                            <p className="text-sm leading-normal">Dziennik Zdarzeń</p>
                                         </Link>
                                     )}
                                 </div>

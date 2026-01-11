@@ -45,6 +45,8 @@ export async function getLogs(
             ...(req.query.log_type ? { log_type: req.query.log_type as any } : {}),
             ...(req.query.start_date ? { start_date: String(req.query.start_date) } : {}),
             ...(req.query.end_date ? { end_date: String(req.query.end_date) } : {}),
+            ...(req.query.sort_by ? { sort_by: String(req.query.sort_by) } : {}),
+            ...(req.query.order ? { order: String(req.query.order) } : {}),
         };
 
         const page = req.query.page ? parseInt(String(req.query.page), 10) : 1;
@@ -56,7 +58,7 @@ export async function getLogs(
             res,
             result.data,
             result.pagination.page,
-            result.pagination.limit,
+            result.pagination.pageSize,
             result.pagination.total,
         );
     } catch (err) {

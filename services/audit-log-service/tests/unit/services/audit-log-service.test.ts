@@ -167,7 +167,7 @@ describe('AuditLogService', () => {
             // Assert
             expect(result.data).toHaveLength(2);
             expect(result.pagination.page).toBe(1);
-            expect(result.pagination.limit).toBe(config.defaultPageSize);
+            expect(result.pagination.pageSize).toBe(config.defaultPageSize);
             expect(result.pagination.total).toBe(2);
             expect(result.pagination.totalPages).toBe(1);
         });
@@ -214,7 +214,7 @@ describe('AuditLogService', () => {
 
             // Assert
             expect(result.pagination.page).toBe(2);
-            expect(result.pagination.limit).toBe(10);
+            expect(result.pagination.pageSize).toBe(10);
             expect(result.pagination.total).toBe(25);
             expect(result.pagination.totalPages).toBe(3);
 
@@ -239,7 +239,7 @@ describe('AuditLogService', () => {
             const result = await auditLogService.getLogs({}, pagination);
 
             // Assert
-            expect(result.pagination.limit).toBe(config.maxPageSize);
+            expect(result.pagination.pageSize).toBe(config.maxPageSize);
         });
     });
 

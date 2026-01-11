@@ -49,8 +49,10 @@ export interface PaginatedResponse<T> {
     data: T[];
     pagination: {
         page: number;
-        limit: number;
+        pageSize: number;
         total: number;
         totalPages: number;
+        hasNext: boolean;
+        hasPrev: boolean;
     };
 }
