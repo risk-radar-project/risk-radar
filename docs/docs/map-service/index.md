@@ -1,99 +1,171 @@
-# map-service
+# Map Service
 
 **Owner:** @Filip Sanecki
 
-Usługa Mapy dla **RiskRadar** (część Frontend/Backend For Frontend - BFF), odpowiedzialna za serwowanie strony mapy oraz agregację i dostarczanie zweryfikowanych raportów incydentów z `report-service` do przeglądarki.
+Map Service for **RiskRadar** (Frontend/Backend For Frontend - BFF component), responsible for serving the map page and aggregating and delivering verified incident reports from `report-service` to the browser.
 
 ---
 
-## 🎯 Cel (Purpose)
+## 🎯 Purpose
 
-Ta usługa udostępnia **interaktywną mapę** w RiskRadar.
-Zapewnia:
+This service provides an **interactive map** in RiskRadar.
+It ensures:
 
-* Serwowanie głównej strony HTML mapy (`index.html`).
-* Pobieranie **zweryfikowanych** raportów incydentów z `report-service`.
-* Dostarczanie danych o raportach do skryptu JavaScript po stronie klienta w celu wizualizacji (Markery Leaflet z klasteryzacją).
+* Serving the main HTML map page (`index.html`).
+* Fetching **verified** incident reports from `report-service`.
+* Delivering report data to client-side JavaScript for visualization (Leaflet markers with clustering).
+* Caching AI verification data from Kafka events for real-time display.
 
 ---
 
-## 🏗️ Architektura (Architecture)
+## 🏗️ Architecture
 
-* **Język:** Java 21
-* **Framework:** Spring Boot 3.5 (Spring Web, RestTemplate)
-* **Komunikacja:** REST (RestTemplate do komunikacji z `report-service`)
-* **Frontend:** Leaflet, Leaflet.markercluster (OSM)
+* **Language:** Java 21
+* **Framework:** Spring Boot 3.5 (Spring Web, RestTemplate, Kafka)
+* **Communication:** 
+  * REST (RestTemplate for communication with `report-service`)
+  * Kafka (Consumer for AI verification events)
+* **Frontend:** Leaflet, Leaflet.markercluster (OpenStreetMap)
 * **Deployment:** Docker / Docker Compose
 
 ---
 
-## ⚙️ Kluczowe Komponenty (Core Components)
+## ⚙️ Core Components
 
-### 1. Serwowanie Mapy (`MapController.java`)
-* Serwuje widok mapy (strona `index.html`) poprzez endpoint `GET /`.
+### 1. Map Page Serving (`MapController.java`)
+* Serves the map view (`index.html` page) via `GET /` endpoint.
 
-### 2. Agregacja Raportów (`ReportQueryController.java`, `ReportServiceClient.java`)
-* Endpoint `GET /reports` służy do pobierania listy zweryfikowanych raportów.
-* `ReportServiceClient` pobiera raporty z endpointu `/reports/verified` w `report-service` używając `RestTemplate`.
-* URL docelowy (`report-service-url`) jest konfigurowany za pomocą zmiennej `${app.services.report-service-url}`.
+### 2. Report Aggregation (`ReportQueryController.java`, `ReportServiceClient.java`)
+* `GET /reports` endpoint retrieves a list of verified reports.
+* `ReportServiceClient` fetches reports from `/reports/verified` endpoint in `report-service` using `RestTemplate`.
+* Target URL (`report-service-url`) is configured via `${app.services.report-service-url}` variable.
 
-### 3. Wizualizacja Mapy (`index.html`)
-* Wykorzystuje **Leaflet** do wyświetlania mapy.
-* Używa wtyczki **Leaflet.markercluster** do grupowania znaczników na mapie.
-* Skrypt JavaScript po stronie klienta:
-    * Pobiera raporty z `/reports`.
-    * Tworzy dynamicznie markery na podstawie współrzędnych (`latitude`, `longitude`) i ikon zależnych od kategorii.
-    * Popupy markerów zawierają tytuł, opis, kategorię i obrazy (pobierane z `${MEDIA_SERVICE_BASE_URL}`).
+### 3. AI Verification Data Cache (`VerificationCacheService.java`)
+* Listens to Kafka topic `verification_events` for AI verification results.
+* Stores verification data in-memory (ConcurrentHashMap) for quick access.
+* Provides `GET /verification/{reportId}` endpoint to fetch cached AI data.
+* Handles two event types:
+  * `report_verified` - AI fake detection results
+  * `duplicate_check` - Duplicate report detection results
+
+### 4. Map Visualization (`index.html`)
+* Uses **Leaflet** to display the map.
+* Uses **Leaflet.markercluster** plugin for marker grouping.
+* Client-side JavaScript:
+  * Fetches reports from `/reports`.
+  * Dynamically creates markers based on coordinates (`latitude`, `longitude`) and category-specific icons.
+  * Marker popups display title, description, category, and images (fetched from `${MEDIA_SERVICE_BASE_URL}`).
+  * Displays AI verification badges when available.
 
 ---
 
-## 🔑 Endpunkty API (API Endpoints)
+## 🔑 API Endpoints
 
-| Metoda | Ścieżka | Opis | Kod Statusu | Szczegóły |
+| Method | Path | Description | Status Code | Details |
 |---|---|---|---|---|
-| **GET** | `/` | Serwuje stronę HTML z mapą (index.html). | `200 OK` | Strona mapy załadowana. |
-| **GET** | `/reports` | Pobiera i zwraca listę zweryfikowanych raportów z `report-service`. | `200 OK` | Zwraca listę obiektów `ReportDTO`. |
-| | | | `500 Internal Server Error` | Błąd komunikacji z `report-service` lub błąd wewnętrzny. |
+| **GET** | `/` | Serves the HTML map page (index.html). | `200 OK` | Map page loaded. |
+| **GET** | `/reports` | Fetches and returns a list of verified reports from `report-service`. | `200 OK` | Returns array of `ReportDTO` objects. |
+| | | | `500 Internal Server Error` | Communication error with `report-service` or internal error. |
+| **GET** | `/verification/{reportId}` | Retrieves cached AI verification data for a specific report. | `200 OK` | Returns `VerificationDataDTO` object. |
+| | | | `404 Not Found` | No verification data found for this report. |
 
 ---
 
-## 🗃️ Integracja z Innymi Usługami
+## 🗃️ Integration with Other Services
 
-| Usługa Docelowa | Komponent Klienta | Komunikacja | Endpoint Docelowy | Cel |
+| Target Service | Client Component | Communication | Target Endpoint | Purpose |
 |---|---|---|---|---|
-| `report-service` | `ReportServiceClient` | REST (RestTemplate) | `${app.services.report-service-url}/reports/verified` | Pobieranie zweryfikowanych raportów. |
-| `media-service` | `index.html` (JavaScript) | REST | `${MEDIA_SERVICE_BASE_URL}{imageId}/preview`, `${MEDIA_SERVICE_BASE_URL}{imageId}` | Pobieranie podglądów i pełnych zdjęć dla popupów markerów. |
+| `report-service` | `ReportServiceClient` | REST (RestTemplate) | `${app.services.report-service-url}/reports/verified` | Fetch verified reports. |
+| `media-service` | `index.html` (JavaScript) | REST | `${MEDIA_SERVICE_BASE_URL}{imageId}/preview`, `${MEDIA_SERVICE_BASE_URL}{imageId}` | Fetch image previews and full photos for marker popups. |
+| `ai-verification-service` | `VerificationCacheService` | Kafka Consumer | Topic: `verification_events` | Receive AI verification and duplicate detection results. |
 
 ---
 
-## 🧑‍💻 Przykładowe Użycie
+## 📊 Data Models
 
-### Otwórz Mapę
+### ReportDTO
+```java
+public record ReportDTO(
+    UUID id,
+    Double latitude,
+    Double longitude,
+    String title,
+    String description,
+    UUID userID,
+    List<UUID> imageIds,
+    String status,
+    String category,
+    LocalDateTime createdAt
+) {}
+```
 
-Otwórz w przeglądarce, aby zobaczyć mapę i załadować markery:
+### VerificationDataDTO
+```java
+public record VerificationDataDTO(
+    String reportId,
+    Boolean isFake,
+    Double fakeProbability,
+    String verificationConfidence,
+    LocalDateTime verifiedAt,
+    Boolean isDuplicate,
+    Double duplicateProbability,
+    LocalDateTime duplicateCheckedAt
+) {}
+```
+
+---
+
+## 🧑‍💻 Example Usage
+
+### Open Map
+
+Open in your browser to see the map and load markers:
 
 ```bash
-# W przeglądarce (załóżmy, że serwer działa na porcie 8086)
+# In browser (assuming server runs on port 8086)
 http://localhost:8086/
 ```
-## Pobierz Zweryfikowane Raporty (API)
-Pobiera dane JSON, które są następnie wykorzystywane przez frontend:
-``` JSON
-    [
-        {
+
+### Fetch Verified Reports (API)
+
+Retrieves JSON data used by the frontend:
+
+```json
+[
+    {
         "id": "37794ccf-d2a8-4ac5-b72f-8f9b10390552",
         "latitude": 52.2297,
         "longitude": 21.0122,
-        "title": "Zalana droga",
+        "title": "Flooded road",
         "description": "...",
         "userID": "...",
         "imageIds": [
-        "660e8400-e29b-41d4-a716-446655440000"
+            "660e8400-e29b-41d4-a716-446655440000"
         ],
         "status": "VERIFIED",
         "category": "INFRASTRUCTURE",
         "createdAt": "2025-12-01T10:00:00"
-        },
-    // ... więcej raportów
-    ]
+    }
+    // ... more reports
+]
+```
+
+### Fetch AI Verification Data
+
+```bash
+GET http://localhost:8086/verification/37794ccf-d2a8-4ac5-b72f-8f9b10390552
+```
+
+Response:
+```json
+{
+    "reportId": "37794ccf-d2a8-4ac5-b72f-8f9b10390552",
+    "isFake": false,
+    "fakeProbability": 0.12,
+    "verificationConfidence": "HIGH",
+    "verifiedAt": "2025-12-01T10:05:00",
+    "isDuplicate": false,
+    "duplicateProbability": 0.05,
+    "duplicateCheckedAt": "2025-12-01T10:05:30"
+}
 ```

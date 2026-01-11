@@ -9,7 +9,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params
     const body = await request.json()
 
-    const USER_SERVICE = process.env.USER_SERVICE_URL || "http://user-service:8080"
+    const USER_SERVICE = process.env.USER_SERVICE_URL || "http://127.0.0.1:8080"
     const targetUrl = `${USER_SERVICE}/users/${id}/roles`
 
     try {

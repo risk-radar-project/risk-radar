@@ -61,7 +61,6 @@ public class UserService {
 
     @Transactional
     public void updateUserRole(java.util.UUID userId, String roleName) {
-        // 1. Get role ID
         com.riskRadar.user_service.dto.RoleAndPermissionResponse[] allRoles = authzClient.getAllRoles();
         String roleId = java.util.stream.Stream.of(allRoles)
                 .map(com.riskRadar.user_service.dto.RoleAndPermissionResponse::role)
@@ -70,11 +69,10 @@ public class UserService {
                 .map(r -> r.id().toString())
                 .orElseThrow(() -> new IllegalArgumentException("Role not found: " + roleName));
 
-        // 2. Revoke old roles and assign new one
         try {
             authzClient.revokeRoles(userId);
         } catch (Exception e) {
-            // log warning?
+            // Intentionally ignored - user may have no roles to revoke
         }
         authzClient.assignRole(userId, roleId);
     }
@@ -87,7 +85,7 @@ public class UserService {
                     .map(com.riskRadar.user_service.dto.Role::name)
                     .toList();
         } catch (Exception e) {
-            // ignore error
+            // Authz service unavailable - return empty roles
         }
 
         return new com.riskRadar.user_service.dto.UserResponse(

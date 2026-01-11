@@ -54,16 +54,16 @@ public class AuditLogClient {
         }
 
         String logContext = body.get("service") + ":" + body.get("action");
-        log.info("[Kafka Debug] Konfiguracja Kafki - Bootstrap Servers: {}, Topic: {}, Client ID: {}",
+        log.info("[Kafka Debug] Kafka Configuration - Bootstrap Servers: {}, Topic: {}, Client ID: {}",
                 kafkaConfig.getBootstrapServers(), kafkaConfig.getTopic(), kafkaConfig.getClientId());
-        log.info("[Kafka Debug] Próba wysłania wiadomości - Context: {}, Body: {}", logContext, body);
+        log.info("[Kafka Debug] Attempting to send message - Context: {}, Body: {}", logContext, body);
 
         try {
-            log.debug("[Kafka Debug] Inicjalizacja wysyłania do Kafki...");
+            log.debug("[Kafka Debug] Initializing Kafka send...");
             CompletableFuture<SendResult<String, Object>> future = kafkaTemplate
                     .send(kafkaConfig.getTopic(), body);
 
-            log.info("[Kafka Debug] Wysłano zapytanie do Kafki. Topic: {}, Context: {}",
+            log.info("[Kafka Debug] Message sent to Kafka. Topic: {}, Context: {}",
                     kafkaConfig.getTopic(), logContext);
 
             future.orTimeout(KAFKA_TIMEOUT.toSeconds(), TimeUnit.SECONDS)

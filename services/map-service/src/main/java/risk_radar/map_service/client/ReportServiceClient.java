@@ -21,7 +21,6 @@ public class ReportServiceClient {
     public List<ReportDTO> getVerifiedReports() {
         String url = reportServiceUrl + "/reports/verified";
 
-
         ReportDTO[] reports = restTemplate.getForObject(url, ReportDTO[].class);
 
         return List.of(Objects.requireNonNullElse(reports, new ReportDTO[0]));
