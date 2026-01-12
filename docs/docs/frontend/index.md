@@ -1,154 +1,104 @@
-# Frontend Service
+# Frontend Microservice
 
-## Przegląd
+## Overview
 
-Frontend Service to aplikacja webowa zbudowana w Next.js 14 (App Router), która stanowi główny interfejs użytkownika dla systemu RiskRadar. Aplikacja zapewnia interaktywny interfejs do przeglądania mapy zgłoszeń, tworzenia nowych raportów oraz zarządzania kontem użytkownika.
+The Frontend microservice is responsible for the user interface of the Risk Radar application. It is a Next.js application that communicates with the backend microservices via a gateway.
 
-## Technologie
+## Architecture
 
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **UI Components**: shadcn/ui
-- **Mapa**: Leaflet.js z Marker Clustering
-- **State Management**: React Query (TanStack Query)
-- **Fonts**: Geist Sans, Geist Mono, Material Symbols
+The frontend is a modern Next.js application. The main components of the architecture are:
 
-## Architektura
+- **Next.js:** A React framework for building server-side rendered and statically generated web applications.
+- **React:** A JavaScript library for building user interfaces.
+- **TypeScript:** A typed superset of JavaScript that compiles to plain JavaScript.
+- **Tailwind CSS:** A utility-first CSS framework for rapidly building custom designs.
+- **Shadcn/ui:** A collection of reusable UI components.
+- **Zustand:** A small, fast and scalable bearbones state-management solution.
 
-### Struktura katalogów
+The application is structured as follows:
 
-```
-frontend/
-├── app/                      # Next.js App Router
-│   ├── (admin)/             # Strony administracyjne (chronione)
-│   ├── (auth)/              # Strony autoryzacji (login, register)
-│   ├── (public)/            # Strony publiczne
-│   ├── (user)/              # Strony użytkownika (chronione)
-│   │   └── my-reports/      # Lista zgłoszeń użytkownika
-│   ├── api/                 # API Routes (proxy do backend services)
-│   │   ├── media/
-│   │   │   └── upload/     # Upload zdjęć do media-service
-│   │   └── reports/
-│   │       ├── route.ts    # Pobieranie raportów z map-service
-│   │       └── create/     # Tworzenie nowego raportu
-│   ├── map/                 # Strona mapy z wszystkimi zgłoszeniami
-│   ├── submit-report/       # Formularz zgłaszania nowych zdarzeń
-│   ├── layout.tsx           # Główny layout aplikacji
-│   └── globals.css          # Globalne style
-├── components/              # Komponenty React
-│   ├── layout/             # Komponenty layoutu (header, footer)
-│   ├── providers/          # Context providers
-│   ├── ui/                 # UI komponenty (shadcn/ui)
-│   ├── map-component.tsx   # Główny komponent mapy
-│   └── map-wrapper.tsx     # Wrapper dla dynamicznego ładowania mapy
-├── lib/                     # Biblioteki i utilities
-│   ├── api/                # API client functions
-│   ├── auth/               # Funkcje autoryzacji
-│   └── utils.ts            # Utility functions
-├── hooks/                   # Custom React hooks
-├── stores/                  # Zustand stores (jeśli używane)
-└── public/                  # Statyczne zasoby
-    └── icons/              # Ikony dla kategorii zgłoszeń
-```
+- `app/`: Contains the main application logic, including pages and layouts.
+- `components/`: Contains reusable UI components.
+- `hooks/`: Contains custom React hooks.
+- `lib/`: Contains utility functions and libraries.
+- `public/`: Contains static assets such as images and fonts.
+- `stores/`: Contains Zustand state management stores.
 
-## Główne funkcjonalności
+## How to use
 
-### 1. Interaktywna mapa zgłoszeń (`/map`)
+To run the frontend service locally, you need to have Node.js and npm installed.
 
-**Lokalizacja**: `app/map/page.tsx`, `components/map-component.tsx`
+1.  Install the dependencies:
 
-Mapa wyświetla wszystkie zweryfikowane zgłoszenia z różnych kategorii:
+    ```bash
+    npm install
+    ```
 
-- **Marker Clustering**: Automatyczne grupowanie markerów dla lepszej wydajności
-- **Kategorie ikony**: Każda kategoria ma dedykowaną ikonę
-- **Popupy**: Szczegóły zgłoszenia z podglądem zdjęć
-- **Lightbox**: Pełnowymiarowy podgląd zdjęć
-- **Wyszukiwarka**: Wyszukiwanie miast w Polsce (Nominatim API)
-- **Geolokalizacja**: Przycisk do zlokalizowania użytkownika
-- **Kontrolki zoom**: Przybliżanie/oddalanie mapy
+2.  Run the development server:
 
-#### Kategorie zgłoszeń
+    ```bash
+    npm run dev
+    ```
 
-| Kategoria | Nazwa polska | Ikona |
-|-----------|--------------|-------|
-| VANDALISM | Wandalizm | format_paint |
-| INFRASTRUCTURE | Infrastruktura drogowa/chodników | construction |
-| DANGEROUS_SITUATION | Niebezpieczne sytuacje | warning |
-| TRAFFIC_ACCIDENT | Wypadki drogowe | car_crash |
-| PARTICIPANT_BEHAVIOR | Zachowania kierowców/pieszych | person_alert |
-| PARTICIPANT_HAZARD | Zagrożenia dla pieszych i rowerzystów | brightness_alert |
-| WASTE_ILLEGAL_DUMPING | Śmieci/nielegalne zaśmiecanie | delete_sweep |
-| BIOLOGICAL_HAZARD | Zagrożenia biologiczne | bug_report |
-| OTHER | Inne | help_outline |
+The application will be available at `http://localhost:3000`.
 
-#### Komponenty mapy
+## Assumptions
 
-```typescript
-// Server Component - pobiera dane ze strony serwera
-async function getInitialReports(): Promise<Report[]>
+- The backend services are running and available at the gateway.
+- The gateway is running and available at `http://localhost:8080`.
+- The user has a modern web browser with JavaScript enabled.
 
-// Client Component - renderuje mapę z Leaflet
-export default function MapComponent({ initialReports }: MapComponentProps)
-```
+### 2. Submitting New Incidents (`/submit-report`)
 
-**Kluczowe cechy**:
-- SSR (Server-Side Rendering) dla początkowych danych
-- Dynamic import dla Leaflet (client-side only)
-- Responsive sidebar z menu nawigacyjnym
-- Real-time search z debouncing
+**Location**: `app/submit-report/page.tsx`
 
-### 2. Zgłaszanie nowych zdarzeń (`/submit-report`)
+A full form for creating new reports with the following fields:
 
-**Lokalizacja**: `app/submit-report/page.tsx`
+#### Form Fields
 
-Pełny formularz do tworzenia nowych zgłoszeń z następującymi polami:
+1.  **Title** (required)
+    -   Text input
+    -   Placeholder: "e.g., Damaged sidewalk"
 
-#### Pola formularza
+2.  **Category** (required)
+    -   Select dropdown
+    -   All categories from the list above
 
-1. **Tytuł** (wymagane)
-   - Input tekstowy
-   - Placeholder: "np. Uszkodzony chodnik"
+3.  **Description** (optional)
+    -   Textarea
+    -   Multi-line description of the problem
 
-2. **Kategoria** (wymagane)
-   - Select dropdown
-   - Wszystkie kategorie z listy powyżej
+4.  **Location** (required)
+    -   Button: "Use my current location" (Geolocation API)
+    -   OR manual entry:
+        -   Latitude
+        -   Longitude
 
-3. **Opis** (opcjonalne)
-   - Textarea
-   - Wieloliniowy opis problemu
+5.  **Photos** (optional)
+    -   File input (multiple)
+    -   Accepts only images
+    -   Preview of the number of selected files
 
-4. **Lokalizacja** (wymagane)
-   - Przycisk: "Użyj mojej obecnej lokalizacji" (Geolocation API)
-   - LUB ręczne wprowadzenie:
-     - Szerokość geograficzna (latitude)
-     - Długość geograficzna (longitude)
-
-5. **Zdjęcia** (opcjonalne)
-   - Input file (multiple)
-   - Akceptuje tylko obrazy
-   - Podgląd liczby wybranych plików
-
-#### Proces wysyłania
+#### Submission Process
 
 ```mermaid
 graph TD
-    A[Użytkownik wypełnia formularz] --> B{Czy są zdjęcia?}
-    B -->|Tak| C[Upload zdjęć do Media Service]
-    B -->|Nie| E[Tworzenie raportu]
-    C --> D{Upload sukces?}
-    D -->|Tak| E[Tworzenie raportu z imageIds]
-    D -->|Nie| F[Pokazanie błędu]
-    E --> G{Raport utworzony?}
-    G -->|Tak| H[Komunikat sukcesu]
-    G -->|Nie| F
-    H --> I[Redirect do /map po 2s]
-    F --> J[Użytkownik może spróbować ponownie]
+    A[User fills out the form] --> B{Are there photos?}
+    B -->|Yes| C[Upload photos to Media Service]
+    B -->|No| E[Create report]
+    C --> D{Upload successful?}
+    D -->|Yes| E[Create report with imageIds]
+    D -->|No| F[Show error]
+    E --> G{Report created?}
+    G -->|Yes| H[Success message]
+    G -->|No| F
+    H --> I[Redirect to /map after 2s]
+    F --> J[User can try again]
 ```
 
 #### API Integration
 
-**Upload zdjęć**:
+**Photo Upload**:
 ```typescript
 POST /api/media/upload
 Content-Type: multipart/form-data
@@ -156,7 +106,7 @@ Content-Type: multipart/form-data
 Response: { imageIds: string[] }
 ```
 
-**Tworzenie raportu**:
+**Create Report**:
 ```typescript
 POST /api/reports/create
 Content-Type: application/json
@@ -177,58 +127,58 @@ Response: {
 }
 ```
 
-### 3. Moje zgłoszenia (`/my-reports`)
+### 3. My Reports (`/my-reports`)
 
-**Lokalizacja**: `app/(user)/my-reports/page.tsx`, `app/(user)/my-reports/my-reports-client.tsx`
+**Location**: `app/(user)/my-reports/page.tsx`, `app/(user)/my-reports/my-reports-client.tsx`
 
-Strona pozwalająca użytkownikowi zarządzać własnymi zgłoszeniami.
+A page that allows the user to manage their own reports.
 
-**Funkcjonalności**:
-- **Lista zgłoszeń**: Tabela wyświetlająca zgłoszenia użytkownika z paginacją.
-- **Filtrowanie**:
-  - Po statusie (Oczekujące, Zweryfikowane, Odrzucone).
-  - Po kategorii zgłoszenia.
-- **Sortowanie**: Po dacie utworzenia, dacie aktualizacji, kategorii i statusie.
-- **Akcje**:
-  - Usuwanie zgłoszeń (z potwierdzeniem w modalu).
+**Functionality**:
+-   **List of reports**: A table displaying the user's reports with pagination.
+-   **Filtering**:
+    -   By status (Pending, Verified, Rejected).
+    -   By report category.
+-   **Sorting**: By creation date, update date, category, and status.
+-   **Actions**:
+    -   Deleting reports (with a confirmation modal).
 
 ### 4. Sidebar Navigation
 
-Dostępny na stronie mapy, zawiera linki do:
+Available on the map page, it contains links to:
 
-- **Zgłoś Nowe Zdarzenie** (`/submit-report`) - pomarańczowy highlight
-- **Twoja Aktywność** - historia zgłoszeń użytkownika
-- **Logowanie** - autoryzacja
-- **Panel administratora** - dla użytkowników z uprawnieniami admin
+-   **Report New Incident** (`/submit-report`) - orange highlight
+-   **Your Activity** - user's report history
+-   **Login** - authorization
+-   **Admin Panel** - for users with admin privileges
 
 ### 5. API Routes (Proxy Layer)
 
-Frontend działa jako proxy między klientem a backend services, zapewniając:
+The frontend acts as a proxy between the client and the backend services, providing:
 
-- Centralizację konfiguracji URL
-- Obsługę błędów
-- Logowanie requestów
-- Przekazywanie headers (User-Agent, itp.)
+-   Centralized URL configuration
+-   Error handling
+-   Request logging
+-   Header forwarding (User-Agent, etc.)
 
 #### Endpoints
 
 **GET `/api/reports`**
-- Proxy do: `MAP_SERVICE_URL/reports`
-- Zwraca: Listę zweryfikowanych raportów
+-   Proxy to: `MAP_SERVICE_URL/reports`
+-   Returns: A list of verified reports
 
 **POST `/api/reports/create`**
-- Proxy do: `REPORT_SERVICE_URL/createReport`
-- Tworzy nowy raport
+-   Proxy to: `REPORT_SERVICE_URL/createReport`
+-   Creates a new report
 
 **POST `/api/media/upload`**
-- Proxy do: `MEDIA_SERVICE_URL/media/upload`
-- Upload zdjęć (multipart/form-data)
+-   Proxy to: `MEDIA_SERVICE_URL/media/upload`
+-   Uploads photos (multipart/form-data)
 
-## Konfiguracja
+## Configuration
 
-### Zmienne środowiskowe
+### Environment Variables
 
-Frontend wymaga następujących zmiennych środowiskowych:
+The frontend requires the following environment variables:
 
 ```bash
 # Backend Service URLs
@@ -236,7 +186,7 @@ MAP_SERVICE_URL=http://localhost:8086
 REPORT_SERVICE_URL=http://localhost:8081
 MEDIA_SERVICE_URL=http://localhost:8084
 
-# W środowisku Docker - użyj nazw serwisów
+# In a Docker environment - use the service names
 # MAP_SERVICE_URL=http://map-service:8080
 # REPORT_SERVICE_URL=http://report-service:8080
 # MEDIA_SERVICE_URL=http://media-service:8080
@@ -244,7 +194,7 @@ MEDIA_SERVICE_URL=http://localhost:8084
 
 ### Docker Configuration
 
-W `docker-compose.yml`:
+In `docker-compose.yml`:
 
 ```yaml
 frontend:
@@ -274,12 +224,12 @@ frontend:
 
 ## Development
 
-### Lokalne uruchamianie
+### Running Locally
 
 ```bash
 cd services/frontend
 
-# Instalacja zależności
+# Install dependencies
 npm install
 
 # Development mode
@@ -290,95 +240,95 @@ npm run build
 npm start
 ```
 
-### Wymagania
+### Requirements
 
-- Node.js 18+ lub 20+
-- npm lub pnpm
-- Uruchomione backend services (report-service, map-service, media-service)
+-   Node.js 18+ or 20+
+-   npm or pnpm
+-   Running backend services (report-service, map-service, media-service)
 
 ### Hot Module Replacement
 
-Next.js automatycznie obsługuje HMR w trybie development. Zmiany w kodzie są natychmiast widoczne w przeglądarce.
+Next.js automatically handles HMR in development mode. Code changes are immediately visible in the browser.
 
 ## Styling
 
 ### Design System
 
-Aplikacja używa spójnego design system z następującymi kolorami:
+The application uses a consistent design system with the following colors:
 
 ```css
---background: #2a221a      /* Ciemny brąz */
---card: #362c20            /* Jaśniejszy brąz */
---primary: #d97706         /* Pomarańczowy */
---text: #e0dcd7            /* Jasny beż */
+--background: #2a221a      /* Dark brown */
+--card: #362c20            /* Lighter brown */
+--primary: #d97706         /* Orange */
+--text: #e0dcd7            /* Light beige */
 ```
 
-### Komponenty UI
+### UI Components
 
-Wykorzystuje bibliotekę **shadcn/ui** która zapewnia:
-- Dostępne komponenty (a11y)
-- Customizowalne przez Tailwind
-- TypeScript support
-- Radix UI primitives
+It uses the **shadcn/ui** library which provides:
+-   Accessible components (a11y)
+-   Customizable via Tailwind
+-   TypeScript support
+-   Radix UI primitives
 
 ### Responsive Design
 
-- Mobile-first approach
-- Breakpoints: sm, md, lg, xl, 2xl (Tailwind defaults)
-- Sidebar collapse na mniejszych ekranach
-- Touch-friendly controls na urządzeniach mobilnych
+-   Mobile-first approach
+-   Breakpoints: sm, md, lg, xl, 2xl (Tailwind defaults)
+-   Sidebar collapse on smaller screens
+-   Touch-friendly controls on mobile devices
 
 ## Performance
 
-### Optymalizacje
+### Optimizations
 
-1. **Server-Side Rendering (SSR)**
-   - Początkowe dane raportów pobierane na serwerze
-   - Szybsze First Contentful Paint (FCP)
+1.  **Server-Side Rendering (SSR)**
+    -   Initial report data is fetched on the server
+    -   Faster First Contentful Paint (FCP)
 
-2. **Dynamic Imports**
-   - Leaflet ładowane tylko po stronie klienta
-   - Redukcja bundle size
+2.  **Dynamic Imports**
+    -   Leaflet is loaded only on the client-side
+    -   Reduces bundle size
 
-3. **Image Optimization**
-   - Next.js Image component (gdzie możliwe)
-   - Lazy loading dla zdjęć w popupach
+3.  **Image Optimization**
+    -   Next.js Image component (where possible)
+    -   Lazy loading for images in popups
 
-4. **Marker Clustering**
-   - Grupowanie markerów dla lepszej wydajności
-   - Lepsza UX przy dużej liczbie zgłoszeń
+4.  **Marker Clustering**
+    -   Grouping markers for better performance
+    -   Better UX with a large number of reports
 
-5. **Debouncing**
-   - Search input (300ms delay)
-   - Redukcja liczby API calls
+5.  **Debouncing**
+    -   Search input (300ms delay)
+    -   Reduces the number of API calls
 
 ### Cache Strategy
 
-- `cache: 'no-store'` dla raportów (zawsze świeże dane)
-- React Query cache dla client-side requestów
-- Static assets cached przez CDN/browser
+-   `cache: 'no-store'` for reports (always fresh data)
+-   React Query cache for client-side requests
+-   Static assets cached by CDN/browser
 
 ## Security
 
 ### CSRF Protection
 
-Next.js automatycznie chroni przed CSRF w API routes.
+Next.js automatically protects against CSRF in API routes.
 
 ### Input Validation
 
-- Client-side validation w formularzach
-- Server-side validation w API routes
-- TypeScript type checking
+-   Client-side validation in forms
+-   Server-side validation in API routes
+-   TypeScript type checking
 
 ### Environment Variables
 
-- Wrażliwe dane w `.env.local` (gitignored)
-- Różne wartości dla dev/production
-- Walidacja przy starcie aplikacji
+-   Sensitive data in `.env.local` (gitignored)
+-   Different values for dev/production
+-   Validation on application startup
 
 ## Testing
 
-### Struktura testów (TODO)
+### Test Structure (TODO)
 
 ```bash
 __tests__/
@@ -393,33 +343,33 @@ __tests__/
     └── media.test.ts
 ```
 
-### Testing Libraries (Rekomendowane)
+### Recommended Testing Libraries
 
-- Jest - Test runner
-- React Testing Library - Component testing
-- Playwright/Cypress - E2E testing
+-   Jest - Test runner
+-   React Testing Library - Component testing
+-   Playwright/Cypress - E2E testing
 
 ## Troubleshooting
 
-### Częste problemy
+### Common Problems
 
-**1. Mapa się nie ładuje**
-- Sprawdź czy Leaflet CSS jest załadowany
-- Verify `ssr: false` w dynamic import
-- Check browser console for errors
+**1. The map does not load**
+-   Check if Leaflet CSS is loaded
+-   Verify `ssr: false` in the dynamic import
+-   Check the browser console for errors
 
-**2. Brak zgłoszeń na mapie**
-- Verify MAP_SERVICE_URL
-- Check network tab w DevTools
-- Sprawdź logi server-side w terminalu
+**2. No reports on the map**
+-   Verify `MAP_SERVICE_URL`
+-   Check the network tab in DevTools
+-   Check the server-side logs in the terminal
 
-**3. Upload zdjęć nie działa**
-- Verify MEDIA_SERVICE_URL
-- Check file size limits
-- Sprawdź format obrazów (tylko images akceptowane)
+**3. Photo upload does not work**
+-   Verify `MEDIA_SERVICE_URL`
+-   Check file size limits
+-   Check the image format (only images are accepted)
 
-**4. Geolokalizacja nie działa**
-- HTTPS required (lub localhost)
-- User must grant permission
-- Fallback to manual coordinates
+**4. Geolocation does not work**
+-   HTTPS is required (or localhost)
+-   The user must grant permission
+-   Fallback to manual coordinates
 

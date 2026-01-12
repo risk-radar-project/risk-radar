@@ -14,11 +14,12 @@ const LocationPickerMap = dynamic(() => import("@/components/location-picker-map
     ssr: false,
     loading: () => (
         <div className="flex h-[400px] w-full items-center justify-center rounded-lg bg-[#362c20]">
-            <div className="text-lg text-[#e0dcd7]">Ładowanie mapy...</div>
+            <div className="text-lg text-[#e0dcd7]">Loading map...</div>
         </div>
     )
 })
 
+// Type definition for report categories
 type ReportCategory =
     | "VANDALISM"
     | "INFRASTRUCTURE"
@@ -30,46 +31,53 @@ type ReportCategory =
     | "BIOLOGICAL_HAZARD"
     | "OTHER"
 
+// Interface for category options, including UI labels and icons
 interface CategoryOption {
     value: ReportCategory
     label: string
     icon: string
-    aiLabel?: string // Label used by AI model
+    aiLabel?: string // Label used by the AI model for mapping
 }
 
+// Available report categories with their display properties
 const CATEGORIES: CategoryOption[] = [
-    { value: "VANDALISM", label: "Wandalizm", icon: "format_paint", aiLabel: "Wandalizm / graffiti" },
+    { value: "VANDALISM", label: "Vandalism", icon: "format_paint", aiLabel: "Vandalism / graffiti" },
     {
         value: "INFRASTRUCTURE",
-        label: "Infrastruktura drogowa/chodników",
+        label: "Road/pavement infrastructure",
         icon: "construction",
-        aiLabel: "Infrastruktura drogowa / chodników"
+        aiLabel: "Road/pavement infrastructure"
     },
-    { value: "DANGEROUS_SITUATION", label: "Niebezpieczne sytuacje", icon: "warning", aiLabel: "Niebezpieczne sytuacje" },
-    { value: "TRAFFIC_ACCIDENT", label: "Wypadki drogowe", icon: "car_crash", aiLabel: "Wypadki drogowe" },
+    { value: "DANGEROUS_SITUATION", label: "Dangerous situations", icon: "warning", aiLabel: "Dangerous situations" },
+    { value: "TRAFFIC_ACCIDENT", label: "Traffic accidents", icon: "car_crash", aiLabel: "Traffic accidents" },
     {
         value: "PARTICIPANT_BEHAVIOR",
-        label: "Zachowania kierowców/pieszych",
+        label: "Driver/pedestrian behavior",
         icon: "person_alert",
-        aiLabel: "Zachowania kierowców/pieszych"
+        aiLabel: "Driver/pedestrian behavior"
     },
     {
         value: "PARTICIPANT_HAZARD",
-        label: "Zagrożenia dla pieszych i rowerzystów i kierowców",
+        label: "Hazards for pedestrians and cyclists",
         icon: "brightness_alert",
-        aiLabel: "Zagrożenia dla pieszych/rowerzystów/kierowców"
+        aiLabel: "Hazards for pedestrians/cyclists/drivers"
     },
     {
         value: "WASTE_ILLEGAL_DUMPING",
-        label: "Śmieci/nielegalne zaśmiecanie/nielegalne wysypiska śmieci",
+        label: "Waste/illegal dumping",
         icon: "delete_sweep",
-        aiLabel: "Śmieci / nielegalne zaśmiecanie / wysypiska"
+        aiLabel: "Waste / illegal dumping / landfills"
     },
-    { value: "BIOLOGICAL_HAZARD", label: "Zagrożenia biologiczne", icon: "bug_report", aiLabel: "Zagrożenia biologiczne" },
-    { value: "OTHER", label: "Inne", icon: "help_outline", aiLabel: "Inne" }
+    { value: "BIOLOGICAL_HAZARD", label: "Biological hazards", icon: "bug_report", aiLabel: "Biological hazards" },
+    { value: "OTHER", label: "Other", icon: "help_outline", aiLabel: "Other" }
 ]
 
-// Map AI category names to our category values
+/**
+ * Maps a category name returned by the AI to a corresponding ReportCategory value.
+ * This function helps standardize AI output with the application's defined categories.
+ * @param aiCategory - The category string suggested by the AI.
+ * @returns The mapped ReportCategory.
+ */
 function mapAICategoryToValue(aiCategory: string): ReportCategory {
     const normalizedAI = aiCategory.toLowerCase().trim()
 
@@ -99,8 +107,14 @@ function mapAICategoryToValue(aiCategory: string): ReportCategory {
     return "OTHER"
 }
 
+/**
+ * The main page component for submitting a new report.
+ * It includes a form with fields for title, description, category, location, and images.
+ * Features include AI-powered category suggestions, image drag-and-drop, and dynamic validation.
+ */
 export default function SubmitReportPage() {
     const router = useRouter()
+    // Form state
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
@@ -118,6 +132,7 @@ export default function SubmitReportPage() {
     const [submissionResult, setSubmissionResult] = useState<SubmissionResult | null>(null)
     const categorizationDebounceRef = useRef<NodeJS.Timeout | null>(null)
 
+    // Form data state
     const [formData, setFormData] = useState({
         title: "",
         description: "",
@@ -134,7 +149,7 @@ export default function SubmitReportPage() {
         status: "uploading" | "completed" | "error"
     }
     const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
-    // We'll use a ref to prevent stale state issues during async uploads
+    // A ref is used to prevent stale state issues during async uploads
     const uploadedImagesRef = useRef<UploadedImage[]>([])
 
     // Check if any images are currently uploading
@@ -146,9 +161,14 @@ export default function SubmitReportPage() {
         uploadedImagesRef.current = uploadedImages
     }, [uploadedImages])
 
-    // Debounced AI Categorization - triggered on title/description change
+    /**
+     * Triggers AI-powered categorization based on the report's title and description.
+     * This function is debounced to avoid excessive API calls.
+     * @param title - The report title.
+     * @param description - The report description.
+     */
     const triggerCategorization = useCallback(async (title: string, description: string) => {
-        // Need at least title with 5+ chars to categorize
+        // Requires a title with at least 5 characters to categorize
         if (title.length < 5) {
             setAiSuggestedCategory(null)
             return
@@ -166,7 +186,7 @@ export default function SubmitReportPage() {
             }
         } catch (err) {
             console.error("Categorization error:", err)
-            // Don't show error to user - categorization is optional enhancement
+            // Do not show error to user, as categorization is an optional enhancement
         } finally {
             setIsCategorizing(false)
         }
@@ -186,9 +206,9 @@ export default function SubmitReportPage() {
         if (name === "title") {
             const titleLength = sanitizedValue.length
             if (titleLength < 3) {
-                newFieldErrors.title = "Tytuł musi mieć co najmniej 3 znaki"
+                newFieldErrors.title = "Title must be at least 3 characters long"
             } else if (titleLength > 255) {
-                newFieldErrors.title = "Tytuł nie może przekraczać 255 znaków"
+                newFieldErrors.title = "Title cannot exceed 255 characters"
             } else {
                 delete newFieldErrors.title
             }
@@ -197,10 +217,10 @@ export default function SubmitReportPage() {
         if (name === "description") {
             const descLength = sanitizedValue.length
             if (descLength > 2000) {
-                newFieldErrors.description = "Opis nie może przekraczać 2000 znaków"
+                newFieldErrors.description = "Description cannot exceed 2000 characters"
             } else if (descLength > 1800) {
-                // Soft warning when approaching limit
-                newFieldErrors.description = `Opis jest bardzo długi. Pozostało ${2000 - descLength} znaków.`
+                // Soft warning when approaching the limit
+                newFieldErrors.description = `Description is very long. ${2000 - descLength} characters remaining.`
             } else {
                 delete newFieldErrors.description
             }
@@ -231,20 +251,24 @@ export default function SubmitReportPage() {
         }
     }, [])
 
+    /**
+     * Handles file selection for image uploads, including validation and optimistic UI updates.
+     * @param files - An array of File objects to be uploaded.
+     */
     const handleFiles = async (files: File[]) => {
         const currentCount = uploadedImages.length
         const maxImages = 5
         const remainingSlots = maxImages - currentCount
 
         if (remainingSlots <= 0) {
-            setError("Maksymalnie można dodać 5 zdjęć.")
+            setError("You can add a maximum of 5 photos.")
             return
         }
 
         const filesToUpload = files.slice(0, remainingSlots)
 
         if (files.length > remainingSlots) {
-            setError(`Wybrano ${files.length} zdjęć, ale dodano tylko ${remainingSlots} (limit: ${maxImages}).`)
+            setError(`You selected ${files.length} photos, but only ${remainingSlots} were added (limit: ${maxImages}).`)
         }
 
         // Optimistic update - add placeholders
@@ -313,7 +337,7 @@ export default function SubmitReportPage() {
                 setUploadedImages((prev) =>
                     prev.map((img) => (img.id === placeholder.id ? { ...img, status: "error" } : img))
                 )
-                setError("Nie udało się przesłać niektórych zdjęć.")
+                setError("Failed to upload some photos.")
             }
         }
     }
@@ -354,7 +378,7 @@ export default function SubmitReportPage() {
             if (droppedFiles.length > 0) {
                 await handleFiles(droppedFiles)
             } else {
-                setError("Proszę upuścić tylko pliki obrazów (JPG, PNG).")
+                setError("Please drop only image files (JPG, PNG).")
             }
         }
     }
@@ -384,7 +408,7 @@ export default function SubmitReportPage() {
 
         // Block submit if uploads are in progress
         if (isUploading) {
-            setError("Proszę poczekać na zakończenie przesyłania zdjęć.")
+            setError("Please wait for the photo upload to complete.")
             return
         }
 
@@ -411,7 +435,7 @@ export default function SubmitReportPage() {
             if (errorEntries.length > 0) {
                 const [field, message] = errorEntries[0]
                 if (field === "latitude" || field === "longitude") {
-                    setError("Proszę wybrać prawidłową lokalizację na mapie")
+                    setError("Please select a valid location on the map")
                 } else {
                     setError(message as string)
                 }
@@ -469,7 +493,7 @@ export default function SubmitReportPage() {
             if (!response.ok) {
                 const errorData = await response.json()
 
-                // Check if it's a validation error from backend
+                // Check if it's a validation error from the backend
                 if (errorData.error && typeof errorData.error === "string") {
                     const errorStr = errorData.error
                     const newFieldErrors: { title?: string; description?: string } = {}
@@ -481,7 +505,7 @@ export default function SubmitReportPage() {
                         if (titleMatch) {
                             newFieldErrors.title = titleMatch[1].trim()
                         } else {
-                            // Extract the message directly if it contains "tytuł"
+                            // Extract the message directly if it contains "title"
                             const parts = errorStr.split(",")
                             for (const part of parts) {
                                 if (part.toLowerCase().includes("tytuł")) {
@@ -499,7 +523,7 @@ export default function SubmitReportPage() {
                         if (descMatch) {
                             newFieldErrors.description = descMatch[1].trim()
                         } else {
-                            // Extract the message directly if it contains "opis"
+                            // Extract the message directly if it contains "description"
                             const parts = errorStr.split(",")
                             for (const part of parts) {
                                 if (part.toLowerCase().includes("opis")) {
@@ -518,7 +542,7 @@ export default function SubmitReportPage() {
                         errorStr.toLowerCase().includes("szerokość") ||
                         errorStr.toLowerCase().includes("długość")
                     ) {
-                        setError("Nieprawidłowe współrzędne lokalizacji")
+                        setError("Invalid location coordinates")
                     }
 
                     // Set field errors if we found any
@@ -530,7 +554,7 @@ export default function SubmitReportPage() {
                 }
 
                 // Generic error fallback
-                throw new Error(errorData.error || errorData.message || "Nie udało się utworzyć zgłoszenia")
+                throw new Error(errorData.error || errorData.message || "Failed to create report")
             }
 
             const createdReport = await response.json()
@@ -566,7 +590,7 @@ export default function SubmitReportPage() {
             setSubmissionResult({
                 accepted: true,
                 requiresReview: true,
-                message: "Zgłoszenie zostało wysłane i trafiło do weryfikacji.",
+                message: "The report has been sent and is awaiting verification.",
                 verification: null,
                 reportId: reportId
             })
@@ -575,10 +599,10 @@ export default function SubmitReportPage() {
             }, 2500)
         } catch (err: unknown) {
             // Only show general errors in the error box (non-field specific)
-            const errorMessage = err instanceof Error ? err.message : "Wystąpił błąd podczas tworzenia zgłoszenia"
+            const errorMessage = err instanceof Error ? err.message : "An error occurred while creating the report"
 
             // Don't show field-specific errors in the general error box
-            if (!errorMessage.includes("znak") && !errorMessage.includes("Title") && !errorMessage.includes("Description")) {
+            if (!errorMessage.includes("character") && !errorMessage.includes("Title") && !errorMessage.includes("Description")) {
                 setError(errorMessage)
             }
         } finally {
@@ -638,9 +662,9 @@ export default function SubmitReportPage() {
                     {/* Title */}
                     <h2 className="mb-3 text-2xl font-bold text-[#e0dcd7]">
                         {isVerified ? (
-                            <span className="animate-pulse">✅ Zgłoszenie zaakceptowane!</span>
+                            <span className="animate-pulse">✅ Report Accepted!</span>
                         ) : (
-                            <span className="animate-pulse">⏳ Zgłoszenie przyjęte!</span>
+                            <span className="animate-pulse">⏳ Report Received!</span>
                         )}
                     </h2>
 
@@ -649,25 +673,25 @@ export default function SubmitReportPage() {
                         {isVerified ? (
                             <>
                                 <span className="font-semibold text-green-400">
-                                    AI zweryfikowało zgłoszenie jako autentyczne.
+                                    AI has verified the report as authentic.
                                 </span>
                                 <br />
-                                Twoje zgłoszenie jest teraz widoczne na mapie.
+                                Your report is now visible on the map.
                             </>
                         ) : (
                             <>
                                 <span className="font-semibold text-yellow-400">
-                                    Zgłoszenie oczekuje na sprawdzenie przez moderatora.
+                                    The report is awaiting review by a moderator.
                                 </span>
                                 <br />
-                                Otrzymasz powiadomienie po weryfikacji.
+                                You will receive a notification after verification.
                             </>
                         )}
                     </p>
 
                     {/* Countdown */}
                     <div className="mb-4 rounded-lg bg-[#2a221a] p-4">
-                        <p className="mb-2 text-sm text-[#e0dcd7]/70">Przeniesienie do mapy nastąpi za:</p>
+                        <p className="mb-2 text-sm text-[#e0dcd7]/70">Redirecting to the map in:</p>
                         <div className="flex items-center justify-center gap-2">
                             <span className="animate-pulse text-5xl font-bold text-[#d97706]">{countdown}</span>
                             <span className="text-2xl text-[#e0dcd7]/50">s</span>
@@ -687,7 +711,7 @@ export default function SubmitReportPage() {
                         onClick={() => router.push("/")}
                         className="mt-6 text-sm text-[#e0dcd7]/50 underline transition-colors hover:text-[#d97706]"
                     >
-                        Pomiń i przejdź teraz
+                        Skip and go now
                     </button>
                 </div>
             </div>
@@ -704,23 +728,23 @@ export default function SubmitReportPage() {
                         className="mb-4 inline-flex items-center gap-2 text-[#e0dcd7] transition-colors hover:text-[#d97706]"
                     >
                         <span className="material-symbols-outlined">arrow_back</span>
-                        <span>Powrót do mapy</span>
+                        <span>Back to map</span>
                     </Link>
-                    <h1 className="mb-2 text-4xl font-bold text-[#e0dcd7]">Zgłoś Nowe Zdarzenie</h1>
-                    <p className="text-[#e0dcd7]/70">Wypełnij formularz, aby zgłosić nowe zdarzenie w Twojej okolicy</p>
+                    <h1 className="mb-2 text-4xl font-bold text-[#e0dcd7]">Submit a New Report</h1>
+                    <p className="text-[#e0dcd7]/70">Fill out the form to report a new incident in your area.</p>
                 </div>
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-6 rounded-xl bg-[#362c20] p-6">
                     {/* Only show general errors at top (like location) */}
-                    {error && !error.includes("Tytuł") && !error.includes("Opis") && (
+                    {error && !error.includes("Title") && !error.includes("Description") && (
                         <div className="rounded-lg border border-red-500 bg-red-500/20 p-4 text-red-200">{error}</div>
                     )}
 
                     {/* Title */}
                     <div>
                         <label htmlFor="title" className="mb-2 block font-semibold text-[#e0dcd7]">
-                            Tytuł zgłoszenia *
+                            Report Title *
                             <span className="ml-2 text-xs font-normal text-[#e0dcd7]/50">({formData.title.length}/500)</span>
                         </label>
                         <input
@@ -732,7 +756,7 @@ export default function SubmitReportPage() {
                             value={formData.title}
                             onChange={handleInputChange}
                             className={`w-full rounded-lg border ${fieldErrors.title ? "border-red-500" : "border-[#e0dcd7]/20"} bg-[#2a221a] px-4 py-3 text-[#e0dcd7] transition-colors focus:border-[#d97706] focus:outline-none`}
-                            placeholder="np. Uszkodzony chodnik"
+                            placeholder="e.g., Damaged sidewalk"
                         />
                         {fieldErrors.title && <p className="mt-1 text-sm text-red-400">{fieldErrors.title}</p>}
                     </div>
@@ -740,10 +764,10 @@ export default function SubmitReportPage() {
                     {/* Category with AI Suggestion */}
                     <div>
                         <label htmlFor="category" className="mb-2 block font-semibold text-[#e0dcd7]">
-                            Kategoria *
+                            Category *
                             {isCategorizing && (
                                 <span className="ml-2 text-sm font-normal text-[#d97706]">
-                                    <span className="animate-pulse">Analizowanie przez AI...</span>
+                                    <span className="animate-pulse">AI is analyzing...</span>
                                 </span>
                             )}
                         </label>
@@ -754,7 +778,7 @@ export default function SubmitReportPage() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <div className="mb-1 flex items-center gap-2">
-                                            <p className="text-xs text-[#d97706]">🤖 Sugerowana kategoria (AI):</p>
+                                            <p className="text-xs text-[#d97706]">🤖 Suggested category (AI):</p>
                                             {/* AI Sparkle Animation */}
                                             <div className="relative inline-flex">
                                                 <span className="animate-pulse text-xs text-yellow-400">✨</span>
@@ -765,7 +789,7 @@ export default function SubmitReportPage() {
                                         </div>
                                         <p className="font-medium text-[#e0dcd7]">{aiSuggestedCategory.category}</p>
                                         <p className="mt-1 text-xs text-[#e0dcd7]/60">
-                                            Pewność: {(aiSuggestedCategory.confidence * 100).toFixed(0)}%
+                                            Confidence: {(aiSuggestedCategory.confidence * 100).toFixed(0)}%
                                         </p>
                                     </div>
                                     <button
@@ -773,7 +797,7 @@ export default function SubmitReportPage() {
                                         onClick={acceptAISuggestion}
                                         className="rounded-md bg-[#d97706] px-3 py-1.5 text-sm text-white transition-colors hover:bg-[#d97706]/80"
                                     >
-                                        Użyj
+                                        Use
                                     </button>
                                 </div>
                             </div>
@@ -798,10 +822,10 @@ export default function SubmitReportPage() {
                     {/* Description */}
                     <div>
                         <label htmlFor="description" className="mb-2 block font-semibold text-[#e0dcd7]">
-                            Opis
+                            Description
                         </label>
                         <p className="mb-2 text-xs text-[#e0dcd7]/60">
-                            Możesz dodać szczegółowy opis (maksymalnie 10000 znaków)
+                            You can add a detailed description (max 10000 characters)
                         </p>
                         <textarea
                             id="description"
@@ -811,11 +835,11 @@ export default function SubmitReportPage() {
                             maxLength={10000}
                             rows={8}
                             className={`w-full resize-none rounded-lg border ${fieldErrors.description ? "border-yellow-500" : "border-[#e0dcd7]/20"} bg-[#2a221a] px-4 py-3 text-[#e0dcd7] transition-colors focus:border-[#d97706] focus:outline-none`}
-                            placeholder="Opisz dokładnie problem..."
+                            placeholder="Describe the problem in detail..."
                         />
                         <div className="mt-1 flex items-center justify-between">
                             {formData.description.length > 0 && (
-                                <p className="text-xs text-[#e0dcd7]/50">{formData.description.length}/10000 znaków</p>
+                                <p className="text-xs text-[#e0dcd7]/50">{formData.description.length}/10000 characters</p>
                             )}
                             {fieldErrors.description && <p className="text-sm text-yellow-400">{fieldErrors.description}</p>}
                         </div>
@@ -824,13 +848,13 @@ export default function SubmitReportPage() {
                     {/* Location Map */}
                     <div>
                         <label className="mb-2 block font-semibold text-[#e0dcd7]">
-                            Lokalizacja *{" "}
+                            Location *{" "}
                             {formData.latitude && formData.longitude && (
-                                <span className="ml-2 text-sm font-normal text-[#d97706]">✓ Wybrano</span>
+                                <span className="ml-2 text-sm font-normal text-[#d97706]">✓ Selected</span>
                             )}
                         </label>
                         <p className="mb-3 text-sm text-[#e0dcd7]/60">
-                            Kliknij na mapie lub użyj przycisku lokalizacji w prawym dolnym rogu mapy
+                            Click on the map or use the location button in the bottom right corner of the map
                         </p>
                         <LocationPickerMap onLocationSelect={handleLocationSelect} />
                     </div>
@@ -838,7 +862,7 @@ export default function SubmitReportPage() {
                     {/* Images */}
                     <div>
                         <label htmlFor="images" className="mb-2 block font-semibold text-[#e0dcd7]">
-                            Zdjęcia (maksymalnie 5)
+                            Photos (maximum 5)
                         </label>
 
                         <div className="space-y-4">
@@ -877,17 +901,17 @@ export default function SubmitReportPage() {
                                     </span>
                                     <p className="mb-2 text-sm text-[#e0dcd7]">
                                         {isDragging ? (
-                                            <span className="font-bold text-[#d97706]">Upuść zdjęcia tutaj!</span>
+                                            <span className="font-bold text-[#d97706]">Drop photos here!</span>
                                         ) : (
-                                            <span className="font-semibold">Kliknij lub przeciągnij zdjęcia</span>
+                                            <span className="font-semibold">Click or drag photos</span>
                                         )}
                                     </p>
-                                    <p className="text-xs text-[#e0dcd7]/60">JPG, PNG (maks. 5 zdjęć)</p>
+                                    <p className="text-xs text-[#e0dcd7]/60">JPG, PNG (max. 5 photos)</p>
                                 </div>
                             </label>
 
                             {/* Persistent Error Message for Limits */}
-                            {error && error.includes("Wybrano") && (
+                            {error && error.includes("selected") && (
                                 <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
                                     <div className="flex items-center gap-2">
                                         <span className="material-symbols-outlined text-lg">warning</span>
@@ -907,7 +931,7 @@ export default function SubmitReportPage() {
                                             {/* Preview Image */}
                                             <img
                                                 src={img.previewUrl}
-                                                alt="Podgląd"
+                                                alt="Preview"
                                                 className={`h-full w-full object-cover transition-opacity ${img.status === "uploading" ? "opacity-50" : "opacity-100"}`}
                                             />
 
@@ -932,7 +956,7 @@ export default function SubmitReportPage() {
                                                     type="button"
                                                     onClick={() => handleRemoveImage(img.id)}
                                                     className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 shadow-sm transition-transform hover:scale-110 hover:bg-red-700"
-                                                    title="Usuń zdjęcie"
+                                                    title="Remove photo"
                                                 >
                                                     <span className="material-symbols-outlined text-sm font-bold text-white">
                                                         close
@@ -945,7 +969,7 @@ export default function SubmitReportPage() {
                             )}
 
                             <p className="text-xs text-[#e0dcd7]/60">
-                                {uploadedImages.length}/5 zdjęć. Obsługiwane formaty: JPG, PNG.
+                                {uploadedImages.length}/5 photos. Supported formats: JPG, PNG.
                             </p>
                         </div>
                     </div>
@@ -958,10 +982,10 @@ export default function SubmitReportPage() {
                     >
                         {isUploading && <span className="material-symbols-outlined animate-spin">sync</span>}
                         <span className="material-symbols-outlined">send</span>
-                        {isSubmitting ? "Wysyłanie..." : isUploading ? "Wysyłanie zdjęć..." : "Wyślij Zgłoszenie"}
+                        {isSubmitting ? "Submitting..." : isUploading ? "Uploading photos..." : "Submit Report"}
                     </button>
 
-                    {isSubmitting && <p className="text-center text-sm text-[#e0dcd7]/60">Wysyłanie zgłoszenia...</p>}
+                    {isSubmitting && <p className="text-center text-sm text-[#e0dcd7]/60">Submitting report...</p>}
                 </form>
             </div>
         </div>
