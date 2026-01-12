@@ -14,7 +14,7 @@ public class NotificationClient {
 
     private final WebClient webClient;
 
-    public NotificationClient(@Value("${notification.service.url:http://notification-service:8086}") String notificationServiceUrl) {
+    public NotificationClient(@Value("${notification.service.url:http://notification-service:8080}") String notificationServiceUrl) {
         this.webClient = WebClient.builder()
                 .baseUrl(notificationServiceUrl)
                 .build();
@@ -64,6 +64,7 @@ public class NotificationClient {
     private void sendNotification(Object payload, String errorMessage) {
         webClient.post()
                 .uri("/notifications/send")
+                .header("X-User-ID", "11111111-1111-1111-1111-111111111111")
                 .bodyValue(payload)
                 .retrieve()
                 .bodyToMono(Void.class)

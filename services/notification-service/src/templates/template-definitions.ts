@@ -168,13 +168,6 @@ export const templateDefinitions: TemplateDefinition[] = [
         bodyFile: "user-unbanned.html"
     },
     {
-        templateKey: "REPORT_CATEGORIZED_IN_APP",
-        eventType: "REPORT_CATEGORIZED",
-        channel: "in_app",
-        title: "Raport skategoryzowany",
-        body: "Twój raport został automatycznie skategoryzowany jako: {{category}}"
-    },
-    {
         templateKey: "FAKE_REPORT_DETECTED_IN_APP",
         eventType: "FAKE_REPORT_DETECTED",
         channel: "in_app",
@@ -201,6 +194,20 @@ export const templateDefinitions: TemplateDefinition[] = [
         channel: "email",
         subject: "Status Twojego zgłoszenia uległ zmianie",
         bodyFile: "report-status-changed.html"
+    },
+    {
+        templateKey: "REPORT_AI_VERIFIED_IN_APP",
+        eventType: "REPORT_AI_VERIFIED",
+        channel: "in_app",
+        title: "Raport zweryfikowany przez AI",
+        body: "Twój raport został zweryfikowany przez AI."
+    },
+    {
+        templateKey: "REPORT_AI_FLAGGED_IN_APP",
+        eventType: "REPORT_AI_FLAGGED",
+        channel: "in_app",
+        title: "Raport oznaczony przez AI",
+        body: "Twój raport został oznaczony jako wymagający uwagi."
     }
 ];
 

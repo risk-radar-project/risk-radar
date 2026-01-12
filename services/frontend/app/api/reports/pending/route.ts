@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
     const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || "http://127.0.0.1:8085"
 
@@ -7,6 +9,7 @@ export async function GET(request: NextRequest) {
         const authHeader = request.headers.get("Authorization")
 
         const res = await fetch(`${REPORT_SERVICE_URL}/reports/pending`, {
+            cache: 'no-store',
             headers: {
                 ...(authHeader ? { Authorization: authHeader } : {})
             }

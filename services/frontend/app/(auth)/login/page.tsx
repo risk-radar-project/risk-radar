@@ -100,7 +100,7 @@ export default function LoginPage() {
         if (isValid) {
             setIsLoading(true)
             try {
-                const response = await fetch(`${GATEWAY_URL}/api/users/login`, {
+                const response = await fetch(`${GATEWAY_URL}/api/login`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"

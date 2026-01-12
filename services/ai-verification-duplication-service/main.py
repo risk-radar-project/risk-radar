@@ -202,6 +202,12 @@ async def handle_report_message(message: Dict[str, Any], topic: str, partition: 
     logger.info(f"Received verification request from topic {topic} (partition {partition}, offset {offset})")
     
     try:
+        # Check current status - if already processed/finalized, skip verification
+        status = message.get("status", "PENDING")
+        if status in ["VERIFIED", "REJECTED"]:
+            logger.info(f"Skipping verification for report {message.get('id')} with status {status}")
+            return
+
         # For verification, we only need the basic details
         verify_request = VerificationRequest(
             report_id=message.get("id"),
@@ -368,7 +374,16 @@ async def verify_report(request: VerificationRequest):
         )
         
         # Send notification for suspicious reports (needs moderator review)
-        if is_fake:
+        should_send_notification = is_fake
+        
+        # Check if user_id is a valid UUID (not system/anonymous)
+        try:
+            uuid.UUID(str(request.user_id))
+        except ValueError:
+            should_send_notification = False
+            logger.warning(f"Skipping notification for non-UUID user_id: {request.user_id}")
+
+        if should_send_notification:
             await kafka_client.publish(
                 topic="notification_events",
                 message={

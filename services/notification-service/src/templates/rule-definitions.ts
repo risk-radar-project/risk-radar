@@ -160,5 +160,15 @@ export const ruleDefinitions: RuleDefinition[] = [
         templateMappings: {
             in_app: "REPORT_AI_FLAGGED_IN_APP"
         }
+    },
+    {
+
+        eventType: "SUSPICIOUS_REPORT_DETECTED",
+        audience: "user",
+        channels: ["in_app", "email"],
+        templateMappings: {
+            in_app: "FAKE_REPORT_DETECTED_IN_APP",
+            email: "FAKE_REPORT_DETECTED_EMAIL"
+        }
     }
 ];

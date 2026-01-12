@@ -47,12 +47,12 @@ export const notificationIdParamsSchema = Joi.object({
 
 export const fallbackSendSchema = Joi.object({
     eventId: Joi.string()
-        .guid({ version: "uuidv4" })
+        .guid()
         .messages({ "string.guid": '"eventId" must be a valid UUID' })
         .optional(),
     eventType: Joi.string().valid(...eventTypes).required(),
     userId: Joi.string()
-        .guid({ version: "uuidv4" })
+        .guid()
         .messages({ "string.guid": '"userId" must be a valid UUID' })
         .required(),
     initiatorId: Joi.string().optional().allow(null),

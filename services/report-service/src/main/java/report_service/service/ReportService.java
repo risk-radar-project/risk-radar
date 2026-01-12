@@ -25,6 +25,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.HashMap;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Slf4j
 @Service
 public class ReportService {
@@ -53,6 +55,7 @@ public class ReportService {
         this.mediaServiceUrl = mediaServiceUrl;
     }
 
+    @Transactional
     public void createReport(ReportRequest request) {
         Report report = new Report();
         report.setTitle(request.title());
@@ -63,6 +66,10 @@ public class ReportService {
         report.setImageIds(request.imageIds());
         report.setCategory(request.reportCategory());
         report.setCreatedAt(LocalDateTime.now());
+        // Default status is usually PENDING, ensure it's set if not default
+        if (report.getStatus() == null) {
+            report.setStatus(ReportStatus.PENDING);
+        }
 
         Report savedReport = reportRepository.save(report);
 
@@ -73,6 +80,13 @@ public class ReportService {
         // Confirm images in media-service
         if (savedReport.getImageIds() != null && !savedReport.getImageIds().isEmpty()) {
             confirmImages(savedReport.getImageIds());
+        }
+
+        // Send Notification
+        try {
+            notificationClient.sendReportCreatedNotification(savedReport.getUserId(), savedReport.getTitle());
+        } catch (Exception e) {
+            log.error("Failed to send report created notification", e);
         }
 
         Map<String, String> payload = reportToPayload(savedReport);
@@ -103,12 +117,20 @@ public class ReportService {
         }
     }
 
+    @Transactional
     public void updateReportStatus(UUID id, ReportStatus status) {
         Optional<Report> reportOpt = reportRepository.findById(id);
         if (reportOpt.isPresent()) {
             Report report = reportOpt.get();
             report.setStatus(status);
             Report updatedReport = reportRepository.save(report);
+
+             // Send Notification
+            try {
+                notificationClient.sendReportStatusChangedNotification(updatedReport.getUserId(), updatedReport.getTitle(), updatedReport.getStatus().toString());
+            } catch (Exception e) {
+                log.error("Failed to send report status changed notification", e);
+            }
 
             Map<String, String> payload = reportToPayload(updatedReport);
             kafkaTemplate.send(reportTopic, updatedReport.getId().toString(), payload);
@@ -216,7 +238,9 @@ public class ReportService {
         return Map.of(
                 "id", report.getId().toString(),
                 "title", report.getTitle(),
-                "description", report.getDescription());
+                "description", report.getDescription(),
+                "user_id", report.getUserId().toString(),
+                "status", report.getStatus() != null ? report.getStatus().toString() : "PENDING");
     }
 
     public Map<String, Object> getReportStats() {

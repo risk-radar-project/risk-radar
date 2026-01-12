@@ -111,7 +111,7 @@ export default function RegisterPage() {
         if (isValid) {
             setIsLoading(true)
             try {
-                const response = await fetch(`${GATEWAY_URL}/api/users/register`, {
+                const response = await fetch(`${GATEWAY_URL}/api/register`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { verifyReport, rejectReport } from "@/app/reports/actions"
+import { verifyReport, rejectReport } from "@/lib/actions/report-actions"
 
 export interface Report {
     id: string

@@ -6,7 +6,7 @@ import { publishAuditLog } from "../audit/audit-kafka-producer";
 interface NotificationAuditPayload {
     eventId: string;
     channel: string;
-    status: "queued" | "sent" | "failed";
+    status: "queued" | "sent" | "failed" | "skipped";
     userId?: string;
     metadata?: Record<string, unknown>;
 }

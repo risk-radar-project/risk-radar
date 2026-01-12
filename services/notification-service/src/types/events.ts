@@ -26,7 +26,8 @@ export interface NotificationEvent {
         | "REPORT_AI_VERIFIED"
         | "REPORT_AI_FLAGGED"
         | "REPORT_CATEGORIZED"
-        | "FAKE_REPORT_DETECTED";
+        | "FAKE_REPORT_DETECTED"
+        | "SUSPICIOUS_REPORT_DETECTED";
     userId: string;
     initiatorId?: string | null;
     payload?: NotificationEventPayload;
