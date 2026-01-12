@@ -53,7 +53,7 @@ class HealthResponse(BaseModel):
 google_ai_model = None
 
 # Report Service URL
-REPORT_SERVICE_URL = os.getenv("REPORT_SERVICE_URL", "http://report-service:8085")
+REPORT_SERVICE_URL = os.getenv("REPORT_SERVICE_URL", "http://report-service:8080")
 
 # Category name mapping (Polish)
 CATEGORY_NAMES = {
