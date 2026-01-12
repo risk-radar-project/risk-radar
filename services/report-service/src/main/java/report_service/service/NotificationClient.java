@@ -13,11 +13,15 @@ import java.util.UUID;
 public class NotificationClient {
 
     private final WebClient webClient;
+    private final String systemUserId;
 
-    public NotificationClient(@Value("${notification.service.url:http://notification-service:8080}") String notificationServiceUrl) {
+    public NotificationClient(
+            @Value("${notification.service.url:http://notification-service:8080}") String notificationServiceUrl,
+            @Value("${notification.system-user-id:11111111-1111-1111-1111-111111111111}") String systemUserId) {
         this.webClient = WebClient.builder()
                 .baseUrl(notificationServiceUrl)
                 .build();
+        this.systemUserId = systemUserId;
     }
 
     public void sendReportCreatedNotification(UUID userId, String reportTitle) {
@@ -64,7 +68,7 @@ public class NotificationClient {
     private void sendNotification(Object payload, String errorMessage) {
         webClient.post()
                 .uri("/notifications/send")
-                .header("X-User-ID", "11111111-1111-1111-1111-111111111111")
+                .header("X-User-ID", systemUserId)
                 .bodyValue(payload)
                 .retrieve()
                 .bodyToMono(Void.class)

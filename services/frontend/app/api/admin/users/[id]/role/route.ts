@@ -33,7 +33,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             } catch {
                 errorJson = { error: errorText || `Upstream returned ${res.status}` }
             }
-            console.error(`[Admin API] Upstream error: ${res.status}`, errorJson)
             return NextResponse.json(errorJson, { status: res.status })
         }
 
