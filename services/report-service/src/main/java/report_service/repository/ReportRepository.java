@@ -47,9 +47,11 @@ public interface ReportRepository extends JpaRepository<Report, UUID>, JpaSpecif
             WHERE r.status IN ('VERIFIED', 'PENDING')
             AND (
                 6371 * acos(
-                    cos(radians(:latitude)) * cos(radians(r.latitude)) *
-                    cos(radians(r.longitude) - radians(:longitude)) +
-                    sin(radians(:latitude)) * sin(radians(r.latitude))
+                    GREATEST(-1, LEAST(1,
+                        cos(radians(:latitude)) * cos(radians(r.latitude)) *
+                        cos(radians(r.longitude) - radians(:longitude)) +
+                        sin(radians(:latitude)) * sin(radians(r.latitude))
+                    ))
                 )
             ) <= :radiusKm
             ORDER BY r.created_at DESC

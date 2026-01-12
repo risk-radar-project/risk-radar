@@ -38,10 +38,10 @@ public class AuthController {
         private final AuthenticationManager authenticationManager;
         private final RedisService redisService;
         private final AuthzClient authzClient;
-    // Missing before:
-    private final NotificationClient notificationClient;
-    private final AuditLogClient auditLogClient;
-    private final PasswordResetService passwordResetService;
+        private final NotificationClient notificationClient;
+        private final AuditLogClient auditLogClient;
+        private final PasswordResetService passwordResetService;
+
         @PostMapping("/register")
         public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
                 String clientIp = extractClientIp(httpRequest);
@@ -49,12 +49,12 @@ public class AuthController {
 
                 try {
                         var user = userDetailsService.createUser(request.username(), request.password(), request.email());
-                    
-                    try {
-                        notificationClient.sendWelcomeNotification(user.getId(), user.getEmail(), user.getUsername());
-                    } catch (Exception e) {
-                        log.error("Failed to send welcome notification", e);
-                    }
+
+                        try {
+                                notificationClient.sendWelcomeNotification(user.getId(), user.getEmail(), user.getUsername());
+                        } catch (Exception e) {
+                                log.error("Failed to send welcome notification", e);
+                        }
 
                         auditLogClient.logAction(
                                         Map.of(

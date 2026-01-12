@@ -11,6 +11,7 @@ import com.riskRadar.user_service.security.PermissionChecker;
 import com.riskRadar.user_service.exception.UserAlreadyExistsException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,7 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 public class UserController {
 
     private final CustomUserDetailsService userDetailsService;
@@ -65,9 +67,9 @@ public class UserController {
                 var user = userService.getUserByUsernameOrEmail(request.username());
                 notificationClient.sendBanNotification(user.getId(), user.getEmail(), "Admin decision");
             } catch (Exception e) {
-                // ignore, user might not exist or notification failed
+                log.warn("Failed to send ban notification: {}", e.getMessage());
             }
-            
+
             return ResponseEntity.ok(Map.of("message", "User banned successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -86,11 +88,11 @@ public class UserController {
             userDetailsService.unbanUser(user.username());
 
             redisService.unbanUser(user.username());
-                        try {
-                            notificationClient.sendUnbanNotification(user.id(), user.email());
-                        } catch (Exception e) {
-                            // ignore
-                        }
+            try {
+                notificationClient.sendUnbanNotification(user.id(), user.email());
+            } catch (Exception e) {
+                log.warn("Failed to send unban notification: {}", e.getMessage());
+            }
 
             return ResponseEntity.ok(Map.of("message", "User unbanned successfully"));
         } catch (Exception e) {
@@ -109,7 +111,7 @@ public class UserController {
             try {
                 notificationClient.sendRoleAssignedNotification(id, request.roleName());
             } catch (Exception e) {
-                // ignore
+                log.warn("Failed to send role assigned notification: {}", e.getMessage());
             }
             return ResponseEntity.ok(Map.of("message", "User role updated successfully"));
         } catch (Exception e) {

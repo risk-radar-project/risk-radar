@@ -302,32 +302,6 @@ async def categorize_report(request: CategorizationRequest):
             key=request.report_id
         )
         
-        # Check if user_id is a valid UUID
-        is_valid_user = False
-        try:
-            uuid.UUID(str(request.user_id))
-            is_valid_user = True
-        except ValueError:
-            logger.warning(f"Skipping notification for non-UUID user_id: {request.user_id}")
-
-        # Notification "REPORT_CATEGORIZED" removed as per user request
-        # if is_valid_user:
-        #    await kafka_client.publish(
-        #        topic="notification_events",
-        #        message={
-        #            "eventId": str(uuid.uuid4()),
-        #            "eventType": "REPORT_CATEGORIZED",
-        #            "userId": request.user_id,
-        #            "source": "ai-categorization-service",
-        #            "payload": {
-        #                "reportId": request.report_id,
-        #                "category": category,
-        #                "confidence": confidence
-        #            }
-        #        },
-        #        key=request.user_id
-        #    )
-        
         return CategorizationResponse(
             report_id=request.report_id,
             category=category,
