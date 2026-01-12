@@ -1,11 +1,6 @@
 "use client"
 
-// This component provides the login form for the application.
-// It includes fields for username/email and password, a "remember me" option,
-// and links for password reset and registration. It also features a section
-// for quick login with demo accounts.
-
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -13,55 +8,51 @@ import { Label } from "@/components/ui/label"
 import { Eye, EyeOff, UserCircle } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import { useEffect } from "react"
 import { GATEWAY_URL } from "@/lib/auth/auth-service"
 
-// Pre-defined demo accounts for easy testing and demonstration.
 const DEMO_ACCOUNTS = [
     { label: "👑 Admin", username: "admin", password: "admin" },
     { label: "🛡️ Moderator", username: "moderator", password: "moderator" },
-    { label: "🤝 Volunteer", username: "wolontariusz", password: "wolontariusz" },
-    { label: "👤 User", username: "uzytkownik", password: "uzytkownik" }
+    { label: "🤝 Wolontariusz", username: "wolontariusz", password: "wolontariusz" },
+    { label: "👤 Użytkownik", username: "uzytkownik", password: "uzytkownik" }
 ]
 
 export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false)
     const [showDemoAccounts, setShowDemoAccounts] = useState(true)
-    // Form data state
     const [formData, setFormData] = useState({
         username: "",
         password: "",
         rememberMe: false
     })
-    // State for form validation errors
     const [errors, setErrors] = useState({
         username: "",
         password: "",
         form: ""
     })
-    // State for success messages (e.g., after registration)
     const [successMessage, setSuccessMessage] = useState("")
     const [isLoading, setIsLoading] = useState(false)
     const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false)
     const searchParams = useSearchParams()
 
-    // Check if the user is already logged in by verifying the access token.
     useEffect(() => {
-        // Dynamically import isTokenExpired to avoid server-side issues.
+        // Import isTokenExpired dynamically to avoid issues
         const checkToken = async () => {
             const token = localStorage.getItem("access_token")
             if (token) {
-                // Check if the token is valid by trying to parse it.
+                // Check if token is valid by trying to parse it
                 try {
                     const { isTokenExpired } = await import("@/lib/auth/jwt-utils")
                     if (!isTokenExpired(token)) {
                         setIsAlreadyLoggedIn(true)
                     } else {
-                        // If the token is expired, clear it so the user can log in again.
+                        // Token is expired, clear it so user can log in
                         localStorage.removeItem("access_token")
                         localStorage.removeItem("refresh_token")
                     }
                 } catch {
-                    // If there's an error parsing, clear the token.
+                    // If there's an error parsing, clear the token
                     localStorage.removeItem("access_token")
                     localStorage.removeItem("refresh_token")
                 }
@@ -70,42 +61,37 @@ export default function LoginPage() {
         checkToken()
     }, [])
 
-    // Display a success message if the user has just registered.
     useEffect(() => {
         if (searchParams.get("registered") === "true") {
-            setSuccessMessage("Registration successful. You can now log in.")
+            setSuccessMessage("Rejestracja zakończona sukcesem. Możesz się teraz zalogować.")
         }
     }, [searchParams])
 
-    // Handle changes in form inputs.
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target
         setFormData((prev) => ({ ...prev, [id]: value }))
-        // Clear the error for the field being edited.
         if (errors[id as keyof typeof errors]) {
             setErrors((prev) => ({ ...prev, [id]: "" }))
         }
     }
 
-    // Populate the form with credentials from a demo account.
     const handleDemoLogin = (username: string, password: string) => {
         setFormData((prev) => ({ ...prev, username, password }))
         setShowDemoAccounts(false)
         setErrors({ username: "", password: "", form: "" })
     }
 
-    // Handle form submission.
     const handleSubmit = async () => {
         const newErrors = { username: "", password: "", form: "" }
         let isValid = true
 
         if (!formData.username) {
-            newErrors.username = "Username or email is required"
+            newErrors.username = "Nazwa użytkownika lub email jest wymagany"
             isValid = false
         }
 
         if (!formData.password) {
-            newErrors.password = "Password is required"
+            newErrors.password = "Hasło jest wymagane"
             isValid = false
         }
 
@@ -128,16 +114,16 @@ export default function LoginPage() {
 
                 if (response.ok) {
                     const data = await response.json()
-                    // Store tokens in localStorage, supporting both camelCase and snake_case from the API.
+                    // Store tokens in localStorage (support both camelCase and snake_case)
                     const accessToken = data.accessToken || data.access_token || data.token
                     const refreshToken = data.refreshToken || data.refresh_token
 
                     if (accessToken) localStorage.setItem("access_token", accessToken)
                     if (refreshToken) localStorage.setItem("refresh_token", refreshToken)
 
-                    setSuccessMessage("Login successful! Redirecting...")
+                    setSuccessMessage("Pomyślnie zalogowano! Trwa przekierowanie...")
 
-                    // Delay redirect to show success message and a simple loader.
+                    // Delay redirect to show success message and simple loader
                     setTimeout(() => {
                         window.location.href = "/"
                     }, 1500)
@@ -150,7 +136,6 @@ export default function LoginPage() {
                         console.warn("Failed to parse error response JSON", e)
                     }
 
-                    // Normalize error messages from the server.
                     const rawMessage =
                         data && typeof data.error === "string"
                             ? data.error
@@ -163,27 +148,26 @@ export default function LoginPage() {
                         response.status === 403 ||
                         response.status === 423 ||
                         normalizedMessage.includes("ban") ||
-                        normalizedMessage.includes("block") ||
+                        normalizedMessage.includes("blok") ||
                         normalizedMessage.includes("zablok")
 
                     if (isBanned) {
-                        setErrors((prev) => ({ ...prev, form: "This account is banned. Please contact an administrator." }))
+                        setErrors((prev) => ({ ...prev, form: "Konto jest zablokowane. Skontaktuj się z administratorem." }))
                     } else if (response.status === 401) {
-                        setErrors((prev) => ({ ...prev, form: "Invalid username or password" }))
+                        setErrors((prev) => ({ ...prev, form: "Nieprawidłowa nazwa użytkownika lub hasło" }))
                     } else {
-                        const errorMessage = rawMessage || "An error occurred during login"
+                        const errorMessage = rawMessage || "Wystąpił błąd podczas logowania"
                         setErrors((prev) => ({ ...prev, form: errorMessage }))
                     }
                 }
             } catch (error) {
                 setIsLoading(false)
                 console.error("Login error:", error)
-                setErrors((prev) => ({ ...prev, form: "Connection error with the server" }))
+                setErrors((prev) => ({ ...prev, form: "Błąd połączenia z serwerem" }))
             }
         }
     }
 
-    // Display a loading spinner while redirecting after a successful login.
     if (isLoading && successMessage) {
         return (
             <div className="mt-6 flex min-h-[300px] w-full flex-col items-center justify-center text-white">
@@ -205,7 +189,7 @@ export default function LoginPage() {
                     RiskRadar
                 </h1>
                 <p className="px-4 pt-1 pb-3 text-center text-base leading-normal font-normal text-zinc-400 dark:text-white">
-                    Log in or Create an account to get started.
+                    Zaloguj się lub Utwórz konto, aby rozpocząć.
                 </p>
             </div>
             <div className="pb-3">
@@ -214,13 +198,13 @@ export default function LoginPage() {
                         className="border-b-primary flex flex-1 flex-col items-center justify-center border-b-[3px] pt-4 pb-[13px] text-white"
                         href="/login"
                     >
-                        <p className="text-sm leading-normal font-bold tracking-[0.015em] text-white">Login</p>
+                        <p className="text-sm leading-normal font-bold tracking-[0.015em] text-white">Logowanie</p>
                     </Link>
                     <Link
                         className={`flex flex-1 flex-col items-center justify-center border-b-[3px] border-b-transparent pt-4 pb-[13px] text-[#baab9c] ${isAlreadyLoggedIn ? "pointer-events-none opacity-50" : ""}`}
                         href="/register"
                     >
-                        <p className="text-sm leading-normal font-bold tracking-[0.015em] text-[#baab9c]">Register</p>
+                        <p className="text-sm leading-normal font-bold tracking-[0.015em] text-[#baab9c]">Rejestracja</p>
                     </Link>
                 </div>
             </div>
@@ -240,7 +224,7 @@ export default function LoginPage() {
                         disabled={isLoading || isAlreadyLoggedIn}
                     >
                         <UserCircle className="h-4 w-4" />
-                        <span>{showDemoAccounts ? "Hide Demo Accounts" : "Show Demo Accounts"}</span>
+                        <span>{showDemoAccounts ? "Ukryj konta demo" : "Pokaż konta demo"}</span>
                     </button>
 
                     {showDemoAccounts && (
@@ -262,14 +246,14 @@ export default function LoginPage() {
 
                 <div className="flex w-full flex-col">
                     <Label className="pb-2 text-base leading-normal font-medium text-white" htmlFor="username">
-                        Email or username
+                        Email lub login
                     </Label>
                     <Input
                         className={`form-input focus:ring-primary/50 flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg border text-white focus:ring-2 focus:outline-0 ${
                             errors.username ? "border-red-500 focus:border-red-500" : "focus:border-primary border-[#54473b]"
                         } h-14 bg-[#27211b] p-[15px] text-base leading-normal font-normal placeholder:text-[#baab9c]`}
                         id="username"
-                        placeholder="john.doe@example.com or johndoe"
+                        placeholder="jan.kowalski@example.com lub janek"
                         type="text"
                         value={formData.username}
                         onChange={handleInputChange}
@@ -279,7 +263,7 @@ export default function LoginPage() {
                 </div>
                 <div className="flex w-full flex-col">
                     <Label className="pb-2 text-base leading-normal font-medium text-white" htmlFor="password">
-                        Password
+                        Hasło
                     </Label>
                     <div
                         className={`flex w-full flex-1 items-center rounded-lg border ${
@@ -291,7 +275,7 @@ export default function LoginPage() {
                         <Input
                             className="form-input flex h-full w-full min-w-0 flex-1 resize-none rounded-none border-0 bg-transparent p-[15px] pr-2 text-base leading-normal font-normal text-white shadow-none placeholder:text-[#baab9c] focus-visible:ring-0 focus-visible:ring-offset-0"
                             id="password"
-                            placeholder="Enter your password"
+                            placeholder="Wpisz swoje hasło"
                             type={showPassword ? "text" : "password"}
                             value={formData.password}
                             onChange={handleInputChange}
@@ -319,11 +303,11 @@ export default function LoginPage() {
                             disabled={isLoading || isAlreadyLoggedIn}
                         />
                         <Label className="text-sm text-[#baab9c]" htmlFor="remember-me">
-                            Remember me
+                            Zapamiętaj mnie
                         </Label>
                     </div>
                     <Link className="text-sm text-white hover:underline" href="/reset-password">
-                        Forgot your password?
+                        Nie pamiętasz hasła?
                     </Link>
                 </div>
                 <Button
@@ -334,12 +318,12 @@ export default function LoginPage() {
                     {isLoading ? (
                         <div className="flex items-center gap-2">
                             <div className="h-5 w-5 animate-spin rounded-full border-t-2 border-b-2 border-white"></div>
-                            <span>Logging in...</span>
+                            <span>Logowanie...</span>
                         </div>
                     ) : isAlreadyLoggedIn ? (
-                        "You are already logged in"
+                        "Jesteś już zalogowany"
                     ) : (
-                        "Log in"
+                        "Zaloguj się"
                     )}
                 </Button>
             </form>

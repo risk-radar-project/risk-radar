@@ -1,9 +1,5 @@
 "use client"
 
-// This component provides the registration form for new users.
-// It includes fields for username, email, and password, along with validation,
-// a terms of service agreement, and submission handling.
-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,7 +10,6 @@ import { Eye, EyeOff } from "lucide-react"
 import { GATEWAY_URL } from "@/lib/auth/auth-service"
 
 export default function RegisterPage() {
-    // State for form data
     const [formData, setFormData] = useState({
         username: "",
         email: "",
@@ -22,7 +17,6 @@ export default function RegisterPage() {
         confirmPassword: "",
         terms: false
     })
-    // State for validation errors
     const [errors, setErrors] = useState({
         username: "",
         email: "",
@@ -31,13 +25,11 @@ export default function RegisterPage() {
         terms: "",
         form: ""
     })
-    // State for password visibility toggles
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false)
 
-    // Check if the user is already logged in to disable the form.
     useEffect(() => {
         const checkToken = async () => {
             const token = localStorage.getItem("access_token")
@@ -47,12 +39,10 @@ export default function RegisterPage() {
                     if (!isTokenExpired(token)) {
                         setIsAlreadyLoggedIn(true)
                     } else {
-                        // Clear expired tokens
                         localStorage.removeItem("access_token")
                         localStorage.removeItem("refresh_token")
                     }
                 } catch {
-                    // Clear tokens if parsing fails
                     localStorage.removeItem("access_token")
                     localStorage.removeItem("refresh_token")
                 }
@@ -61,44 +51,37 @@ export default function RegisterPage() {
         checkToken()
     }, [])
 
-    // Handle changes in form inputs.
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target
         setFormData((prev) => ({ ...prev, [id]: value }))
-        // Clear the error for the field being edited.
         if (errors[id as keyof typeof errors]) {
             setErrors((prev) => ({ ...prev, [id]: "" }))
         }
     }
 
-    // Clear the error for a specific field.
     const handleErrorReset = (field: string) => {
         setErrors((prev) => ({ ...prev, [field]: "" }))
     }
 
-    // Handle form submission, including validation and API call.
     const handleSubmit = async () => {
         const newErrors = { username: "", email: "", password: "", confirmPassword: "", terms: "", form: "" }
         let isValid = true
 
-        // Validate username
         if (!formData.username) {
-            newErrors.username = "Username is required"
+            newErrors.username = "Nazwa użytkownika jest wymagana"
             isValid = false
         }
 
-        // Validate email
         if (!formData.email) {
-            newErrors.email = "Email is required"
+            newErrors.email = "Email jest wymagany"
             isValid = false
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = "Invalid email format"
+            newErrors.email = "Niepoprawny format emaila"
             isValid = false
         }
 
-        // Validate password complexity
         if (!formData.password) {
-            newErrors.password = "Password is required"
+            newErrors.password = "Hasło jest wymagane"
             isValid = false
         } else {
             const hasUpperCase = /[A-Z]/.test(formData.password)
@@ -108,20 +91,18 @@ export default function RegisterPage() {
             const hasMinLength = formData.password.length >= 8
 
             if (!hasMinLength || !hasUpperCase || !hasLowerCase || !hasNumbers || !hasSpecialChar) {
-                newErrors.password = "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character."
+                newErrors.password = "Hasło musi mieć min. 8 znaków, dużą i małą literę, cyfrę oraz znak specjalny"
                 isValid = false
             }
         }
 
-        // Validate password confirmation
         if (formData.password !== formData.confirmPassword) {
-            newErrors.confirmPassword = "Passwords must match"
+            newErrors.confirmPassword = "Hasła muszą być identyczne"
             isValid = false
         }
 
-        // Validate terms acceptance
         if (!formData.terms) {
-            newErrors.terms = "You must accept the terms and conditions"
+            newErrors.terms = "Musisz zaakceptować regulamin"
             isValid = false
         }
 
@@ -143,32 +124,32 @@ export default function RegisterPage() {
                 })
 
                 if (response.ok) {
-                    // Redirect to login page on success with a parameter to show a message.
+                    // Redirect to login page on success
                     window.location.href = "/login?registered=true"
                 } else {
                     setIsLoading(false)
-                    // Handle specific error codes from the server.
+                    // Handle specific error codes
                     if (response.status === 409) {
                         setErrors((prev) => ({
                             ...prev,
-                            form: "A user with this username or email already exists."
+                            form: "Użytkownik o podanej nazwie lub adresie email już istnieje."
                         }))
                     } else {
                         try {
                             const data = await response.json()
-                            setErrors((prev) => ({ ...prev, form: data.error || "An error occurred during registration" }))
+                            setErrors((prev) => ({ ...prev, form: data.error || "Wystąpił błąd podczas rejestracji" }))
                         } catch {
                             setErrors((prev) => ({
                                 ...prev,
-                                form: "An error occurred during registration (Error parsing response)"
+                                form: "Wystąpił błąd podczas rejestracji (Błąd parsowania odpowiedzi)"
                             }))
                         }
                     }
                 }
             } catch (error) {
                 setIsLoading(false)
-                console.error("Registration error:", error)
-                setErrors((prev) => ({ ...prev, form: "Connection error with the server. Please check if the server is running." }))
+                console.error("Rejestracja error:", error)
+                setErrors((prev) => ({ ...prev, form: "Błąd połączenia z serwerem. Sprawdź, czy serwer działa." }))
             }
         }
     }
@@ -179,7 +160,7 @@ export default function RegisterPage() {
                     RiskRadar
                 </h1>
                 <p className="px-4 pt-1 pb-3 text-center text-base leading-normal font-normal text-zinc-400 dark:text-white">
-                    Log in or Create an account to get started.
+                    Zaloguj się lub Utwórz konto, aby rozpocząć.
                 </p>
             </div>
             <div className="pb-3">
@@ -188,13 +169,13 @@ export default function RegisterPage() {
                         className="flex flex-1 flex-col items-center justify-center border-b-[3px] border-b-transparent pt-4 pb-[13px] text-[#baab9c]"
                         href="/login"
                     >
-                        <p className="text-sm leading-normal font-bold tracking-[0.015em] text-[#baab9c]">Login</p>
+                        <p className="text-sm leading-normal font-bold tracking-[0.015em] text-[#baab9c]">Logowanie</p>
                     </Link>
                     <Link
                         className={`border-b-primary flex flex-1 flex-col items-center justify-center border-b-[3px] pt-4 pb-[13px] text-white ${isAlreadyLoggedIn ? "pointer-events-none opacity-50" : ""}`}
                         href="/register"
                     >
-                        <p className="text-sm leading-normal font-bold tracking-[0.015em] text-white">Register</p>
+                        <p className="text-sm leading-normal font-bold tracking-[0.015em] text-white">Rejestracja</p>
                     </Link>
                 </div>
             </div>
@@ -207,14 +188,14 @@ export default function RegisterPage() {
             >
                 <div className="flex w-full flex-col">
                     <Label className="pb-2 text-base leading-normal font-medium text-white" htmlFor="username">
-                        Username
+                        Nazwa użytkownika
                     </Label>
                     <Input
                         className={`form-input focus:ring-primary/50 flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg border text-white focus:ring-2 focus:outline-0 ${
                             errors.username ? "border-red-500 focus:border-red-500" : "focus:border-primary border-[#54473b]"
                         } h-14 bg-[#27211b] p-[15px] text-base leading-normal font-normal placeholder:text-[#baab9c]`}
                         id="username"
-                        placeholder="JohnDoe"
+                        placeholder="JanKowalski"
                         type="text"
                         value={formData.username}
                         onChange={handleInputChange}
@@ -231,7 +212,7 @@ export default function RegisterPage() {
                             errors.email ? "border-red-500 focus:border-red-500" : "focus:border-primary border-[#54473b]"
                         } h-14 bg-[#27211b] p-[15px] text-base leading-normal font-normal placeholder:text-[#baab9c]`}
                         id="email"
-                        placeholder="john.doe@example.com"
+                        placeholder="jan.kowalski@example.com"
                         type="email"
                         value={formData.email}
                         onChange={handleInputChange}
@@ -241,7 +222,7 @@ export default function RegisterPage() {
                 </div>
                 <div className="flex w-full flex-col">
                     <Label className="pb-2 text-base leading-normal font-medium text-white" htmlFor="password">
-                        Password
+                        Hasło
                     </Label>
                     <div
                         className={`flex w-full flex-1 items-center rounded-lg border ${
@@ -253,7 +234,7 @@ export default function RegisterPage() {
                         <Input
                             className="form-input flex h-full w-full min-w-0 flex-1 resize-none rounded-none border-0 bg-transparent p-[15px] pr-2 text-base leading-normal font-normal text-white shadow-none placeholder:text-[#baab9c] focus-visible:ring-0 focus-visible:ring-offset-0"
                             id="password"
-                            placeholder="Enter your password"
+                            placeholder="Wpisz swoje hasło"
                             type={showPassword ? "text" : "password"}
                             value={formData.password}
                             onChange={handleInputChange}
@@ -273,7 +254,7 @@ export default function RegisterPage() {
                 </div>
                 <div className="flex w-full flex-col">
                     <Label className="pb-2 text-base leading-normal font-medium text-white" htmlFor="confirm-password">
-                        Confirm Password
+                        Potwierdź hasło
                     </Label>
                     <div
                         className={`flex w-full flex-1 items-center rounded-lg border ${
@@ -285,7 +266,7 @@ export default function RegisterPage() {
                         <Input
                             className="form-input flex h-full w-full min-w-0 flex-1 resize-none rounded-none border-0 bg-transparent p-[15px] pr-2 text-base leading-normal font-normal text-white shadow-none placeholder:text-[#baab9c] focus-visible:ring-0 focus-visible:ring-offset-0"
                             id="confirmPassword"
-                            placeholder="Enter your password again"
+                            placeholder="Wpisz hasło ponownie"
                             type={showConfirmPassword ? "text" : "password"}
                             value={formData.confirmPassword}
                             onChange={handleInputChange}
@@ -314,9 +295,9 @@ export default function RegisterPage() {
                         disabled={isLoading}
                     />
                     <Label htmlFor="terms" className="text-sm leading-none font-medium text-zinc-400">
-                        I accept the{" "}
+                        Akceptuję{" "}
                         <Link href="/terms" className="hover:text-primary font-semibold text-white hover:underline">
-                            terms and conditions
+                            regulamin
                         </Link>
                     </Label>
                 </div>
@@ -330,10 +311,10 @@ export default function RegisterPage() {
                     {isLoading ? (
                         <div className="flex items-center gap-2">
                             <div className="h-5 w-5 animate-spin rounded-full border-t-2 border-b-2 border-white"></div>
-                            <span>Processing...</span>
+                            <span>Przetwarzanie...</span>
                         </div>
                     ) : (
-                        "Register"
+                        "Zarejestruj się"
                     )}
                 </Button>
             </form>

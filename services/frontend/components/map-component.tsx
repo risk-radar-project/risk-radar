@@ -1,8 +1,5 @@
 "use client"
 
-// This component renders the interactive map using Leaflet.js.
-// It displays reports as markers, supports clustering, search, and an AI assistant feature.
-
 import { useCallback, useEffect, useRef, useState } from "react"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
@@ -11,23 +8,21 @@ import "leaflet.markercluster/dist/MarkerCluster.Default.css"
 import "leaflet.markercluster"
 import { useAuth } from "@/hooks/use-auth"
 
-// Base URL for the media service
 const MEDIA_SERVICE_BASE_URL = "/api/image/"
 
-// Display names for report categories
 const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
-    VANDALISM: "Vandalism",
-    INFRASTRUCTURE: "Road/pavement infrastructure",
-    DANGEROUS_SITUATION: "Dangerous situations",
-    TRAFFIC_ACCIDENT: "Traffic accidents",
-    PARTICIPANT_BEHAVIOR: "Driver/pedestrian behavior",
-    PARTICIPANT_HAZARD: "Hazards for pedestrians and cyclists",
-    WASTE_ILLEGAL_DUMPING: "Waste/illegal dumping",
-    BIOLOGICAL_HAZARD: "Biological hazards",
-    OTHER: "Other"
+    VANDALISM: "Wandalizm",
+    INFRASTRUCTURE: "Infrastruktura drogowa/chodników",
+    DANGEROUS_SITUATION: "Niebezpieczne sytuacje",
+    TRAFFIC_ACCIDENT: "Wypadki drogowe",
+    PARTICIPANT_BEHAVIOR: "Zachowania kierowców/pieszych",
+    PARTICIPANT_HAZARD: "Zagrożenia dla pieszych i rowerzystów i kierowców",
+    WASTE_ILLEGAL_DUMPING: "Śmieci/nielegalne zaśmiecanie/nielegalne wysypiska śmieci",
+    BIOLOGICAL_HAZARD: "Zagrożenia biologiczne",
+    OTHER: "Inne"
 }
 
-// Interface for a report object
+// Export Report interface so it can be used in page.tsx
 export interface Report {
     id: string
     latitude: number
@@ -38,12 +33,11 @@ export interface Report {
     imageIds?: string[]
 }
 
-// Interface for a search result from Nominatim API
 interface SearchResult {
     place_id: number
     display_name: string
     lat: string
-    lon:string
+    lon: string
     address?: {
         road?: string
         house_number?: string
@@ -54,7 +48,6 @@ interface SearchResult {
     }
 }
 
-// Props for the MapComponent
 interface MapComponentProps {
     initialReports?: Report[]
     initialLat?: number
@@ -64,7 +57,6 @@ interface MapComponentProps {
 
 export default function MapComponent({ initialReports = [], initialLat, initialLng, initialZoom }: MapComponentProps) {
     const { isAuthenticated } = useAuth()
-    // Refs for map and markers
     const mapRef = useRef<L.Map | null>(null)
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const markersRef = useRef<L.MarkerClusterGroup | null>(null)
@@ -74,7 +66,6 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
     const userLocationCircleRef = useRef<L.Circle | null>(null)
     const addressCacheRef = useRef<Map<string, string>>(new Map())
 
-    // State for UI elements
     const [lightboxImage, setLightboxImage] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
     const [searchResults, setSearchResults] = useState<SearchResult[]>([])
@@ -82,7 +73,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
     const [isSearching, setIsSearching] = useState(false)
     const [searchFocused, setSearchFocused] = useState(false)
 
-    // State for AI Assistant
+    // AI Assistant state
     const [aiLoading, setAiLoading] = useState(false)
     const [aiResponse, setAiResponse] = useState<{
         visible: boolean
@@ -91,7 +82,9 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         summary: string
         reportsCount: number
     } | null>(null)
+    // AI Area Selection Mode
     const [aiSelectMode, setAiSelectMode] = useState(false)
+    // AI Menu expanded state
     const [aiMenuOpen, setAiMenuOpen] = useState(false)
     const selectedAreaMarkerRef = useRef<L.Marker | null>(null)
     const selectedAreaCircleRef = useRef<L.Circle | null>(null)
@@ -119,7 +112,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         })
     }
 
-    // Load Material Symbols & Leaflet CSS from CDN as a fallback
+    // Load Material Symbols & Leaflet CSS (CDN fallback)
     useEffect(() => {
         const links = [
             "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap",
@@ -143,7 +136,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         }
     }, [])
 
-    // Close search results when clicking outside the search container
+    // Close search results when clicking outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             const target = e.target as HTMLElement
@@ -156,7 +149,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
 
-    // Force map to re-render when it becomes visible
+    // Force map refresh when component mounts or becomes visible
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (!document.hidden && mapRef.current) {
@@ -180,45 +173,46 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         }
     }, [])
 
-    // Initialize the map
     useEffect(() => {
         if (!mapContainerRef.current || mapRef.current) return
 
-        // Determine the initial view of the map
+        // Determine start view
         const startLat = initialLat || 50.06
         const startLng = initialLng || 19.94
         const startZoom = initialZoom || (initialLat && initialLng ? 16 : 13)
 
-        // Initialize the map centered on Kraków or a specific point
+        // Initialize map centered on Kraków (where reports are located) or specific point
         const map = L.map(mapContainerRef.current, {
             attributionControl: false,
             zoomControl: false
         }).setView([startLat, startLng], startZoom)
         mapRef.current = map
 
-        // Clear the set of displayed report IDs when the map is re-initialized
+        // FIX: Clear the "displayed" set when the map is re-initialized.
+        // This prevents the bug where HMR/Strict Mode re-creates the map,
+        // but the Ref still thinks markers are already added.
         displayedReportIdsRef.current.clear()
 
-        // Add the tile layer from CartoDB
         L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
             maxZoom: 19
         }).addTo(map)
 
+        // Track if map is destroyed to prevent calls on unmounted map
         let isDestroyed = false
 
-        // Invalidate map size after a short delay to fix rendering issues
+        // Fix map rendering issues - invalidate size after initialization
         setTimeout(() => {
             if (!isDestroyed) map.invalidateSize()
         }, 100)
 
-        // Invalidate map size again when the map is ready
+        // Additional invalidation after tiles load
         map.whenReady(() => {
             setTimeout(() => {
                 if (!isDestroyed) map.invalidateSize()
             }, 200)
         })
 
-        // Invalidate map size when tiles are loaded
+        // Listen for tile loading to ensure proper rendering
         map.on("load", () => {
             if (!isDestroyed) map.invalidateSize()
         })
@@ -228,7 +222,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         markersRef.current = markers
         map.addLayer(markers)
 
-        // Configure icons for different report categories
+        // Icon configuration based on index.html
         const baseIconProps = {
             iconSize: [40, 40] as [number, number],
             iconAnchor: [20, 40] as [number, number],
@@ -248,7 +242,6 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         }
         const defaultIcon = categoryIcons["OTHER"]
 
-        // Format the address from reverse geocoding
         const formatReverseAddress = (
             address?: Partial<{
                 road: string
@@ -272,7 +265,6 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
             return parts.length > 0 ? parts.join(", ") : null
         }
 
-        // Fetch the approximate address for a report using reverse geocoding
         const fetchApproxAddress = async (report: Report) => {
             const cacheKey = report.id
             const cached = addressCacheRef.current.get(cacheKey)
@@ -284,7 +276,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                     {
                         headers: {
                             "User-Agent": "RiskRadar-Map-Frontend",
-                            "Accept-Language": "en"
+                            "Accept-Language": "pl"
                         }
                     }
                 )
@@ -305,10 +297,12 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
             }
         }
 
-        // Create the HTML content for a marker's popup
+        // Create popup content with XSS protection
         const createPopupContent = (report: Report): HTMLElement => {
             const container = document.createElement("div")
+            // Container doesn't need extra padding as internal elements handle it
 
+            // --- HEADER ---
             const header = document.createElement("div")
             header.className = "popup-header"
 
@@ -320,31 +314,36 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
 
             container.appendChild(header)
 
+            // --- BODY ---
             const body = document.createElement("div")
             body.className = "popup-body"
 
+            // Category Badge
             const categoryKey = report.category
-            const categoryName = CATEGORY_DISPLAY_NAMES[categoryKey] || "Unknown category"
+            const polishCategoryName = CATEGORY_DISPLAY_NAMES[categoryKey] || "Nieznana kategoria"
 
             const badge = document.createElement("div")
             badge.className = "popup-badge"
-            badge.textContent = categoryName
+            badge.textContent = polishCategoryName
             badge.style.marginBottom = "12px"
             body.appendChild(badge)
 
+            // Description
             const description = document.createElement("p")
-            description.textContent = report.description || "No description."
+            description.textContent = report.description || "Brak opisu."
             description.style.fontSize = "0.875rem" // text-sm
             description.style.color = "#d4d4d8" // zinc-300
             description.style.margin = "0 0 12px 0"
             description.style.lineHeight = "1.4"
             body.appendChild(description)
 
+            // Images
             const imageIds = report.imageIds || []
             if (imageIds.length > 0) {
                 const imageContainer = document.createElement("div")
                 imageContainer.className = "report-image-container"
                 imageContainer.style.display = "grid"
+                // Dynamic columns based on image count for better layout
                 const columns = imageIds.length === 1 ? 1 : imageIds.length === 2 ? 2 : 3
                 imageContainer.style.gridTemplateColumns = `repeat(${columns}, 1fr)`
                 imageContainer.style.gap = "8px"
@@ -358,8 +357,8 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                     const img = document.createElement("img")
                     img.src = thumbImageUrl
                     img.className = "report-image"
-                    img.alt = `Report image`
-                    img.title = "Click to enlarge"
+                    img.alt = `Zdjęcie zgłoszenia`
+                    img.title = "Kliknij, aby powiększyć"
                     img.style.width = "100%"
                     img.style.aspectRatio = "1"
                     img.style.objectFit = "cover"
@@ -368,6 +367,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                     img.style.border = "1px solid #3f3f46" // zinc-700
                     img.style.transition = "opacity 0.2s"
 
+                    // Safe event handler using addEventListener
                     img.addEventListener("click", () => {
                         if (typeof window !== "undefined") {
                             setLightboxImage(fullImageUrl)
@@ -381,6 +381,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                         img.style.opacity = "1"
                     })
 
+                    // Safe error handling
                     img.addEventListener("error", () => {
                         img.style.display = "none"
                     })
@@ -393,6 +394,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
 
             container.appendChild(body)
 
+            // --- FOOTER ---
             const footer = document.createElement("div")
             footer.className = "popup-footer"
 
@@ -412,7 +414,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
             return container
         }
 
-        // Add a marker for a report to the map
+        // Add marker to map
         const addMarkerToMap = (report: Report) => {
             if (!report || !report.latitude || !report.longitude) {
                 return
@@ -455,16 +457,18 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                 }
             })
 
+            // Add to cluster group
             markersRef.current?.addLayer(marker)
         }
 
-        // Fetch reports from the API
+        // Fetch reports (force = true bypasses static initial data)
         const fetchReports = async (force = false) => {
             if (force) {
                 setIsRefreshingReports(true)
             }
 
             try {
+                // When initialReports provided, we use them on first load unless force-refresh is requested
                 if (!force && initialReports !== undefined) {
                     if (initialReports.length > 0) {
                         initialReports.forEach((report) => addMarkerToMap(report))
@@ -475,7 +479,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                 const response = await fetch("/api/reports")
 
                 if (!response.ok) {
-                    console.error(`Server error (${response.status})`)
+                    console.error(`Błąd serwera (${response.status})`)
                     return
                 }
 
@@ -483,6 +487,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
 
                 if (Array.isArray(data)) {
                     if (force) {
+                        // On forced refresh, clear existing markers so removals are reflected
                         markersRef.current?.clearLayers()
                         displayedReportIdsRef.current.clear()
                     }
@@ -492,7 +497,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                     })
                 }
             } catch (error) {
-                console.error("Connection error:", error)
+                console.error("Błąd połączenia:", error)
             } finally {
                 if (force) {
                     setIsRefreshingReports(false)
@@ -924,15 +929,15 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
     // Get danger level color
     const getDangerColor = (level: string) => {
         switch (level) {
-            case "Very Low":
+            case "Bardzo niski":
                 return "bg-green-500"
-            case "Low":
+            case "Niski":
                 return "bg-green-400"
-            case "Moderate":
+            case "Umiarkowany":
                 return "bg-yellow-500"
-            case "High":
+            case "Wysoki":
                 return "bg-orange-500"
-            case "Very High":
+            case "Bardzo wysoki":
                 return "bg-red-500"
             default:
                 return "bg-gray-500"
@@ -942,15 +947,15 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
     // Get danger level emoji
     const getDangerEmoji = (level: string) => {
         switch (level) {
-            case "Very Low":
+            case "Bardzo niski":
                 return "🌟"
-            case "Low":
+            case "Niski":
                 return "✅"
-            case "Moderate":
+            case "Umiarkowany":
                 return "⚠️"
-            case "High":
+            case "Wysoki":
                 return "🔶"
-            case "Very High":
+            case "Bardzo wysoki":
                 return "🚨"
             default:
                 return "❓"
@@ -1202,16 +1207,16 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                                     <div className="flex items-center gap-2">
                                         <span className="text-2xl">{getDangerEmoji(aiResponse.dangerLevel)}</span>
                                         <div>
-                                            <p className="text-sm font-bold text-white">Safety Analysis</p>
+                                            <p className="text-sm font-bold text-white">Analiza bezpieczeństwa</p>
                                             <p className="text-xs text-white/90">
-                                                {aiResponse.reportsCount} reports in a 1km radius
+                                                {aiResponse.reportsCount} zgłoszeń w promieniu 1km
                                             </p>
                                         </div>
                                     </div>
                                     <button
                                         onClick={handleCloseAIResponse}
                                         className="text-white/80 transition-colors hover:text-white"
-                                        title="Close"
+                                        title="Zamknij"
                                     >
                                         <span className="material-symbols-outlined">close</span>
                                     </button>
@@ -1219,7 +1224,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
 
                                 {/* Danger Score Badge */}
                                 <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-2">
-                                    <span className="text-sm font-medium text-gray-600">Danger Level:</span>
+                                    <span className="text-sm font-medium text-gray-600">Poziom zagrożenia:</span>
                                     <div className="flex items-center gap-2">
                                         <span
                                             className={`rounded-full px-3 py-1 text-sm font-bold text-white ${getDangerColor(aiResponse.dangerLevel)} `}
@@ -1240,7 +1245,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                                 {/* Footer */}
                                 <div className="flex items-center gap-2 border-t border-gray-100 bg-gray-50 px-4 py-2">
                                     <span className="text-xs">🤖</span>
-                                    <span className="text-xs text-gray-400">Analysis generated by AI • RiskRadar</span>
+                                    <span className="text-xs text-gray-400">Analiza wygenerowana przez AI • RiskRadar</span>
                                 </div>
                             </div>
 

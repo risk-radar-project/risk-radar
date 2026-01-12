@@ -1,24 +1,15 @@
 "use client"
 
-// This component provides an interactive map for users to pick a location.
-// It uses Leaflet.js and includes features like searching for a location,
-// using the user's current geolocation, and placing a marker.
-
 import { useEffect, useRef, useState } from "react"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
-// Props for the LocationPickerMap component
 interface LocationPickerMapProps {
-    onLocationSelect: (lat: number, lng: number) => void // Callback function when a location is selected
-    initialLat?: number // Optional initial latitude for the map center
-    initialLng?: number // Optional initial longitude for the map center
+    onLocationSelect: (lat: number, lng: number) => void
+    initialLat?: number
+    initialLng?: number
 }
 
-/**
- * Creates a custom orange-themed location icon for the marker.
- * @returns A Leaflet Icon object.
- */
 const createLocationIcon = () => {
     const svgIcon = `
         <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
@@ -41,7 +32,7 @@ const createLocationIcon = () => {
 
 export default function LocationPickerMap({
     onLocationSelect,
-    initialLat = 50.06, // Default to Kraków, Poland
+    initialLat = 50.06,
     initialLng = 19.94
 }: LocationPickerMapProps) {
     const mapRef = useRef<L.Map | null>(null)
@@ -52,10 +43,7 @@ export default function LocationPickerMap({
     const [searchQuery, setSearchQuery] = useState("")
     const [isSearching, setIsSearching] = useState(false)
 
-    /**
-     * Searches for locations using the Nominatim API based on the user's query.
-     * Flies to the location and places a marker on the map.
-     */
+    // Search for locations using Nominatim API
     const handleSearch = async () => {
         if (!searchQuery.trim() || !mapRef.current) return
 
@@ -96,15 +84,14 @@ export default function LocationPickerMap({
         }
     }
 
-    // Dynamically load Leaflet CSS and configure icon paths to prevent build issues.
+    // Load Leaflet CSS and configure icon paths
     useEffect(() => {
         const link = document.createElement("link")
         link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         link.rel = "stylesheet"
         document.head.appendChild(link)
 
-        // Fix Leaflet's default icon path issues when using a bundler like Webpack.
-        // This ensures the marker icons are loaded correctly from the CDN.
+        // Fix Leaflet default icon path issues
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (L.Icon.Default.prototype as any)._getIconUrl
         L.Icon.Default.mergeOptions({
@@ -118,7 +105,6 @@ export default function LocationPickerMap({
         }
     }, [])
 
-    // Initialize the map instance.
     useEffect(() => {
         if (!mapContainerRef.current || mapRef.current) return
 
@@ -129,42 +115,40 @@ export default function LocationPickerMap({
         }).setView([initialLat, initialLng], 13)
         mapRef.current = map
 
-        // Add CartoDB tile layer for a clean, light map style.
         L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
             maxZoom: 19
         }).addTo(map)
 
-        // Fix map rendering issues by invalidating its size after initialization.
-        // This is often necessary when the map container's size changes or is not immediately known.
+        // Fix map rendering issues - invalidate size after initialization
         setTimeout(() => {
             map.invalidateSize()
         }, 100)
 
-        // Additional invalidation after tiles load for robustness.
+        // Additional invalidation after tiles load
         map.whenReady(() => {
             setTimeout(() => {
                 map.invalidateSize()
             }, 200)
         })
 
-        // Listen for tile loading to ensure proper rendering.
+        // Listen for tile loading to ensure proper rendering
         map.on("load", () => {
             map.invalidateSize()
         })
 
-        // Add a click handler to the map for location selection.
+        // Add click handler to map
         map.on("click", (e: L.LeafletMouseEvent) => {
             const { lat, lng } = e.latlng
 
-            // Remove the existing marker if there is one.
+            // Remove existing marker if any
             if (markerRef.current) {
                 map.removeLayer(markerRef.current)
             }
 
-            // Add a new marker with the custom icon at the clicked position.
+            // Add new marker with custom icon
             const marker = L.marker([lat, lng], { icon: createLocationIcon() })
                 .addTo(map)
-                .bindPopup(`<b>Selected Location</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`)
+                .bindPopup(`<b>Wybrana lokalizacja</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`)
                 .openPopup()
 
             markerRef.current = marker
@@ -172,17 +156,13 @@ export default function LocationPickerMap({
             onLocationSelect(lat, lng)
         })
 
-        // Cleanup function to remove the map instance when the component unmounts.
+        // Cleanup
         return () => {
             map.remove()
             mapRef.current = null
         }
     }, [initialLat, initialLng, onLocationSelect])
 
-    /**
-     * Uses the browser's Geolocation API to find the user's current position
-     * and places a marker on the map.
-     */
     const handleUseMyLocation = () => {
         setIsLocating(true)
         if (navigator.geolocation) {
@@ -200,7 +180,7 @@ export default function LocationPickerMap({
                     if (mapRef.current) {
                         const marker = L.marker([lat, lng], { icon: createLocationIcon() })
                             .addTo(mapRef.current)
-                            .bindPopup(`<b>Your Location</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`)
+                            .bindPopup(`<b>Twoja lokalizacja</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`)
                             .openPopup()
 
                         markerRef.current = marker
@@ -213,12 +193,12 @@ export default function LocationPickerMap({
                 },
                 (error) => {
                     console.error("Geolocation error:", error)
-                    alert("Could not get your location: " + error.message)
+                    alert("Nie można pobrać Twojej lokalizacji: " + error.message)
                     setIsLocating(false)
                 }
             )
         } else {
-            alert("Geolocation is not supported by your browser.")
+            alert("Geolokalizacja nie jest wspierana przez twoją przeglądarkę")
             setIsLocating(false)
         }
     }
@@ -243,7 +223,7 @@ export default function LocationPickerMap({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    placeholder="Search for a location..."
+                    placeholder="Wyszukaj lokalizację..."
                     className="w-64 rounded-lg border border-[#e0dcd7]/20 bg-[#362c20]/95 px-4 py-2 text-[#e0dcd7] backdrop-blur-sm transition-colors placeholder:text-[#e0dcd7]/50 focus:border-[#d97706] focus:outline-none"
                 />
                 <button
@@ -253,7 +233,7 @@ export default function LocationPickerMap({
                     className="flex items-center gap-2 rounded-lg bg-[#d97706] px-4 py-2 font-semibold text-white transition-colors hover:bg-[#d97706]/80 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <span className="material-symbols-outlined text-sm">search</span>
-                    {isSearching ? "Searching..." : "Search"}
+                    {isSearching ? "Szukam..." : "Szukaj"}
                 </button>
             </div>
 
@@ -262,7 +242,7 @@ export default function LocationPickerMap({
                 <div className="absolute top-4 left-1/2 z-[1000] -translate-x-1/2 transform rounded-lg bg-[#362c20]/95 px-6 py-3 shadow-lg backdrop-blur-sm">
                     <p className="flex items-center gap-2 text-sm font-semibold text-[#e0dcd7]">
                         <span className="material-symbols-outlined text-[#d97706]">touch_app</span>
-                        Click on the map to select a location
+                        Kliknij na mapie aby wybrać lokalizację
                     </p>
                 </div>
             )}
@@ -271,7 +251,7 @@ export default function LocationPickerMap({
             {selectedLocation && (
                 <div className="absolute top-4 left-4 z-[1000] rounded-lg bg-[#362c20]/95 px-4 py-2 shadow-lg backdrop-blur-sm">
                     <p className="text-xs text-[#e0dcd7]">
-                        <span className="font-semibold text-[#d97706]">Coordinates:</span>
+                        <span className="font-semibold text-[#d97706]">Współrzędne:</span>
                         <br />
                         {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
                     </p>
@@ -286,7 +266,7 @@ export default function LocationPickerMap({
                         type="button"
                         onClick={handleZoomIn}
                         className="flex size-10 items-center justify-center rounded-t-lg bg-[#362c20] transition-colors hover:bg-[#362c20]/80"
-                        title="Zoom in"
+                        title="Przybliż"
                     >
                         <span className="material-symbols-outlined text-[#e0dcd7]">add</span>
                     </button>
@@ -294,7 +274,7 @@ export default function LocationPickerMap({
                         type="button"
                         onClick={handleZoomOut}
                         className="flex size-10 items-center justify-center rounded-b-lg bg-[#362c20] transition-colors hover:bg-[#362c20]/80"
-                        title="Zoom out"
+                        title="Oddal"
                     >
                         <span className="material-symbols-outlined text-[#e0dcd7]">remove</span>
                     </button>
@@ -306,7 +286,7 @@ export default function LocationPickerMap({
                     onClick={handleUseMyLocation}
                     disabled={isLocating}
                     className="flex size-10 items-center justify-center rounded-lg bg-[#d97706] shadow-lg transition-colors hover:bg-[#d97706]/80 disabled:cursor-not-allowed disabled:opacity-50"
-                    title="Use my location"
+                    title="Użyj mojej lokalizacji"
                 >
                     <span className="material-symbols-outlined text-white">
                         {isLocating ? "progress_activity" : "my_location"}
