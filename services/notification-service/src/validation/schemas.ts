@@ -20,7 +20,8 @@ const eventTypes = [
     "REPORT_AI_VERIFIED",
     "REPORT_AI_FLAGGED",
     "REPORT_CATEGORIZED",
-    "FAKE_REPORT_DETECTED"
+    "FAKE_REPORT_DETECTED",
+    "SUSPICIOUS_REPORT_DETECTED"
 ] as const;
 
 const genericPayloadSchema = Joi.object().unknown(true);
