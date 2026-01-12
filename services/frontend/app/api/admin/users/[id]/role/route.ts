@@ -15,8 +15,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // user-service:8080/users/{id}/roles
     const targetUrl = `${USER_SERVICE_URL}/users/${id}/roles`
 
-    console.log(`[Admin API] Forwarding role update to: ${targetUrl}`)
-
     try {
         const res = await fetch(targetUrl, {
             method: "POST",
