@@ -189,6 +189,13 @@ export const templateDefinitions: TemplateDefinition[] = [
         bodyFile: "report-created.html"
     },
     {
+        templateKey: "REPORT_STATUS_CHANGED_IN_APP",
+        eventType: "REPORT_STATUS_CHANGED",
+        channel: "in_app",
+        title: "Zmiana statusu zgłoszenia",
+        body: "Status Twojego zgłoszenia '{{title}}' został zmieniony na: {{newStatus}}"
+    },
+    {
         templateKey: "REPORT_STATUS_CHANGED_EMAIL",
         eventType: "REPORT_STATUS_CHANGED",
         channel: "email",
