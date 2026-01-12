@@ -7,12 +7,13 @@ import com.riskRadar.user_service.dto.ChangeEmailRequest;
 import com.riskRadar.user_service.service.CustomUserDetailsService;
 import com.riskRadar.user_service.service.RedisService;
 import com.riskRadar.user_service.service.UserService;
+import com.riskRadar.user_service.security.PermissionChecker;
 import com.riskRadar.user_service.exception.UserAlreadyExistsException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +29,7 @@ public class UserController {
     private final RedisService redisService;
     private final UserService userService;
     private final NotificationClient notificationClient;
+    private final PermissionChecker permissionChecker;
 
     @PostMapping("/change-email")
     public ResponseEntity<?> changeEmail(@Valid @RequestBody ChangeEmailRequest request) {
@@ -45,8 +47,12 @@ public class UserController {
     }
 
     @PostMapping("/banUser")
-    @PreAuthorize("hasAuthority('PERM_USERS:BAN') or hasAuthority('PERM_*:*')")
     public ResponseEntity<?> banUser(@RequestBody BanUserRequest request) {
+        if (!permissionChecker.hasPermission("users:ban")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Insufficient permissions: requires users:ban"));
+        }
+        
         if (request.username() == null || request.username().trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Username is required"));
         }
@@ -70,8 +76,11 @@ public class UserController {
 
 
     @PostMapping("/users/{id}/unban")
-    @PreAuthorize("hasAuthority('PERM_USERS:BAN') or hasAuthority('PERM_*:*')")
     public ResponseEntity<?> unbanUser(@PathVariable UUID id) {
+        if (!permissionChecker.hasPermission("users:ban")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Insufficient permissions: requires users:ban"));
+        }
         try {
             var user = userService.getUserById(id);
             userDetailsService.unbanUser(user.username());
@@ -90,8 +99,11 @@ public class UserController {
     }
 
     @PostMapping("/users/{id}/roles")
-    @PreAuthorize("hasAuthority('PERM_ROLES:ASSIGN') or hasAuthority('PERM_*:*')")
     public ResponseEntity<?> updateUserRole(@PathVariable UUID id, @RequestBody UpdateRoleRequest request) {
+        if (!permissionChecker.hasPermission("roles:assign")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Insufficient permissions: requires roles:assign"));
+        }
         try {
             userService.updateUserRole(id, request.roleName());
             try {
@@ -106,20 +118,29 @@ public class UserController {
     }
 
     @GetMapping("/users")
-    @PreAuthorize("hasAuthority('PERM_USERS:VIEW') or hasAuthority('PERM_*:*')")
     public ResponseEntity<?> getAllUsers(Pageable pageable) {
+        if (!permissionChecker.hasPermission("users:view")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Insufficient permissions: requires users:view"));
+        }
         return ResponseEntity.ok(userService.getAllUsers(pageable));
     }
 
     @GetMapping("/users/{id}")
-    @PreAuthorize("hasAuthority('PERM_USERS:VIEW') or hasAuthority('PERM_*:*')")
     public ResponseEntity<?> getUserById(@PathVariable UUID id) {
+        if (!permissionChecker.hasPermission("users:view")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Insufficient permissions: requires users:view"));
+        }
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
     @GetMapping("/users/stats")
-    @PreAuthorize("hasAuthority('PERM_STATS:VIEW') or hasAuthority('PERM_USERS:VIEW') or hasAuthority('PERM_*:*')")
     public ResponseEntity<?> getUserStats() {
+        if (!permissionChecker.hasPermission("stats:view") && !permissionChecker.hasPermission("users:view")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Insufficient permissions: requires stats:view or users:view"));
+        }
         return ResponseEntity.ok(userService.getUserStats());
     }
 }

@@ -2,6 +2,7 @@ package com.riskRadar.user_service.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import java.net.URLEncoder;
@@ -14,9 +15,13 @@ import java.util.UUID;
 public class NotificationClient {
 
     private final WebClient webClient;
+    private final String systemUserId;
 
-    public NotificationClient(@Qualifier("notificationWebClient") WebClient webClient) {
+    public NotificationClient(
+            @Qualifier("notificationWebClient") WebClient webClient,
+            @Value("${notification.system-user-id:11111111-1111-1111-1111-111111111111}") String systemUserId) {
         this.webClient = webClient;
+        this.systemUserId = systemUserId;
     }
 
     public void sendPasswordResetEmail(UUID userId, String email, String token) {
@@ -89,6 +94,7 @@ public class NotificationClient {
     private void sendNotification(Object payload, String errorMessage) {
         webClient.post()
                 .uri("/notifications/send")
+                .header("X-User-ID", systemUserId)
                 .bodyValue(payload)
                 .retrieve()
                 .bodyToMono(Void.class)

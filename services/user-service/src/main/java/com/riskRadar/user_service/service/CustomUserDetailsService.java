@@ -82,10 +82,10 @@ public class CustomUserDetailsService implements UserDetailsService {
         authzClient.assignRole(event.userId(), roleID.toString());
     }
 
-    public boolean isUserBanned(String username) {
-        return userRepository.findByUsername(username)
+    public boolean isUserBanned(String usernameOrEmail) {
+        return userRepository.findByUsernameOrEmail(usernameOrEmail, usernameOrEmail)
                 .map(User::isBanned)
-                .orElse(true);
+                .orElse(false);
     }
 
     @Transactional

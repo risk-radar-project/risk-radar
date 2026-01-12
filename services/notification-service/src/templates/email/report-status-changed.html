@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Status zgłoszenia zmieniony</title>
+    <link rel="stylesheet" href="styles.css" data-inline-styles="true" />
+</head>
+<body>
+    <div class="wrapper">
+        <div class="card">
+            <header class="header">
+                <h1>Status zgłoszenia uległ zmianie</h1>
+                <p>Aktualizacja dotyczy Twojego raportu.</p>
+            </header>
+            <main class="content">
+                <p class="highlight">{{title}}</p>
+                <p>Nowy status: <strong>{{newStatus}}</strong></p>
+                <p>Wejdź do aplikacji, aby zobaczyć szczegóły oraz kolejne kroki.</p>
+            </main>
+            <footer class="footer">
+                &copy; {{currentYear}} RiskRadar · Wiadomość automatyczna
+            </footer>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alert bezpieczeństwa</title>
+    <link rel="stylesheet" href="styles.css" data-inline-styles="true" />
+</head>
+<body>
+    <div class="wrapper">
+        <div class="card">
+            <header class="header">
+                <h1>Alert bezpieczeństwa</h1>
+                <p>Wykryto zdarzenie wymagające uwagi.</p>
+            </header>
+            <main class="content">
+                <p class="highlight">{{title}}</p>
+                <p>{{body}}</p>
+                <p>Sprawdź szczegóły w panelu administratora i podejmij odpowiednie działania.</p>
+            </main>
+            <footer class="footer">
+                &copy; {{currentYear}} RiskRadar · Wiadomość automatyczna
+            </footer>
+        </div>
+    </div>
+</body>
+</html>

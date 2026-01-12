@@ -9,8 +9,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params
     const body = await request.json()
 
-    const USER_SERVICE = process.env.USER_SERVICE_URL || "http://127.0.0.1:8080"
-    const targetUrl = `${USER_SERVICE}/users/${id}/roles`
+    const GATEWAY_URL = process.env.GATEWAY_URL || "http://localhost:8080"
+    const targetUrl = `${GATEWAY_URL}/api/users/${id}/roles`
 
     try {
         const res = await fetch(targetUrl, {
