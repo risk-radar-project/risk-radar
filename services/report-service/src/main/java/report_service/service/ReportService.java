@@ -15,6 +15,8 @@ import report_service.entity.ReportCategory;
 import report_service.repository.ReportRepository;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import report_service.service.NotificationClient;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,6 +24,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.HashMap;
+
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -31,19 +35,27 @@ public class ReportService {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate;
+    private final NotificationClient notificationClient;
 
-    @Value("${report.kafka.topic}")
-    private String reportTopic;
+    @Value("${report.kafka.topic:report}")
+    private String reportTopic = "report";
 
     @Value("${media.service.url:http://media-service:8080}")
-    private String mediaServiceUrl;
+    private String mediaServiceUrl = "http://media-service:8080";
 
-    public ReportService(ReportRepository reportRepository, KafkaTemplate<String, Object> kafkaTemplate) {
+    public ReportService(ReportRepository reportRepository,
+                         KafkaTemplate<String, Object> kafkaTemplate,
+                         NotificationClient notificationClient,
+                         RestTemplateBuilder restTemplateBuilder,
+                         @Value("${media.service.url:http://media-service:8080}") String mediaServiceUrl) {
         this.reportRepository = reportRepository;
         this.kafkaTemplate = kafkaTemplate;
-        this.restTemplate = new RestTemplate();
+        this.notificationClient = notificationClient;
+        this.restTemplate = restTemplateBuilder.build();
+        this.mediaServiceUrl = mediaServiceUrl;
     }
 
+    @Transactional
     public void createReport(ReportRequest request) {
         Report report = new Report();
         report.setTitle(request.title());
@@ -54,6 +66,10 @@ public class ReportService {
         report.setImageIds(request.imageIds());
         report.setCategory(request.reportCategory());
         report.setCreatedAt(LocalDateTime.now());
+        // Default status is usually PENDING, ensure it's set if not default
+        if (report.getStatus() == null) {
+            report.setStatus(ReportStatus.PENDING);
+        }
 
         Report savedReport = reportRepository.save(report);
 
@@ -66,14 +82,26 @@ public class ReportService {
             confirmImages(savedReport.getImageIds());
         }
 
+        // Send Notification
+        try {
+            notificationClient.sendReportCreatedNotification(savedReport.getUserId(), savedReport.getTitle());
+        } catch (Exception e) {
+            log.error("Failed to send report created notification", e);
+        }
+
         Map<String, String> payload = reportToPayload(savedReport);
         log.info("Sending report saved to topic: " + reportTopic);
 
-        kafkaTemplate.send(reportTopic, payload);
+        kafkaTemplate.send(reportTopic, savedReport.getId().toString(), payload);
     }
 
     private void confirmImages(List<UUID> imageIds) {
         try {
+            if (mediaServiceUrl == null || mediaServiceUrl.isBlank()) {
+                log.warn("Media service URL not configured; skipping image confirmation");
+                return;
+            }
+
             Map<String, Object> body = new HashMap<>();
             body.put("ids", imageIds);
             
@@ -89,12 +117,23 @@ public class ReportService {
         }
     }
 
+    @Transactional
     public void updateReportStatus(UUID id, ReportStatus status) {
         Optional<Report> reportOpt = reportRepository.findById(id);
         if (reportOpt.isPresent()) {
             Report report = reportOpt.get();
             report.setStatus(status);
             Report updatedReport = reportRepository.save(report);
+
+             // Send Notification
+            try {
+                notificationClient.sendReportStatusChangedNotification(updatedReport.getUserId(), updatedReport.getTitle(), updatedReport.getStatus().toString());
+            } catch (Exception e) {
+                log.error("Failed to send report status changed notification", e);
+            }
+
+            Map<String, String> payload = reportToPayload(updatedReport);
+            kafkaTemplate.send(reportTopic, updatedReport.getId().toString(), payload);
         } else {
             throw new RuntimeException("Report not found");
         }
@@ -199,7 +238,9 @@ public class ReportService {
         return Map.of(
                 "id", report.getId().toString(),
                 "title", report.getTitle(),
-                "description", report.getDescription());
+                "description", report.getDescription(),
+                "user_id", report.getUserId().toString(),
+                "status", report.getStatus() != null ? report.getStatus().toString() : "PENDING");
     }
 
     public Map<String, Object> getReportStats() {

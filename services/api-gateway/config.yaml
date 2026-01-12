@@ -25,7 +25,9 @@ default_upload_max_bytes: 10485760  # 10 MB
 json_body_max_bytes: 2097152        # 2 MB
 
 routes:
-  - prefix: "/api/users"
+  # Route all generic /api/* traffic to user-service; specific services override with longer prefixes below
+  # This strips only /api, so /api/users/123 becomes /users/123
+  - prefix: "/api"
     upstream: "http://user-service:8080"
     auth_required: false
   - prefix: "/api/authz"

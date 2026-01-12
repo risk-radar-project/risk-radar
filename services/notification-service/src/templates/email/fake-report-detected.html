@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Raport oznaczony jako podejrzany</title>
+    <link rel="stylesheet" href="styles.css" data-inline-styles="true" />
+</head>
+<body>
+    <div class="wrapper">
+        <div class="card">
+            <header class="header">
+                <h1>Raport oznaczony jako podejrzany</h1>
+                <p>System wykrył potencjalnie fałszywe zgłoszenie.</p>
+            </header>
+            <main class="content">
+                <p>Prawdopodobieństwo fałszywego raportu: <strong>{{fake_probability}}%</strong></p>
+                <p>Twój raport został przekazany do dodatkowej weryfikacji. Jeśli masz pytania lub dodatkowe informacje, dodaj je w komentarzu w aplikacji.</p>
+            </main>
+            <footer class="footer">
+                &copy; {{currentYear}} RiskRadar · Wiadomość automatyczna
+            </footer>
+        </div>
+    </div>
+</body>
+</html>

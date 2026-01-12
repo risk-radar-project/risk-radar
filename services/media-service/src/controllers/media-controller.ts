@@ -27,6 +27,7 @@ import {
     patchBodySchema
 } from "../validation/media-schemas.js"
 import { logger } from "../logger/logger.js"
+import { notificationClient } from "../clients/notification-client.js"
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: config.limits.maxBytes } })
 
@@ -607,7 +608,13 @@ async function prepareUploadContext(req: Request): Promise<UploadContext> {
         const r = await moderateImage(norm.bytes)
         moderationFlagged = r.flagged
         moderationDecisionTimeMs = r.elapsedMs
-        if (r.flagged) status = "flagged"
+        if (r.flagged) {
+            status = "flagged"
+            if (ownerId) {
+                // Async no-await to not block upload
+                notificationClient.sendMediaFlaggedNSFW(ownerId, file.originalname || "image.jpg").catch(() => {})
+            }
+        }
     }
 
     const id = uuidv4()

@@ -36,6 +36,7 @@ class AuthControllerTest {
     private AuthenticationManager authenticationManager;
     private AuditLogClient auditLogClient;
     private PasswordResetService passwordResetService;
+    private NotificationClient notificationClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private User testUser;
@@ -50,6 +51,7 @@ class AuthControllerTest {
         authenticationManager = mock(AuthenticationManager.class);
         auditLogClient = mock(AuditLogClient.class);
         passwordResetService = mock(PasswordResetService.class);
+        notificationClient = mock(NotificationClient.class);
 
 
 
@@ -60,6 +62,7 @@ class AuthControllerTest {
                 authenticationManager,
                 redisService,
                 authzClient,
+                notificationClient,
                 auditLogClient,
                 passwordResetService
         );
@@ -79,7 +82,8 @@ class AuthControllerTest {
     @Test
     void register_success() throws Exception {
         RegisterRequest request = new RegisterRequest("newuser", "password", "new@example.com");
-        doNothing().when(userDetailsService).createUser(request.username(), request.password(), request.email());
+        when(userDetailsService.createUser(request.username(), request.password(), request.email()))
+            .thenReturn(testUser);
 
         mockMvc.perform(post("/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -91,8 +95,8 @@ class AuthControllerTest {
     @Test
     void register_userAlreadyExists() throws Exception {
         RegisterRequest request = new RegisterRequest("existinguser", "password", "exist@example.com");
-        doThrow(new UserAlreadyExistsException("User exists"))
-                .when(userDetailsService).createUser(request.username(), request.password(), request.email());
+        when(userDetailsService.createUser(request.username(), request.password(), request.email()))
+            .thenThrow(new UserAlreadyExistsException("User exists"));
 
         mockMvc.perform(post("/register")
                         .contentType(MediaType.APPLICATION_JSON)

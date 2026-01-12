@@ -20,9 +20,11 @@ public class VerificationEventConsumer {
     private static final Logger log = LoggerFactory.getLogger(VerificationEventConsumer.class);
     private final ReportRepository reportRepository;
     private final ObjectMapper objectMapper;
+    private final report_service.service.NotificationClient notificationClient;
 
-    public VerificationEventConsumer(ReportRepository reportRepository) {
+    public VerificationEventConsumer(ReportRepository reportRepository, report_service.service.NotificationClient notificationClient) {
         this.reportRepository = reportRepository;
+        this.notificationClient = notificationClient;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -59,11 +61,21 @@ public class VerificationEventConsumer {
                     if (!isFake) {
                         report.setStatus(ReportStatus.VERIFIED);
                         log.info("Report {} marked as VERIFIED (AI verified as authentic)", reportId);
+                        try {
+                            notificationClient.sendReportVerifiedNotification(report.getUserId(), report.getTitle());
+                        } catch (Exception e) {
+                            log.error("Failed to send notification", e);
+                        }
                     } else {
                         // Suspicious report - keep as PENDING for human moderator to decide
                         report.setStatus(ReportStatus.PENDING);
                         log.info("Report {} remains PENDING (AI flagged as suspicious - needs moderator review)",
                                 reportId);
+                        try {
+                             notificationClient.sendReportFlaggedNotification(report.getUserId(), report.getTitle());
+                        } catch (Exception e) {
+                             log.error("Failed to send notification", e);
+                        }
                     }
                     reportRepository.save(report);
                 } else {

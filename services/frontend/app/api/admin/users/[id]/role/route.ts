@@ -9,8 +9,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params
     const body = await request.json()
 
-    const USER_SERVICE = process.env.USER_SERVICE_URL || "http://127.0.0.1:8080"
-    const targetUrl = `${USER_SERVICE}/users/${id}/roles`
+    // Use USER_SERVICE_URL directly to bypass Gateway potential issues
+    const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://127.0.0.1:8080"
+    
+    // user-service:8080/users/{id}/roles
+    const targetUrl = `${USER_SERVICE_URL}/users/${id}/roles`
 
     try {
         const res = await fetch(targetUrl, {
@@ -23,8 +26,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         })
 
         if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: "Unknown error" }))
-            return NextResponse.json(err, { status: res.status })
+            const errorText = await res.text()
+            let errorJson
+            try {
+                errorJson = JSON.parse(errorText)
+            } catch {
+                errorJson = { error: errorText || `Upstream returned ${res.status}` }
+            }
+            return NextResponse.json(errorJson, { status: res.status })
         }
 
         const data = await res.json()

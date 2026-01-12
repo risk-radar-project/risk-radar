@@ -95,6 +95,14 @@ export const ruleDefinitions: RuleDefinition[] = [
         }
     },
     {
+        eventType: "PASSWORD_CHANGED",
+        audience: "user",
+        channels: ["email"],
+        templateMappings: {
+            email: "PASSWORD_CHANGED_EMAIL"
+        }
+    },
+    {
         eventType: "USER_PASSWORD_RESET_REQUESTED",
         audience: "user",
         channels: ["email"],
@@ -107,16 +115,60 @@ export const ruleDefinitions: RuleDefinition[] = [
         audience: "user",
         channels: ["in_app", "email"],
         templateMappings: {
-            in_app: "USER_BANNED_IN_APP",
-            email: "USER_BANNED_EMAIL"
+            email: "USER_BANNED_EMAIL",
+            in_app: "USER_BANNED_IN_APP"
         }
     },
     {
         eventType: "USER_UNBANNED",
         audience: "user",
+        channels: ["in_app", "email"],
+        templateMappings: {
+            in_app: "USER_UNBANNED_IN_APP",
+            email: "USER_UNBANNED_EMAIL"
+        }
+    },
+    {
+        eventType: "REPORT_CREATED",
+        audience: "user",
+        channels: ["email"],
+        templateMappings: {
+            email: "REPORT_CREATED_EMAIL"
+        }
+    },
+    {
+        eventType: "REPORT_STATUS_CHANGED",
+        audience: "user",
+        channels: ["in_app", "email"],
+        templateMappings: {
+            in_app: "REPORT_STATUS_CHANGED_IN_APP",
+            email: "REPORT_STATUS_CHANGED_EMAIL"
+        }
+    },
+    {
+        eventType: "REPORT_AI_VERIFIED",
+        audience: "user",
         channels: ["in_app"],
         templateMappings: {
-            in_app: "USER_UNBANNED_IN_APP"
+            in_app: "REPORT_AI_VERIFIED_IN_APP"
+        }
+    },
+    {
+        eventType: "REPORT_AI_FLAGGED",
+        audience: "user",
+        channels: ["in_app"],
+        templateMappings: {
+            in_app: "REPORT_AI_FLAGGED_IN_APP"
+        }
+    },
+    {
+
+        eventType: "SUSPICIOUS_REPORT_DETECTED",
+        audience: "user",
+        channels: ["in_app", "email"],
+        templateMappings: {
+            in_app: "FAKE_REPORT_DETECTED_IN_APP",
+            email: "FAKE_REPORT_DETECTED_EMAIL"
         }
     }
 ];

@@ -22,9 +22,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -88,6 +86,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             Claims claims = jwtService.extractAllAccessClaims(token);
             List<String> roles = claims.get("roles", List.class);
             List<String> permissions = claims.get("permissions", List.class);
+            String userId = claims.get("userId", String.class);
 
             List<String> safeRoles = roles != null ? roles : Collections.emptyList();
             List<String> safePermissions = permissions != null ? permissions : Collections.emptyList();
@@ -107,7 +106,13 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(username, null, authorities);
-            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            
+            // Store userId in authentication details for later use
+            Map<String, Object> authDetails = new java.util.HashMap<>();
+            authDetails.put("userId", userId);
+            authDetails.put("username", username);
+            authToken.setDetails(authDetails);
+            
             SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 

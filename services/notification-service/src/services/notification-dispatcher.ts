@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4, validate as validateUuid } from "uuid";
 import { NotificationChannel, NotificationEvent } from "../types/events";
 import { notificationRuleRepository } from "../repositories/notification-rule-repository";
 import { templateRepository } from "../repositories/template-repository";
@@ -33,6 +33,28 @@ export class NotificationDispatcher {
         const processed = await eventLogRepository.isProcessed(event.eventId);
         if (processed) {
             logger.info("Event already processed, skipping", { eventId: event.eventId });
+            return;
+        }
+
+        // Global validation for userId
+        if (!validateUuid(event.userId) && event.userId !== "11111111-1111-1111-1111-111111111111") {
+            logger.warn("Invalid userId format (not a UUID), skipping processing", { 
+                eventId: event.eventId, 
+                userId: event.userId,
+                eventType: event.eventType 
+            });
+            // Mark as processed to prevent infinite retries
+            await auditClient.recordNotification({
+                eventId: event.eventId,
+                channel: "routing",
+                status: "skipped",
+                userId: event.userId,
+                metadata: {
+                    reason: "invalid_user_id_format",
+                    userId: event.userId
+                },
+            });
+            await eventLogRepository.markProcessed(event.eventId, event.eventType);
             return;
         }
 

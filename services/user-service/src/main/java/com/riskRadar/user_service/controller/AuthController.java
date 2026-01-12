@@ -38,6 +38,7 @@ public class AuthController {
         private final AuthenticationManager authenticationManager;
         private final RedisService redisService;
         private final AuthzClient authzClient;
+        private final NotificationClient notificationClient;
         private final AuditLogClient auditLogClient;
         private final PasswordResetService passwordResetService;
 
@@ -47,7 +48,13 @@ public class AuthController {
                 String userAgent = Optional.ofNullable(httpRequest.getHeader("User-Agent")).orElse("unknown");
 
                 try {
-                        userDetailsService.createUser(request.username(), request.password(), request.email());
+                        var user = userDetailsService.createUser(request.username(), request.password(), request.email());
+
+                        try {
+                                notificationClient.sendWelcomeNotification(user.getId(), user.getEmail(), user.getUsername());
+                        } catch (Exception e) {
+                                log.error("Failed to send welcome notification", e);
+                        }
 
                         auditLogClient.logAction(
                                         Map.of(

@@ -14,6 +14,7 @@ export default function AdminVerificationPage() {
             try {
                 const token = localStorage.getItem("access_token")
                 const res = await fetch("/api/reports/pending", {
+                    cache: 'no-store',
                     headers: {
                         Authorization: `Bearer ${token}`
                     }
