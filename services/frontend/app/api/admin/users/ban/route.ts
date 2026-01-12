@@ -12,7 +12,6 @@ export async function POST(request: Request) {
     const targetUrl = `${USER_SERVICE}/banUser`
 
     console.log(`[ban/route] Forwarding to: ${targetUrl}`)
-    console.log(`[ban/route] Body:`, body)
 
     try {
         const res = await fetch(targetUrl, {

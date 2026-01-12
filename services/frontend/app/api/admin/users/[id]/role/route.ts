@@ -9,15 +9,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params
     const body = await request.json()
 
-    // Ensure we use the internal container URL if running in Docker, or external if local
-    const GATEWAY_URL = process.env.GATEWAY_URL || "http://localhost:8090"
+    // Use USER_SERVICE_URL directly to bypass Gateway potential issues
+    const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://127.0.0.1:8080"
     
-    // Construct the URL to match the API Gateway route
-    // API Gateway maps /api -> user-service (stripping /api)
-    // So /api/users/{id}/roles -> user-service /users/{id}/roles
-    const targetUrl = `${GATEWAY_URL}/api/users/${id}/roles`
+    // user-service:8080/users/{id}/roles
+    const targetUrl = `${USER_SERVICE_URL}/users/${id}/roles`
 
-    console.log(`[Admin API] Forwarding request to: ${targetUrl}`)
+    console.log(`[Admin API] Forwarding role update to: ${targetUrl}`)
 
     try {
         const res = await fetch(targetUrl, {
@@ -35,7 +33,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             try {
                 errorJson = JSON.parse(errorText)
             } catch {
-                errorJson = { error: errorText || "Unknown error from upstream" }
+                errorJson = { error: errorText || `Upstream returned ${res.status}` }
             }
             console.error(`[Admin API] Upstream error: ${res.status}`, errorJson)
             return NextResponse.json(errorJson, { status: res.status })
