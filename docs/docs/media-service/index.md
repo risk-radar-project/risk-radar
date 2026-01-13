@@ -62,6 +62,9 @@ The Media Service handles secure upload, storage, processing, moderation, and de
 | collection | VARCHAR(255) | Reserved for future grouping |
 | moderation_flagged | BOOLEAN | Moderation preliminary flag |
 | moderation_decision_time_ms | INT | Moderation response time |
+| is_censored | BOOLEAN | Censor flag |
+| censor_strength | INT | Censor intensity |
+| censored_at | TIMESTAMPTZ | Censor timestamp |
 | created_at | TIMESTAMPTZ | Creation timestamp |
 | updated_at | TIMESTAMPTZ | Update timestamp |
 
@@ -178,6 +181,7 @@ Behavior:
 Responses:
 
 - 200 OK: `image/jpeg` bytes with `ETag` and `Cache-Control: no-store`
+- 200 OK (Censored): Includes header `X-Media-Served: censored` if content is censored
 - 304 Not Modified: when `If-None-Match` matches
 - 404 Not Found: asset or content missing
 
@@ -204,6 +208,11 @@ Responses:
 ### List
 
 GET `/media`
+
+Retrieve a paginated list of media assets.
+- **Staff** (`media:read-all`): Can see all assets. Can filter by `owner`.
+- **Regular Users**: Can see **only their own** assets. The `owner` query parameter is ignored.
+- **Anonymous**: Access denied (500/Internal Error if `X-User-ID` is missing).
 
 Query:
 
@@ -249,46 +258,32 @@ Responses:
 - 200 OK: updated `MediaEntity`
 - 403 Forbidden: insufficient permissions
 - 404 Not Found
-Permissions:
-- Owners can keep their own temporary assets.
-- Non-owners must hold `media:update`.
-
 
 ---
 
 ### Delete
 
-Errors:
-- 400 on validation.
-- 401 when `X-User-ID` is missing.
-- 403 when caller lacks `media:update` for non-owned assets.
-
-- Emits `temporary_kept` audit event for every successful change.
-
 DELETE `/media/{id}`
 
 Marks asset as deleted, removes files, emits audit, and increments counters.
+- Owners can delete their own ASSETS.
+- Non-owners must hold `media:delete`.
 
 Responses:
 
 - 204 No Content
 - 403 Forbidden (requires `media:delete`)
 - 404 Not Found
-Permissions:
-- Owners can reject (delete) their own temporary assets.
-- Non-owners must hold `media:delete`.
-
 
 ---
 
 ### Temporary Lifecycle
 
-Errors:
-- 400 on validation.
-- 401 when `X-User-ID` is missing.
-- 403 when caller lacks `media:delete` for non-owned assets.
+POST `/media/temporary/keep`
 
-- Emits `temporary_rejected` audit event when deletions occur.
+Transition temporary assets to permanent.
+- Owners can keep their own temporary assets.
+- Non-owners must hold `media:update`.
 
 Body:
 ```json
@@ -300,11 +295,19 @@ Response 200 OK:
 { "kept": ["<uuid>"], "requested": ["<uuid>"] }
 ```
 
-Errors: 400 on validation.
+Errors:
+- 400 on validation.
+- 401 when `X-User-ID` is missing.
+- 403 when caller lacks `media:update` for non-owned assets.
+- Emits `temporary_kept` audit event for every successful change.
 
 ---
 
 POST `/media/temporary/reject`
+
+Explicitly reject (delete) temporary assets before expiration.
+- Owners can reject their own temporary assets.
+- Non-owners must hold `media:delete`.
 
 Body:
 ```json
@@ -316,7 +319,11 @@ Response 200 OK:
 { "rejected": ["<uuid>"], "requested": ["<uuid>"] }
 ```
 
-Errors: 400 on validation.
+Errors:
+- 400 on validation.
+- 401 when `X-User-ID` is missing.
+- 403 when caller lacks `media:delete` for non-owned assets.
+- Emits `temporary_rejected` audit event when deletions occur.
 
 ---
 
