@@ -19,6 +19,7 @@ The **Audit Log Service** is a centralized event tracking and audit logging micr
 - **Advanced Filtering** - Sophisticated query capabilities with pagination
 - **Data Anonymization** - GDPR-compliant user data anonymization
 - **Retention Management** - Automated cleanup and data lifecycle management
+- **Kafka Consumption** - Asynchronous ingestion of audit events
 
 ### Technology Stack
 
@@ -26,6 +27,7 @@ The **Audit Log Service** is a centralized event tracking and audit logging micr
 - **Framework:** Express.js with custom middleware
 - **Database:** PostgreSQL with JSONB storage
 - **WebSocket:** Socket.IO for real-time communication
+- **Messaging:** Kafka (Consumer)
 - **Validation:** Joi schema validation
 - **Testing:** Jest with Supertest
 
@@ -125,6 +127,7 @@ The Audit Log Service provides a RESTful API for creating, retrieving, and manag
 | `POST` | `/logs` | Create new audit log entry |
 | `GET` | `/logs` | Retrieve audit logs with filtering |
 | `GET` | `/logs/{id}` | Get specific audit log by ID |
+| `GET` | `/logs/login-history` | Get recent successful logins for an actor |
 | `POST` | `/logs/anonymize` | Anonymize user data for GDPR compliance |
 
 ---
@@ -133,7 +136,7 @@ The Audit Log Service provides a RESTful API for creating, retrieving, and manag
 
 #### `GET /status`
 
-Returns the current health status of the service and database connection.
+Returns the current health status of the service, database connection, and Kafka connection.
 
 **Response 200 OK:**
 ```json
@@ -142,18 +145,31 @@ Returns the current health status of the service and database connection.
   "timestamp": "2025-08-08T22:05:01.963Z",
   "database_connection": "healthy",
   "websocket_enabled": true,
-  "websocket_connections": 0
+  "websocket_connections": 5,
+  "kafka_connection": {
+    "enabled": true,
+    "state": "connected",
+    "lastError": null,
+    "lastConnectedAt": "2025-08-08T22:00:00.000Z",
+    "retryScheduledAt": null
+  }
 }
 ```
 
 **Response 503 Service Unavailable:**
+When critical dependencies (Database) are unavailable.
 ```json
 {
   "status": "OK",
   "timestamp": "2025-08-08T14:30:45.123Z",
   "database_connection": "unhealthy",
   "websocket_enabled": false,
-  "websocket_connections": 0
+  "websocket_connections": 0,
+  "kafka_connection": {
+    "enabled": true,
+    "state": "error",
+    "lastError": "Broker not available"
+  }
 }
 ```
 
@@ -279,6 +295,9 @@ When `operation_id` matches an existing log, the service returns HTTP 204 with n
 
 Retrieves audit logs with advanced filtering and pagination. Results are sorted by `timestamp` in descending order.
 
+**Headers:**
+- `X-User-ID` (required): ID of the user request. Used for authorization (requires `audit:view` permission).
+
 **Query Parameters:**
 
 - `service` (optional): Filter by service name
@@ -301,6 +320,8 @@ Retrieves audit logs with advanced filtering and pagination. Results are sorted 
 
 - `limit` (optional): Items per page (default: 50, max: 1000)
 
+Headers:
+X-User-ID: user-admin-uuid
 **Example Request:**
 ```
 GET /logs?service=user-service&status=success&start_date=2025-08-01T00:00:00Z&page=1&limit=20
@@ -402,6 +423,30 @@ Retrieves a specific audit log entry by its UUID.
   "message": "Audit log not found"
 }
 ```
+
+#### `GET /logs/login-history`
+
+Retrieves exact login history (success only) for a specific actor.
+
+**Query Parameters:**
+
+- `actor_id` (required): The ID of the actor
+- `limit` (optional): Limit results (default: 10, max: 100)
+
+**Response 200 OK:**
+Returns an array of audit log entries where `service='user-service'`, `action='login'`, and `status='success'`, sorted by latest.
+
+```json
+[
+  {
+    "id": "...",
+    "action": "login",
+    "timestamp": "..."
+  }
+]
+```
+
+---
 
 ---
 
