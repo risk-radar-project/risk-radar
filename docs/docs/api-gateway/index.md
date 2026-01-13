@@ -16,11 +16,11 @@ The **API Gateway** is the central entry point for the RiskRadar platform. It ha
 
 - **Routing Engine** - Dynamic request routing based on longest-prefix matching
 - **Authentication & Authorization** - JWT validation and user context injection
-- **Rate Limiting** - Protection against abuse (IP and User-based)
-- **Request Normalization** - Standardized headers (Correlation ID, User ID)
-- **Audit Logging** - Centralized logging of all incoming requests
+- **Rate Limiting** - Protection against abuse (IP-based for anonymous, User ID-based for authenticated)
+- **Request Normalization** - Standardized headers (Correlation ID, User ID, X-Forwarded-*)
+- **Audit Logging** - Centralized logging of all incoming requests (asynchronous push to Audit Service)
 - **CORS Management** - Global Cross-Origin Resource Sharing configuration
-- **WebSocket Support** - Handling of persistent connections (e.g., for Audit Logs)
+- **WebSocket Support** - Handling of persistent connections (detects upgrade headers)
 
 ### Technology Stack
 
@@ -35,36 +35,37 @@ The **API Gateway** is the central entry point for the RiskRadar platform. It ha
 ## ⚙️ Configuration
 
 Configuration is loaded from `config.yaml` (path override via `GATEWAY_CONFIG` env var).
-Environment variables in the config file (e.g., `${JWT_SECRET}`) are expanded at runtime.
+Environment variables in the config file (e.g., `${JWT_ACCESS_SECRET}`) are expanded at runtime.
 
 ### Key Settings
 
 - `server.port`: Listening port (default 8080)
 - `jwt.issuer`: Required issuer claim
 - `routes`: List of route prefixes and upstreams
+- `audit_log_url`: URL for the audit service logger
 
 ### Middleware Chain
 
 1. **Recovery**: Panic recovery for stability
 2. **CORS**: Cross-Origin Resource Sharing handling
-3. **RequestLogger**: Structured JSON logging (integrated with Audit Service)
-4. **Correlation**: `X-Correlation-ID` injection for distributed tracing
+3. **RequestLogger**: Structured JSON logging (local stdout + remote Audit Service)
+4. **Correlation**: `X-Correlation-ID` injection for distributed tracing (generates UUID if missing)
 5. **Routing**: Longest-prefix match to determine upstream
-6. **Timeout**: Upstream timeout enforcement (with WebSocket exception)
-7. **UserInjector**: Extracts `X-User-ID` from JWT and injects into headers
-8. **JWTMiddleware**: Validates token if `auth_required: true`
-9. **RateLimiter**: Fixed-window limiting (IP or User ID)
+6. **Timeout**: Upstream timeout enforcement (skipped for WebSockets)
+7. **UserInjector**: Extracts `sub` or `userId` from JWT and injects `X-User-ID` header
+8. **JWTMiddleware**: Validates token if `auth_required: true` for the matched route
+9. **RateLimiter**: Fixed-window limiting
 10. **BodyLimiter**: Max request body size enforcement
 
 ---
 
 ## 🛣️ Routing Table
 
-The Gateway routes traffic to the following internal microservices:
+The Gateway routes traffic based on the path prefix. It uses a **longest-prefix match** strategy.
 
 | Prefix | Upstream Service | Auth Required | Description |
 |--------|------------------|---------------|-------------|
-| `/api/users` | `user-service` | No | User registration, login, management |
+| `/api` | `user-service` | No | **Catch-all** for core endpoints (Auth, Users, invalid paths) |
 | `/api/authz` | `authz-service` | Yes | Role and permission management |
 | `/api/notifications` | `notification-service` | Yes | User notifications |
 | `/api/reports` | `report-service` | Yes | Incident reporting |
@@ -75,13 +76,16 @@ The Gateway routes traffic to the following internal microservices:
 | `/api/ai/assistant` | `ai-assistant-service` | Yes | AI Threat Analysis |
 | `/api/audit` | `audit-log-service` | Yes | System audit logs (supports WebSocket) |
 
+> **Note:** The `/api` prefix strips `/api` from the path before forwarding. For example, `/api/auth/login` is forwarded to `user-service` as `/auth/login`.
+
 ---
 
 ## 🛡️ Security & Error Handling
 
 ### Authentication
 - Validates **JWT Bearer Tokens** in the `Authorization` header.
-- Injects `X-User-ID` header into upstream requests for authenticated users.
+- Supports `HS256` (HMAC) and `RS256` (RSA) algorithms detailed in config.
+- Injects `X-User-ID` header into upstream requests for trusted internal identification.
 
 ### Error Handling
 All errors are returned in a uniform JSON format:
@@ -97,7 +101,7 @@ All errors are returned in a uniform JSON format:
 ```
 
 ### WebSocket Support
-The Gateway detects `Upgrade: websocket` headers and bypasses standard timeouts to allow persistent connections (e.g., for real-time audit logs).
+The Gateway detects `Upgrade: websocket` headers. When detected, standard request timeouts and body read limits are bypassed to allow persistent connections (e.g., for real-time audit logs).
 
 ---
 
@@ -114,12 +118,14 @@ go test ./...
 ```
 
 ### Generate Dev Token
-Only available in development mode (`NODE_ENV=development`).
+Only available when `NODE_ENV=development` or `ENV=development`.
 **POST** `/api/dev/generate-jwt`
+
 ```json
 {
-  "user_id": "uuid",
+  "user_id": "uuid-1234",
   "roles": ["ADMIN"],
-  "permissions": ["*"]
+  "permissions": ["*"],
+  "exp_hours": 24
 }
 ```

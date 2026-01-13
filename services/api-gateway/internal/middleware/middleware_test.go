@@ -165,10 +165,17 @@ func TestContextHelpers(t *testing.T) {
 }
 
 func TestClientIP(t *testing.T) {
+	// 1. Direct RemoteAddr
 	req := httptest.NewRequest("GET", "/", nil)
 	req.RemoteAddr = "1.2.3.4:1234"
 
-	if got := clientIP(req); got != "1.2.3.4:1234" {
-		t.Errorf("expected 1.2.3.4:1234, got %s", got)
+	if got := ClientIP(req); got != "1.2.3.4" {
+		t.Errorf("expected 1.2.3.4, got %s", got)
+	}
+
+	// 2. X-Forwarded-For
+	req.Header.Set("X-Forwarded-For", "10.0.0.1, 10.0.0.2")
+	if got := ClientIP(req); got != "10.0.0.1" {
+		t.Errorf("expected 10.0.0.1, got %s", got)
 	}
 }

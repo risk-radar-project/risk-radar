@@ -94,7 +94,7 @@ func Load(path string) (RuntimeConfig, error) {
 		return RuntimeConfig{}, fmt.Errorf("read config: %w", err)
 	}
 	expanded := os.ExpandEnv(string(data))
-	// fmt.Println("DEBUG Config:", expanded) // Commented out to avoid noise
+
 	var cfg Config
 	if err := yaml.Unmarshal([]byte(expanded), &cfg); err != nil {
 		return RuntimeConfig{}, fmt.Errorf("parse yaml: %w", err)

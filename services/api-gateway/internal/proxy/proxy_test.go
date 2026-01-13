@@ -150,20 +150,6 @@ func TestErrorHandler(t *testing.T) {
 	}
 }
 
-func TestClientIP(t *testing.T) {
-	req := httptest.NewRequest("GET", "/", nil)
-	req.Header.Set("X-Forwarded-For", "10.0.0.1, 10.0.0.2")
-	if ip := clientIP(req); ip != "10.0.0.1" {
-		t.Errorf("expected 10.0.0.1, got %s", ip)
-	}
-
-	req = httptest.NewRequest("GET", "/", nil)
-	req.RemoteAddr = "127.0.0.1:1234"
-	if ip := clientIP(req); ip != "127.0.0.1" {
-		t.Errorf("expected 127.0.0.1, got %s", ip)
-	}
-}
-
 func TestSingleJoiningSlash(t *testing.T) {
 	tests := []struct {
 		a, b, want string
