@@ -214,7 +214,7 @@ func TestRoleService_GetRoles(t *testing.T) {
 	// Arrange
 	roleRepo := NewMockRoleRepository()
 	permRepo := NewMockPermissionRepository()
-	service := services.NewRoleService(roleRepo, permRepo)
+	service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 	// Add test role
 	testRole := db.Role{
@@ -238,12 +238,12 @@ func TestRoleService_GetRoles(t *testing.T) {
 	}
 }
 
-// TestRoleService_GetRole testuje pobieranie roli po ID
+// TestRoleService_GetRole tests retrieving role by ID
 func TestRoleService_GetRole(t *testing.T) {
 	// Arrange
 	roleRepo := NewMockRoleRepository()
 	permRepo := NewMockPermissionRepository()
-	service := services.NewRoleService(roleRepo, permRepo)
+	service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 	roleID := uuid.New()
 	testRole := db.Role{
@@ -282,7 +282,7 @@ func TestRoleService_CreateRoleSuccess(t *testing.T) {
 	permRepo.AddPermission("Users Read", "Read access to users", "read", "users")
 	permRepo.AddPermission("Posts Write", "Write access to posts", "write", "posts")
 
-	service := services.NewRoleService(roleRepo, permRepo)
+	service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 	req := services.CreateRoleRequest{
 		Name:        "new-role",
@@ -319,7 +319,7 @@ func TestRoleService_CreateRoleSuccess(t *testing.T) {
 func TestRoleService_CreateRolePermissionNotFound(t *testing.T) {
 	roleRepo := NewMockRoleRepository()
 	permRepo := NewMockPermissionRepository()
-	service := services.NewRoleService(roleRepo, permRepo)
+	service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 	req := services.CreateRoleRequest{
 		Name:        "new-role",
@@ -355,7 +355,7 @@ func TestRoleService_CreateRoleDuplicateName(t *testing.T) {
 	// Arrange
 	roleRepo := NewMockRoleRepository()
 	permRepo := NewMockPermissionRepository()
-	service := services.NewRoleService(roleRepo, permRepo)
+	service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 	// Add existing role
 	existingRole := db.Role{
@@ -385,7 +385,7 @@ func TestRoleService_CreateRoleEmptyName(t *testing.T) {
 	// Arrange
 	roleRepo := NewMockRoleRepository()
 	permRepo := NewMockPermissionRepository()
-	service := services.NewRoleService(roleRepo, permRepo)
+	service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 	req := services.CreateRoleRequest{
 		Name:        "",
@@ -411,7 +411,7 @@ func TestRoleService_UpdateRoleSuccess(t *testing.T) {
 	// Add permission to the mock's global catalog
 	permRepo.AddPermission("Reports Read", "Read access to reports", "read", "reports")
 
-	service := services.NewRoleService(roleRepo, permRepo)
+	service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 	roleID := uuid.New()
 	testRole := db.Role{
@@ -451,7 +451,7 @@ func TestRoleService_UpdateRoleSuccess(t *testing.T) {
 func TestRoleService_UpdateRolePermissionNotFound(t *testing.T) {
 	roleRepo := NewMockRoleRepository()
 	permRepo := NewMockPermissionRepository()
-	service := services.NewRoleService(roleRepo, permRepo)
+	service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 	roleID := uuid.New()
 	roleRepo.roles[roleID] = db.Role{
@@ -481,7 +481,7 @@ func TestRoleService_UpdateRoleNotFound(t *testing.T) {
 	// Arrange
 	roleRepo := NewMockRoleRepository()
 	permRepo := NewMockPermissionRepository()
-	service := services.NewRoleService(roleRepo, permRepo)
+	service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 	roleID := uuid.New()
 	req := services.UpdateRoleRequest{
@@ -509,7 +509,7 @@ func TestRoleService_DeleteRoleSuccess(t *testing.T) {
 	// Arrange
 	roleRepo := NewMockRoleRepository()
 	permRepo := NewMockPermissionRepository()
-	service := services.NewRoleService(roleRepo, permRepo)
+	service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 	roleID := uuid.New()
 	testRole := db.Role{
@@ -540,7 +540,7 @@ func TestRoleService_DeleteRoleNotFound(t *testing.T) {
 	// Arrange
 	roleRepo := NewMockRoleRepository()
 	permRepo := NewMockPermissionRepository()
-	service := services.NewRoleService(roleRepo, permRepo)
+	service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 	roleID := uuid.New()
 
@@ -589,7 +589,7 @@ func TestRoleService_ValidationEmptyName(t *testing.T) {
 			// Arrange
 			roleRepo := NewMockRoleRepository()
 			permRepo := NewMockPermissionRepository()
-			service := services.NewRoleService(roleRepo, permRepo)
+			service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 			// Act
 			_, err := service.CreateRole(tc.req)
@@ -633,7 +633,7 @@ func TestRoleService_ValidationInvalidPermissions(t *testing.T) {
 			// Arrange
 			roleRepo := NewMockRoleRepository()
 			permRepo := NewMockPermissionRepository()
-			service := services.NewRoleService(roleRepo, permRepo)
+			service := services.NewRoleService(roleRepo, permRepo, NewMockUserRoleRepository())
 
 			req := services.CreateRoleRequest{
 				Name:        "valid-role",

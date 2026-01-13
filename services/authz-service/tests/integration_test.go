@@ -9,7 +9,7 @@ import (
 
 	"authz-service/internal/db"
 	apphandlers "authz-service/internal/handlers"
-	"authz-service/internal/services"
+	svc "authz-service/internal/services"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -120,7 +120,7 @@ func (m *MockAuthzService) GetUserRoles(userID uuid.UUID) ([]db.Role, error) {
 	return roles, nil
 }
 
-func (m *MockAuthzService) AssignRole(userID uuid.UUID, req services.AssignRoleRequest) error {
+func (m *MockAuthzService) AssignRole(userID uuid.UUID, req svc.AssignRoleRequest) error {
 	return nil
 }
 

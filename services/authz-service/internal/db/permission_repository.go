@@ -33,7 +33,6 @@ func (r *PermissionRepository) GetByRoleID(roleID uuid.UUID) ([]Permission, erro
 	}
 	defer rows.Close()
 
-	// Initialize as empty slice instead of nil to ensure JSON marshals as [] not null
 	permissions := make([]Permission, 0)
 	for rows.Next() {
 		var perm Permission
@@ -64,7 +63,6 @@ func (r *PermissionRepository) GetByUserID(userID uuid.UUID) ([]Permission, erro
 	}
 	defer rows.Close()
 
-	// Initialize as empty slice instead of nil to ensure JSON marshals as [] not null
 	permissions := make([]Permission, 0)
 	for rows.Next() {
 		var perm Permission

@@ -109,7 +109,8 @@ func TestEmptyArraysNotNull(t *testing.T) {
 		// Arrange
 		roleRepo := NewMockRoleRepository()
 		permissionRepo := NewMockPermissionRepository()
-		roleService := services.NewRoleService(roleRepo, permissionRepo)
+		// Fix: Pass mock UserRoleRepository
+		roleService := services.NewRoleService(roleRepo, permissionRepo, NewMockUserRoleRepository())
 		handler := apphandlers.NewRoleHandler(roleService, NewMockAuthorizationService())
 
 		// Act
