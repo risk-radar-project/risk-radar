@@ -762,7 +762,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                 }).addTo(mapRef.current).bindPopup(`
                     <div class="text-center">
                         <b>📍 Twoja lokalizacja</b><br>
-                        <span class="text-xs text-gray-500">
+                        <span class="text-xs text-zinc-500">
                             ${lat.toFixed(6)}, ${lng.toFixed(6)}
                         </span>
                     </div>
@@ -799,7 +799,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                 }).addTo(mapRef.current).bindPopup(`
                     <div class="text-center">
                         <b>🎯 Wybrany obszar</b><br>
-                        <span class="text-xs text-gray-500">
+                        <span class="text-xs text-zinc-500">
                             ${lat.toFixed(6)}, ${lng.toFixed(6)}
                         </span>
                     </div>
@@ -940,7 +940,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
             case "Bardzo wysoki":
                 return "bg-red-500"
             default:
-                return "bg-gray-500"
+                return "bg-zinc-500"
         }
     }
 
@@ -1117,7 +1117,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                                     aiLoading
                                         ? "cursor-wait bg-[#362c20]/70"
                                         : aiSelectMode
-                                          ? "cursor-not-allowed bg-gray-400"
+                                          ? "cursor-not-allowed bg-zinc-400"
                                           : aiMenuOpen
                                             ? "bg-[#362c20] ring-2 ring-[#d97706]"
                                             : "bg-[#362c20]/90 hover:bg-[#362c20] hover:ring-1 hover:ring-[#d97706]"
@@ -1197,7 +1197,7 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                     {/* AI Response Bubble */}
                     {aiResponse?.visible && (
                         <div className="animate-in fade-in slide-in-from-top-4 absolute top-24 right-6 z-30 max-w-sm duration-300">
-                            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+                            <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl">
                                 {/* Colored accent bar */}
                                 <div className="h-1 bg-gradient-to-r from-[#06b6d4] to-[#0891b2]"></div>
                                 {/* Header with danger level */}
@@ -1223,15 +1223,15 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                                 </div>
 
                                 {/* Danger Score Badge */}
-                                <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-2">
-                                    <span className="text-sm font-medium text-gray-600">Poziom zagrożenia:</span>
+                                <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-800 px-4 py-2">
+                                    <span className="text-sm font-medium text-zinc-300">Poziom zagrożenia:</span>
                                     <div className="flex items-center gap-2">
                                         <span
                                             className={`rounded-full px-3 py-1 text-sm font-bold text-white ${getDangerColor(aiResponse.dangerLevel)} `}
                                         >
                                             {aiResponse.dangerLevel}
                                         </span>
-                                        <span className="text-xs text-gray-500">
+                                        <span className="text-xs text-zinc-500">
                                             ({Math.round(aiResponse.dangerScore)}/100)
                                         </span>
                                     </div>
@@ -1239,18 +1239,18 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
 
                                 {/* AI Summary */}
                                 <div className="px-4 py-4">
-                                    <p className="text-sm leading-relaxed text-gray-700">{aiResponse.summary}</p>
+                                    <p className="text-sm leading-relaxed text-zinc-300">{aiResponse.summary}</p>
                                 </div>
 
                                 {/* Footer */}
-                                <div className="flex items-center gap-2 border-t border-gray-100 bg-gray-50 px-4 py-2">
+                                <div className="flex items-center gap-2 border-t border-zinc-800 bg-zinc-800 px-4 py-2">
                                     <span className="text-xs">🤖</span>
-                                    <span className="text-xs text-gray-400">Analiza wygenerowana przez AI • RiskRadar</span>
+                                    <span className="text-xs text-zinc-400">Analiza wygenerowana przez AI • RiskRadar</span>
                                 </div>
                             </div>
 
                             {/* Speech bubble arrow pointing up */}
-                            <div className="absolute -top-2 right-8 h-4 w-4 rotate-45 transform border-t border-l border-gray-200 bg-white"></div>
+                            <div className="absolute -top-2 right-8 h-4 w-4 rotate-45 transform border-t border-l border-zinc-800 bg-zinc-900"></div>
                         </div>
                     )}
 
@@ -1298,11 +1298,11 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
                     onClick={() => setLightboxImage(null)}
                 >
                     <div
-                        className="relative flex items-center justify-center rounded-lg bg-white p-2 shadow-2xl"
+                        className="relative flex items-center justify-center rounded-lg bg-zinc-900 p-2 shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <span
-                            className="absolute -top-4 -right-4 z-[10000] flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-2 border-gray-300 bg-white text-black shadow-lg hover:bg-gray-100"
+                            className="absolute -top-4 -right-4 z-[10000] flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-2 border-zinc-700 bg-zinc-800 text-white shadow-lg hover:bg-zinc-700"
                             onClick={() => setLightboxImage(null)}
                             title="Zamknij"
                         >

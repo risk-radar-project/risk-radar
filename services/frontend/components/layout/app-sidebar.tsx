@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
-import { JwtPayload, parseJwt } from "@/lib/auth/jwt-utils"
 import { GATEWAY_URL } from "@/lib/auth/auth-service"
 import { cn } from "@/lib/utils"
 import { useUnreadNotificationsCount } from "@/hooks/use-notifications"
@@ -98,7 +97,7 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                 {/* Navigation Links */}
                 <nav className="custom-scrollbar mt-8 flex flex-1 flex-col gap-2 overflow-y-auto">
                     <Link
-                        className="flex items-center gap-3 rounded-lg bg-[#d97706] px-3 py-2 font-semibold text-white shadow-md transition-colors hover:bg-[#d97706]/80"
+                        className="flex items-center gap-3 rounded-lg bg-[#d97706] px-3 py-2 font-semibold text-[#120c07] shadow-md transition-colors hover:bg-[#d97706]/80"
                         href="/submit-report"
                     >
                         <span className="material-symbols-outlined">add_location_alt</span>
@@ -205,7 +204,7 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                                                 "flex items-center gap-3 rounded-lg px-3 py-2 text-[#e0dcd7]/80 transition-colors hover:bg-white/10 hover:text-[#e0dcd7]",
                                                 (pathname.startsWith("/reports") ||
                                                     pathname.startsWith("/admin/verification")) &&
-                                                "bg-white/5 text-[#d97706]"
+                                                    "bg-white/5 text-[#d97706]"
                                             )}
                                             href={isAdmin ? "/admin/verification" : "/reports"}
                                         >

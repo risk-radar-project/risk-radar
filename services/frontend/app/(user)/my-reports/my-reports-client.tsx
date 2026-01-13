@@ -604,7 +604,7 @@ export function MyReportsClient() {
                                 <Button
                                     onClick={handleEditSubmit}
                                     disabled={updateMutation.isPending || !editFormData.title || !editFormData.description}
-                                    className="bg-blue-600 hover:bg-blue-700"
+                                    className="bg-[#d97706] text-[#120c07] hover:bg-[#f59e0b]"
                                 >
                                     {updateMutation.isPending ? "Zapisywanie..." : "Zapisz"}
                                 </Button>

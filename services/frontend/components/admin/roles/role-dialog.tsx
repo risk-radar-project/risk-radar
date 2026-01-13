@@ -220,7 +220,7 @@ export function RoleDialog({ open, onOpenChange, role, allPermissions }: RoleDia
                             <Button
                                 type="submit"
                                 disabled={mutation.isPending}
-                                className="border-0 bg-[#d97706] text-white hover:bg-[#d97706]/90"
+                                className="border-0 bg-[#d97706] text-[#120c07] hover:bg-[#d97706]/90"
                             >
                                 {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {isEditing ? "Zapisz zmiany" : "Utwórz rolę"}

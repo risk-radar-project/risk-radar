@@ -76,7 +76,7 @@ export default function RolesPage() {
                     <h2 className="text-2xl font-bold tracking-tight text-zinc-100">Role i Uprawnienia</h2>
                     <p className="text-zinc-400">Zarządzaj rolami użytkowników i ich dostępem do systemu.</p>
                 </div>
-                <Button onClick={handleCreate} className="bg-[#d97706] text-white hover:bg-[#d97706]/90">
+                <Button onClick={handleCreate} className="bg-[#d97706] text-[#120c07] hover:bg-[#d97706]/90">
                     <Plus className="mr-2 h-4 w-4" />
                     Nowa Rola
                 </Button>

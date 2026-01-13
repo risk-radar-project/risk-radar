@@ -9,7 +9,6 @@ import { TableCell } from "@/components/ui/table/table-cell"
 import { Search, Filter, ChevronLeft, ChevronRight, Ban, ShieldCheck, Eye, X, UserCircle } from "lucide-react"
 import { useRoles } from "@/hooks/use-authz"
 import { usePermission } from "@/hooks/use-permission"
-import { parseJwt } from "@/lib/auth/jwt-utils"
 
 interface User {
     id: string
@@ -378,10 +377,11 @@ export default function AdminUsersPage() {
                                             {user.role !== "admin" && (
                                                 <button
                                                     onClick={() => handleBanToggle(user.id, user.username, user.isBanned)}
-                                                    className={`rounded p-1.5 hover:bg-zinc-700 ${user.isBanned
-                                                        ? "text-green-400 hover:text-green-300"
-                                                        : "text-zinc-400 hover:text-red-400"
-                                                        }`}
+                                                    className={`rounded p-1.5 hover:bg-zinc-700 ${
+                                                        user.isBanned
+                                                            ? "text-green-400 hover:text-green-300"
+                                                            : "text-zinc-400 hover:text-red-400"
+                                                    }`}
                                                     title={user.isBanned ? "Odbanuj" : "Zbanuj"}
                                                 >
                                                     {user.isBanned ? (
@@ -450,10 +450,11 @@ export default function AdminUsersPage() {
                                     <button
                                         key={i}
                                         onClick={() => setCurrentPage(i)}
-                                        className={`min-w-[32px] rounded-lg border px-2 py-1 text-sm ${i === currentPage
-                                            ? "border-blue-500 bg-blue-500/20 text-blue-400"
-                                            : "border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
-                                            }`}
+                                        className={`min-w-[32px] rounded-lg border px-2 py-1 text-sm ${
+                                            i === currentPage
+                                                ? "border-blue-500 bg-blue-500/20 text-blue-400"
+                                                : "border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
+                                        }`}
                                     >
                                         {i + 1}
                                     </button>
@@ -568,10 +569,11 @@ export default function AdminUsersPage() {
                                         onClick={() => {
                                             handleBanToggle(viewingUser.id, viewingUser.username, viewingUser.isBanned)
                                         }}
-                                        className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition-colors ${viewingUser.isBanned
-                                            ? "bg-green-600 text-white hover:bg-green-500"
-                                            : "bg-red-600 text-white hover:bg-red-500"
-                                            }`}
+                                        className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition-colors ${
+                                            viewingUser.isBanned
+                                                ? "bg-green-600 text-white hover:bg-green-500"
+                                                : "bg-red-600 text-white hover:bg-red-500"
+                                        }`}
                                     >
                                         {viewingUser.isBanned ? (
                                             <>
