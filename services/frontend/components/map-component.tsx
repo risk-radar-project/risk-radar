@@ -383,7 +383,10 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
 
                     // Safe error handling
                     img.addEventListener("error", () => {
-                        img.style.display = "none"
+                        console.error(`Failed to load image: ${thumbImageUrl}`)
+                        // Keep visible but maybe show error border
+                        img.style.border = "2px solid red"
+                        // img.style.display = "none" // Don't hide completely so we know it's there
                     })
 
                     imageContainer.appendChild(img)

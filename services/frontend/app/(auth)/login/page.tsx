@@ -100,6 +100,7 @@ export default function LoginPage() {
         if (isValid) {
             setIsLoading(true)
             try {
+                // Fixed: Use /api/login to match user-service endpoint directly
                 const response = await fetch(`${GATEWAY_URL}/api/login`, {
                     method: "POST",
                     headers: {

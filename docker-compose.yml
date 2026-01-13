@@ -18,6 +18,7 @@ x-global-env: &global-env
     JWT_REFRESH_SECRET: bNa5h++JFlleDXl3wm0pSDSlSD2rDrigCRPJTt0F00vRonkabew2JsKKHMUTwvaOXH8u0oQ8ZXnphXh/gl0F5g==
     DATABASE_URL: postgres://risk-radar-admin:passwd@postgres:5432/risk-radar?sslmode=disable
     NODE_ENV: development
+    DEMO_MODE: "${DEMO_MODE:-false}"
 
 services:
     user-service:
@@ -402,6 +403,25 @@ services:
             - ai-verification-duplication-service
             - ai-assistant-service
             - map-service
+        networks:
+            - backend
+
+    demo-seeder:
+        build:
+            context: ./services/demo-data-seeder
+            dockerfile: Dockerfile
+        container_name: demo-seeder
+        depends_on:
+            postgres:
+                condition: service_healthy
+        environment:
+            <<: *global-env
+            DATABASE_URL: postgres://risk-radar-admin:passwd@postgres:5432/risk-radar
+            DEMO_MODE: "true"
+            MEDIA_DESTINATION: /media_storage
+            ADMIN_PASSWORD: "${ADMIN_PASSWORD:-ChangeMeCheckEnv}"
+        volumes:
+            - ./services/media-service/data:/media_storage
         networks:
             - backend
 

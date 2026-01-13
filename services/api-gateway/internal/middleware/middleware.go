@@ -193,6 +193,16 @@ func ClientIP(r *http.Request) string {
 	return host
 }
 
+func DemoMode(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			WriteJSONError(w, http.StatusForbidden, "DEMO_MODE_RESTRICTION", "Delete actions are disabled in Demo Mode")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func WriteJSONError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
