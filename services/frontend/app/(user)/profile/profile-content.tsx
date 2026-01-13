@@ -21,15 +21,15 @@ import { formatDistanceToNow } from "date-fns"
 import { pl } from "date-fns/locale"
 import { Eye, EyeOff } from "lucide-react"
 
-// Funkcja maskująca adres IP
+// Function that masks IP addresses
 function maskIpAddress(ip: string): string {
     if (!ip) return "(brak IP)"
     const parts = ip.split(".")
     if (parts.length === 4) {
-        // IPv4: pokazujemy tylko pierwszy oktet, reszta zamazana
+        // IPv4: show only first octet, rest masked
         return `${parts[0]}.*.*.*`
     }
-    // IPv6 lub inny format: pokazujemy tylko pierwsze 8 znaków
+    // IPv6 or other format: show only first 8 characters
     return ip.substring(0, 8) + ":" + "*".repeat(Math.max(0, ip.length - 9))
 }
 
