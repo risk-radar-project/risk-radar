@@ -54,6 +54,10 @@ func (m *MockUserRoleRepository) RemoveRole(userID, roleID uuid.UUID) error {
 	return fmt.Errorf("user role assignment not found")
 }
 
+func (m *MockUserRoleRepository) CountByRoleID(roleID uuid.UUID) (int, error) {
+	return 0, nil
+}
+
 func (m *MockUserRoleRepository) HasRole(userID, roleID uuid.UUID) (bool, error) {
 	userKey := userID.String()
 	roles := m.userRoles[userKey]

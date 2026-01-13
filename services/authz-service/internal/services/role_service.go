@@ -76,7 +76,6 @@ func (s *RoleService) GetRoles() ([]db.RoleWithPermissions, error) {
 		return nil, fmt.Errorf("failed to get roles: %w", err)
 	}
 
-	// Initialize as empty slice instead of nil to ensure JSON marshals as [] not null
 	result := make([]db.RoleWithPermissions, 0)
 	for _, role := range roles {
 		permissions, err := s.permissionRepo.GetByRoleID(role.ID)

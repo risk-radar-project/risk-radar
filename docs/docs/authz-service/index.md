@@ -305,7 +305,7 @@ Retrieves a specific role by ID with its permissions.
 **Response 400 Bad Request:**
 ```json
 {
-  "error": "validation error in field 'uuid': UUID must be exactly 36 characters long",
+  "error": "invalid_request",
   "code": 400,
   "message": "Invalid role ID format"
 }
@@ -314,7 +314,7 @@ Retrieves a specific role by ID with its permissions.
 **Response 404 Not Found:**
 ```json
 {
-  "error": "",
+  "error": "not_found",
   "code": 404,
   "message": "Role not found"
 }
@@ -325,6 +325,10 @@ Retrieves a specific role by ID with its permissions.
 #### `POST /roles`
 
 Creates a new role with specified permissions.
+
+**Authentication:**
+- `X-User-ID` Header Required
+- Permission: `roles:edit`
 
 **Request Body:**
 ```json
@@ -366,16 +370,16 @@ Creates a new role with specified permissions.
 **Response 400 Bad Request:**
 ```json
 {
-  "error": "validation error in field 'name': name is required",
+  "error": "invalid_request",
   "code": 400,
-  "message": "validation error in field 'name': name is required"
+  "message": "validation error: name is required"
 }
 ```
 
 **Response 409 Conflict:**
 ```json
 {
-  "error": "role with name 'test-role-api' already exists",
+  "error": "conflict",
   "code": 409,
   "message": "role with name 'test-role-api' already exists"
 }
@@ -386,6 +390,10 @@ Creates a new role with specified permissions.
 #### `PUT /roles/{roleId}`
 
 Updates an existing role with new data and permissions.
+
+**Authentication:**
+- `X-User-ID` Header Required
+- Permission: `roles:edit`
 
 **Parameters:**
 - `roleId` (path, required): UUID of the role to update
@@ -408,41 +416,12 @@ Updates an existing role with new data and permissions.
 }
 ```
 
-**Response 200 OK:**
-```json
-{
-  "role": {
-    "id": "8b73ef3b-91f8-4b76-a0d7-8931a5d41823",
-    "name": "test-role-api-updated",
-    "description": "Updated test role",
-    "created_at": "2025-07-25T17:00:43.449618Z",
-    "updated_at": "2025-07-25T17:01:00.485004Z"
-  },
-  "permissions": [
-    {
-      "id": "2cafea83-8bbc-4cc1-b6a6-664e9402a0a7",
-      "name": "reports:read",
-      "description": "Read access to reports and map",
-      "resource": "reports",
-      "action": "read",
-      "created_at": "2025-07-24T13:19:04.964265Z"
-    },
-    {
-      "id": "c7bf3acb-cedb-4da7-890f-568a52ca2316",
-      "name": "reports:create",
-      "description": "Create new reports",
-      "resource": "reports",
-      "action": "create",
-      "created_at": "2025-07-24T13:19:04.964265Z"
-    }
-  ]
-}
-```
+**Response 200 OK:** (Same structure as POST /roles)
 
 **Response 404 Not Found:**
 ```json
 {
-  "error": "",
+  "error": "not_found",
   "code": 404,
   "message": "Role not found"
 }
@@ -454,6 +433,10 @@ Updates an existing role with new data and permissions.
 
 Deletes a role by ID.
 
+**Authentication:**
+- `X-User-ID` Header Required
+- Permission: `roles:edit`
+
 **Parameters:**
 - `roleId` (path, required): UUID of the role to delete
 
@@ -463,7 +446,7 @@ No response body.
 **Response 404 Not Found:**
 ```json
 {
-  "error": "role not found",
+  "error": "not_found",
   "code": 404,
   "message": "Role not found"
 }
@@ -523,7 +506,7 @@ Retrieves a specific permission by its UUID.
 **Response 400 Bad Request:**
 ```json
 {
-  "error": "validation error in field 'uuid': UUID must be exactly 36 characters long",
+  "error": "invalid_request",
   "code": 400,
   "message": "Invalid permission ID format"
 }
@@ -532,7 +515,7 @@ Retrieves a specific permission by its UUID.
 **Response 404 Not Found:**
 ```json
 {
-  "error": "",
+  "error": "not_found",
   "code": 404,
   "message": "Permission not found"
 }
@@ -543,6 +526,10 @@ Retrieves a specific permission by its UUID.
 #### `POST /permissions`
 
 Creates a new permission in the global catalog.
+
+**Authentication:**
+- `X-User-ID` Header Required
+- Permission: `permissions:manage`
 
 **Request Body:**
 ```json
@@ -573,36 +560,9 @@ Creates a new permission in the global catalog.
 **Response 400 Bad Request (Validation Error):**
 ```json
 {
-  "error": "validation error in field 'resource': resource is required",
+  "error": "invalid_request",
   "code": 400,
-  "message": "validation error in field 'resource': resource is required"
-}
-```
-
-**Response 400 Bad Request (Invalid Characters):**
-```json
-{
-  "error": "resource and action cannot contain colon (:) character",
-  "code": 400,
-  "message": "resource and action cannot contain colon (:) character"
-}
-```
-
-**Response 409 Conflict:**
-```json
-{
-  "error": "permission with name 'notifications:send' already exists",
-  "code": 409,
-  "message": "permission with name 'notifications:send' already exists"
-}
-```
-
-**Response 500 Internal Server Error:**
-```json
-{
-  "error": "database insert failed",
-  "code": 500,
-  "message": "Failed to create permission"
+  "message": "validation error: resource is required"
 }
 ```
 
@@ -612,79 +572,16 @@ Creates a new permission in the global catalog.
 
 Updates an existing permission by its UUID.
 
+**Authentication:**
+- `X-User-ID` Header Required
+- Permission: `permissions:manage`
+
 **Parameters:**
 - `permissionId` (path, required): UUID of the permission to update
 
-**Request Body:**
-```json
-{
-  "resource": "notifications",
-  "action": "broadcast",
-  "description": "Broadcast notifications to all users"
-}
-```
+**Request Body:** Same as POST
 
-**Field Validation:**
-- `resource`: Required, 1-50 characters, cannot contain colon (:)
-- `action`: Required, 1-50 characters, cannot contain colon (:)
-- `description`: Required, 1-255 characters
-
-**Response 200 OK:**
-```json
-{
-  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "name": "notifications:broadcast",
-  "description": "Broadcast notifications to all users",
-  "resource": "notifications",
-  "action": "broadcast",
-  "created_at": "2025-07-26T10:30:45.123456Z"
-}
-```
-
-**Response 400 Bad Request (Invalid UUID):**
-```json
-{
-  "error": "validation error in field 'uuid': UUID must be exactly 36 characters long",
-  "code": 400,
-  "message": "Invalid permission ID format"
-}
-```
-
-**Response 400 Bad Request (Validation Error):**
-```json
-{
-  "error": "validation error in field 'action': action is required",
-  "code": 400,
-  "message": "validation error in field 'action': action is required"
-}
-```
-
-**Response 404 Not Found:**
-```json
-{
-  "error": "permission not found",
-  "code": 404,
-  "message": "Permission not found"
-}
-```
-
-**Response 409 Conflict:**
-```json
-{
-  "error": "permission with name 'notifications:broadcast' already exists",
-  "code": 409,
-  "message": "permission with name 'notifications:broadcast' already exists"
-}
-```
-
-**Response 500 Internal Server Error:**
-```json
-{
-  "error": "database update failed",
-  "code": 500,
-  "message": "Failed to update permission"
-}
-```
+**Response 200 OK:** Returns updated permission object.
 
 ---
 
@@ -692,38 +589,14 @@ Updates an existing permission by its UUID.
 
 Deletes a permission from the global catalog. This operation also removes all role assignments for this permission.
 
+**Authentication:**
+- `X-User-ID` Header Required
+- Permission: `permissions:manage`
+
 **Parameters:**
 - `permissionId` (path, required): UUID of the permission to delete
 
-**Response 204 No Content:**
-No response body. The permission and all its role assignments have been successfully deleted.
-
-**Response 400 Bad Request:**
-```json
-{
-  "error": "validation error in field 'uuid': UUID must be exactly 36 characters long",
-  "code": 400,
-  "message": "Invalid permission ID format"
-}
-```
-
-**Response 404 Not Found:**
-```json
-{
-  "error": "permission not found",
-  "code": 404,
-  "message": "Permission not found"
-}
-```
-
-**Response 500 Internal Server Error:**
-```json
-{
-  "error": "database delete failed",
-  "code": 500,
-  "message": "Failed to delete permission"
-}
-```
+**Response 204 No Content:** No response body.
 
 ---
 
@@ -769,15 +642,6 @@ Checks if a user has a specific permission.
 }
 ```
 
-**Response 400 Bad Request (invalid UUID):**
-```json
-{
-  "error": "invalid_request",
-  "code": 400,
-  "message": "Invalid user ID format"
-}
-```
-
 ---
 
 #### `GET /users/{userId}/roles`
@@ -798,15 +662,6 @@ Retrieves all roles assigned to a specific user.
     "updated_at": "2025-07-24T13:19:04.964265Z"
   }
 ]
-```
-
-**Response 400 Bad Request:**
-```json
-{
-  "error": "validation error in field 'uuid': UUID must be exactly 36 characters long",
-  "code": 400,
-  "message": "Invalid user ID format"
-}
 ```
 
 ---
@@ -998,3 +853,4 @@ Config: `AUDIT_KAFKA_*` knobs control the Kafka producer. `AUDIT_LOG_URL` remain
 Counters (in‑memory): `sent`, `failed`, `dropped`, `retries`.
 
 HTTP Logging: colorized request logs to stdout; status ≥ 400 additionally emits `http_error` audit event.
+

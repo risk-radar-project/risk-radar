@@ -10,7 +10,7 @@ import (
 
 	"authz-service/internal/db"
 	apphandlers "authz-service/internal/handlers"
-	"authz-service/internal/services"
+	svc "authz-service/internal/services"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -76,7 +76,7 @@ func (m *MockRoleServiceForHandler) GetRole(roleID uuid.UUID) (*db.RoleWithPermi
 	return &role, nil
 }
 
-func (m *MockRoleServiceForHandler) CreateRole(req services.CreateRoleRequest) (*db.RoleWithPermissions, error) {
+func (m *MockRoleServiceForHandler) CreateRole(req svc.CreateRoleRequest) (*db.RoleWithPermissions, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -109,7 +109,7 @@ func (m *MockRoleServiceForHandler) CreateRole(req services.CreateRoleRequest) (
 	return &role, nil
 }
 
-func (m *MockRoleServiceForHandler) UpdateRole(roleID uuid.UUID, req services.UpdateRoleRequest) (*db.RoleWithPermissions, error) {
+func (m *MockRoleServiceForHandler) UpdateRole(roleID uuid.UUID, req svc.UpdateRoleRequest) (*db.RoleWithPermissions, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -154,7 +154,7 @@ func (m *MockRoleServiceForHandler) DeleteRole(roleID uuid.UUID) error {
 	return nil
 }
 
-// TestRoleHandler_GetRoles testuje endpoint GET /roles
+// TestRoleHandler_GetRoles tests GET /roles endpoint
 func TestRoleHandler_GetRoles(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
@@ -197,7 +197,7 @@ func TestRoleHandler_GetRoles(t *testing.T) {
 	}
 }
 
-// TestRoleHandler_GetRole testuje endpoint GET /roles/{roleId}
+// TestRoleHandler_GetRole tests GET /roles/{roleId} endpoint
 func TestRoleHandler_GetRole(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
@@ -268,7 +268,7 @@ func TestRoleHandler_GetRoleNotFound(t *testing.T) {
 	}
 }
 
-// TestRoleHandler_CreateRole testuje endpoint POST /roles
+// TestRoleHandler_CreateRole tests POST /roles endpoint
 func TestRoleHandler_CreateRole(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
@@ -276,10 +276,10 @@ func TestRoleHandler_CreateRole(t *testing.T) {
 	mockAuthz.Allow("roles:edit")
 	handler := apphandlers.NewRoleHandler(mockService, mockAuthz)
 
-	reqBody := services.CreateRoleRequest{
+	reqBody := svc.CreateRoleRequest{
 		Name:        "new-role",
 		Description: "New role description",
-		Permissions: []services.Permission{
+		Permissions: []svc.Permission{
 			{Action: "read", Resource: "users"},
 		},
 	}
@@ -323,10 +323,10 @@ func TestRoleHandler_CreateRoleForbidden(t *testing.T) {
 	mockAuthz := NewMockAuthorizationService()
 	handler := apphandlers.NewRoleHandler(mockService, mockAuthz)
 
-	reqBody := services.CreateRoleRequest{
+	reqBody := svc.CreateRoleRequest{
 		Name:        "new-role",
 		Description: "New role description",
-		Permissions: []services.Permission{
+		Permissions: []svc.Permission{
 			{Action: "read", Resource: "users"},
 		},
 	}
@@ -356,13 +356,13 @@ func TestRoleHandler_CreateRolePermissionNotFound(t *testing.T) {
 	mockService := NewMockRoleServiceForHandler()
 	mockAuthz := NewMockAuthorizationService()
 	mockAuthz.Allow("roles:edit")
-	mockService.SetCreateRoleError(&services.PermissionNotFoundError{Resource: "reports", Action: "edit"})
+	mockService.SetCreateRoleError(&svc.PermissionNotFoundError{Resource: "reports", Action: "edit"})
 	handler := apphandlers.NewRoleHandler(mockService, mockAuthz)
 
-	reqBody := services.CreateRoleRequest{
+	reqBody := svc.CreateRoleRequest{
 		Name:        "new-role",
 		Description: "New role description",
-		Permissions: []services.Permission{
+		Permissions: []svc.Permission{
 			{Action: "edit", Resource: "reports"},
 		},
 	}
@@ -414,7 +414,7 @@ func TestRoleHandler_CreateRoleInvalidJSON(t *testing.T) {
 	}
 }
 
-// TestRoleHandler_UpdateRole testuje endpoint PUT /roles/{roleId}
+// TestRoleHandler_UpdateRole tests PUT /roles/{roleId} endpoint
 func TestRoleHandler_UpdateRole(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
@@ -433,10 +433,10 @@ func TestRoleHandler_UpdateRole(t *testing.T) {
 	}
 	mockService.roles[roleID] = testRole
 
-	reqBody := services.UpdateRoleRequest{
+	reqBody := svc.UpdateRoleRequest{
 		Name:        "updated-role",
 		Description: "Updated description",
-		Permissions: []services.Permission{
+		Permissions: []svc.Permission{
 			{Action: "write", Resource: "posts"},
 		},
 	}
@@ -480,14 +480,14 @@ func TestRoleHandler_UpdateRolePermissionNotFound(t *testing.T) {
 	mockService := NewMockRoleServiceForHandler()
 	mockAuthz := NewMockAuthorizationService()
 	mockAuthz.Allow("roles:edit")
-	mockService.SetUpdateRoleError(&services.PermissionNotFoundError{Resource: "reports", Action: "archive"})
+	mockService.SetUpdateRoleError(&svc.PermissionNotFoundError{Resource: "reports", Action: "archive"})
 	handler := apphandlers.NewRoleHandler(mockService, mockAuthz)
 
 	roleID := uuid.New()
-	reqBody := services.UpdateRoleRequest{
+	reqBody := svc.UpdateRoleRequest{
 		Name:        "updated-role",
 		Description: "Updated description",
-		Permissions: []services.Permission{
+		Permissions: []svc.Permission{
 			{Action: "archive", Resource: "reports"},
 		},
 	}
@@ -513,7 +513,7 @@ func TestRoleHandler_UpdateRolePermissionNotFound(t *testing.T) {
 	}
 }
 
-// TestRoleHandler_DeleteRole testuje endpoint DELETE /roles/{roleId}
+// TestRoleHandler_DeleteRole tests DELETE /roles/{roleId} endpoint
 func TestRoleHandler_DeleteRole(t *testing.T) {
 	// Arrange
 	mockService := NewMockRoleServiceForHandler()
