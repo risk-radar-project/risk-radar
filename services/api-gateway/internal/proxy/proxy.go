@@ -49,7 +49,6 @@ func (h Handler) Build(route config.RuntimeRoute) *httputil.ReverseProxy {
 			return flattenData(resp)
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			// log.Printf("proxy error: %v", err) // Uncomment for debugging
 			code := http.StatusServiceUnavailable
 			reason := "UPSTREAM_UNAVAILABLE"
 			lower := strings.ToLower(err.Error())
@@ -69,27 +68,9 @@ func setForwardHeaders(req *http.Request, originalHost string) {
 	if originalHost != "" {
 		req.Header.Set("X-Forwarded-Host", originalHost)
 	}
-	if ip := clientIP(req); ip != "" {
+	if ip := middleware.ClientIP(req); ip != "" {
 		req.Header.Set("X-Forwarded-For", ip)
 	}
-}
-
-func clientIP(r *http.Request) string {
-	ff := r.Header.Get("X-Forwarded-For")
-	if ff != "" {
-		parts := strings.Split(ff, ",")
-		if len(parts) > 0 {
-			return strings.TrimSpace(parts[0])
-		}
-	}
-	host := r.RemoteAddr
-	if host == "" {
-		return ""
-	}
-	if idx := strings.LastIndex(host, ":"); idx != -1 {
-		return host[:idx]
-	}
-	return host
 }
 
 func singleJoiningSlash(a, b string) string {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -164,7 +165,32 @@ func getMethodColor(method string) string {
 
 func clientIP(r *http.Request) string {
 	// Simple extraction, can be improved if needed
-	return r.RemoteAddr
+	return ClientIP(r)
+}
+
+func ClientIP(r *http.Request) string {
+	ff := r.Header.Get("X-Forwarded-For")
+	if ff != "" {
+		parts := strings.Split(ff, ",")
+		if len(parts) > 0 {
+			return strings.TrimSpace(parts[0]) // use strings.TrimSpace to be safe
+		}
+	}
+	host := r.RemoteAddr
+	if host == "" {
+		return ""
+	}
+	// Strip port if present
+	if idx := strings.LastIndex(host, ":"); idx != -1 {
+		// Verify if it's an IPv6 address like [::1]:8080 or just IP:port
+		// If it is [::1] (ipv6 without port), idx would be -1 or inside brackets?
+		// r.RemoteAddr usually is "IP:Port".
+		// For IPv6 it is "[IP]:Port".
+		// If it ends with ] then no port? No, RemoteAddr generally has port.
+		// Standard net/http behavior.
+		return host[:idx]
+	}
+	return host
 }
 
 func WriteJSONError(w http.ResponseWriter, status int, code, message string) {

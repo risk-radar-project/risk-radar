@@ -309,7 +309,7 @@ func (g gateway) rateLimiter(route config.RuntimeRoute) func(http.Handler) http.
 			key := userID
 			authenticated := userID != ""
 			if key == "" {
-				key = clientIP(r)
+				key = middleware.ClientIP(r)
 			}
 			if !g.limiter.Allow(route, key, authenticated) {
 				middleware.WriteJSONError(w, http.StatusTooManyRequests, "RATE_LIMIT_EXCEEDED", "rate limit exceeded")
@@ -411,22 +411,4 @@ func extractToken(header string) string {
 
 func isMultipart(ct string) bool {
 	return strings.Contains(strings.ToLower(ct), "multipart/")
-}
-
-func clientIP(r *http.Request) string {
-	ff := r.Header.Get("X-Forwarded-For")
-	if ff != "" {
-		parts := strings.Split(ff, ",")
-		if len(parts) > 0 {
-			return strings.TrimSpace(parts[0])
-		}
-	}
-	host := r.RemoteAddr
-	if host == "" {
-		return ""
-	}
-	if idx := strings.LastIndex(host, ":"); idx != -1 {
-		return host[:idx]
-	}
-	return host
 }
