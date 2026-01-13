@@ -243,7 +243,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
                         localStorage.removeItem("refresh_token")
                         window.location.href = "/login"
                     }}
-                    className="rounded-lg bg-[#d97706] px-6 py-2 font-semibold text-white transition-colors hover:bg-[#d97706]/80"
+                    className="rounded-lg bg-[#d97706] px-6 py-2 font-semibold text-[#120c07] transition-colors hover:bg-[#d97706]/80"
                 >
                     Wyloguj i zaloguj ponownie
                 </button>

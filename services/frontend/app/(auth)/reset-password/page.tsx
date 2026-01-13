@@ -161,7 +161,7 @@ function ResetPasswordContent() {
                     </div>
                     <Button
                         type="submit"
-                        className="bg-primary hover:bg-primary/90 mt-2 h-14 w-full text-base font-bold text-white"
+                        className="mt-2 h-14 w-full bg-[#d97706] text-base font-bold text-white hover:bg-[#f59e0b]"
                         disabled={isLoading || message.type === "success"}
                     >
                         {isLoading ? "Wysyłanie..." : "Wyślij link"}
@@ -212,7 +212,7 @@ function ResetPasswordContent() {
                     </div>
                     <Button
                         type="submit"
-                        className="bg-primary hover:bg-primary/90 mt-2 h-14 w-full text-base font-bold text-white"
+                        className="mt-2 h-14 w-full bg-[#d97706] text-base font-bold text-white hover:bg-[#f59e0b]"
                         disabled={isLoading}
                     >
                         {isLoading ? "Zapisywanie..." : "Zmień hasło"}

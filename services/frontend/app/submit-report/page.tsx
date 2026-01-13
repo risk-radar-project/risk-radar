@@ -771,7 +771,7 @@ export default function SubmitReportPage() {
                                     <button
                                         type="button"
                                         onClick={acceptAISuggestion}
-                                        className="rounded-md bg-[#d97706] px-3 py-1.5 text-sm text-white transition-colors hover:bg-[#d97706]/80"
+                                        className="rounded-md bg-[#d97706] px-3 py-1.5 text-sm text-[#120c07] transition-colors hover:bg-[#d97706]/80"
                                     >
                                         Użyj
                                     </button>
@@ -954,7 +954,7 @@ export default function SubmitReportPage() {
                     <button
                         type="submit"
                         disabled={isSubmitting || !formData.latitude || !formData.longitude || isUploading}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#d97706] px-6 py-4 text-lg font-bold text-white transition-colors hover:bg-[#d97706]/80 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#d97706] px-6 py-4 text-lg font-bold text-[#120c07] transition-colors hover:bg-[#d97706]/80 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {isUploading && <span className="material-symbols-outlined animate-spin">sync</span>}
                         <span className="material-symbols-outlined">send</span>

@@ -375,7 +375,7 @@ export function NotificationsListClient({ filter }: NotificationsListClientProps
                                             setSelectedNotification(null)
                                         }}
                                         variant="default"
-                                        className="bg-blue-600 hover:bg-blue-500"
+                                        className="bg-[#d97706] text-[#120c07] hover:bg-[#f59e0b]"
                                     >
                                         <Check className="mr-2 h-4 w-4" />
                                         Oznacz jako przeczytane

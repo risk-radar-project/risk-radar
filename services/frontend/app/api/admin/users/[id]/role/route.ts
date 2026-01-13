@@ -11,7 +11,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     // Use USER_SERVICE_URL directly to bypass Gateway potential issues
     const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://127.0.0.1:8080"
-    
+
     // user-service:8080/users/{id}/roles
     const targetUrl = `${USER_SERVICE_URL}/users/${id}/roles`
 

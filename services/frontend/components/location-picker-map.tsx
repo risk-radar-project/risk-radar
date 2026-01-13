@@ -230,7 +230,7 @@ export default function LocationPickerMap({
                     type="button"
                     onClick={handleSearch}
                     disabled={isSearching || !searchQuery.trim()}
-                    className="flex items-center gap-2 rounded-lg bg-[#d97706] px-4 py-2 font-semibold text-white transition-colors hover:bg-[#d97706]/80 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-lg bg-[#d97706] px-4 py-2 font-semibold text-[#120c07] transition-colors hover:bg-[#d97706]/80 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <span className="material-symbols-outlined text-sm">search</span>
                     {isSearching ? "Szukam..." : "Szukaj"}

@@ -19,6 +19,19 @@ import { useUserProfile, useLoginHistory } from "@/hooks/use-api"
 import { requestPasswordReset, changeEmail } from "@/lib/api/user"
 import { formatDistanceToNow } from "date-fns"
 import { pl } from "date-fns/locale"
+import { Eye, EyeOff } from "lucide-react"
+
+// Funkcja maskująca adres IP
+function maskIpAddress(ip: string): string {
+    if (!ip) return "(brak IP)"
+    const parts = ip.split(".")
+    if (parts.length === 4) {
+        // IPv4: pokazujemy tylko pierwszy oktet, reszta zamazana
+        return `${parts[0]}.*.*.*`
+    }
+    // IPv6 lub inny format: pokazujemy tylko pierwsze 8 znaków
+    return ip.substring(0, 8) + ":" + "*".repeat(Math.max(0, ip.length - 9))
+}
 
 function ProfileSkeleton() {
     return (
@@ -92,6 +105,7 @@ export default function ProfileContent() {
     const [newEmail, setNewEmail] = useState("")
     const [confirmEmail, setConfirmEmail] = useState("")
     const [emailError, setEmailError] = useState("")
+    const [showFullIPs, setShowFullIPs] = useState(false)
 
     const emailMutation = useMutation({
         mutationFn: async (email: string) => changeEmail(email),
@@ -205,12 +219,38 @@ export default function ProfileContent() {
                         </div>
                         <Separator className="border-[#31261d]" />
                         <div className="space-y-1">
-                            <div className={labelMuted}>Ostatnie logowania</div>
+                            <div className="flex items-center justify-between">
+                                <div className={labelMuted}>Ostatnie logowania</div>
+                                {loginHistory && loginHistory.length > 0 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setShowFullIPs(!showFullIPs)}
+                                        className="h-7 gap-1 text-xs text-[#baab9c] hover:bg-[#2c231b] hover:text-[#e0dcd7]"
+                                    >
+                                        {showFullIPs ? (
+                                            <>
+                                                <EyeOff className="h-3 w-3" />
+                                                Ukryj IP
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Eye className="h-3 w-3" />
+                                                Pokaż IP
+                                            </>
+                                        )}
+                                    </Button>
+                                )}
+                            </div>
                             {loginHistory && loginHistory.length ? (
                                 <div className="space-y-2 text-sm text-[#c2b3a3]">
                                     {loginHistory.slice(0, 5).map((log) => (
                                         <div key={log.id ?? log.timestamp} className="flex flex-col">
-                                            <span>{log.actor.ip ?? "(brak IP)"}</span>
+                                            <span className="font-mono text-xs">
+                                                {showFullIPs
+                                                    ? (log.actor.ip ?? "(brak IP)")
+                                                    : maskIpAddress(log.actor.ip ?? "")}
+                                            </span>
                                             <span className="text-xs text-[#8c7a6b]">
                                                 {log.timestamp
                                                     ? formatDistanceToNow(new Date(log.timestamp), {
@@ -283,7 +323,7 @@ export default function ProfileContent() {
                                 type="button"
                                 onClick={() => passwordMutation.mutate()}
                                 disabled={passwordMutation.isPending || !user.email}
-                                className="border border-[#f5a52433] bg-[#d97706] text-[#120c07] hover:bg-[#f59e0b]"
+                                className="border border-[#f5a52433] bg-[#d97706] text-white hover:bg-[#f59e0b]"
                             >
                                 {passwordMutation.isPending ? "Wysyłanie..." : "Wyślij link resetujący"}
                             </Button>

@@ -637,7 +637,7 @@ export default function AdminReportsPage() {
                                 </button>
                                 <button
                                     onClick={handleSaveEdit}
-                                    className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-500"
+                                    className="flex items-center gap-2 rounded-lg bg-[#d97706] px-4 py-2 text-[#120c07] hover:bg-[#f59e0b]"
                                 >
                                     <Check className="h-4 w-4" />
                                     Zapisz
