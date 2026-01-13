@@ -28,7 +28,16 @@ export class ChannelDispatchError extends Error {
     }
 }
 
+/**
+ * Dispatcher for processing notification events.
+ * Handles event deduplication, rule lookup, user email resolution, and channel-specific dispatching.
+ */
 export class NotificationDispatcher {
+    /**
+     * Dispatches a notification event to configured channels.
+     * 
+     * @param event - The notification event to process.
+     */
     async dispatch(event: NotificationEvent): Promise<void> {
         const processed = await eventLogRepository.isProcessed(event.eventId);
         if (processed) {

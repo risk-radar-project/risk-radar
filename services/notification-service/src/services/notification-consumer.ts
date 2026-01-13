@@ -27,7 +27,11 @@ export class NotificationConsumer {
     private lastError: string | null = null;
     private lastFailureAt: string | null = null;
 
-    getRuntimeStatus() {
+    /**
+     * Gets the current runtime status of the Kafka consumer.
+     * @returns Object containing connection status, mode, and last error details.
+     */
+    getRuntimeStatus(): Record<string, unknown> {
         return {
             mode: this.disabled ? "disabled" : (this.running ? "connected" : "disconnected"),
             connected: this.running,
@@ -38,6 +42,10 @@ export class NotificationConsumer {
         };
     }
 
+    /**
+     * Starts the Kafka consumer.
+     * If brokers are not configured, the consumer is disabled and the service runs in fallback mode.
+     */
     async start(): Promise<void> {
         if (this.running) {
             return;
@@ -57,6 +65,9 @@ export class NotificationConsumer {
         await this.connectWithRetry(true);
     }
 
+    /**
+     * Stops the Kafka consumer gracefully.
+     */
     async stop(): Promise<void> {
         if (this.disabled) {
             return;
