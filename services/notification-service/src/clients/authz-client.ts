@@ -35,8 +35,8 @@ export class AuthzClient {
                 });
                 
                 return Boolean(response.data?.has_permission);
-            } catch (error: any) {
-                const msg = error.message;
+            } catch (error: unknown) {
+                const msg = error instanceof Error ? error.message : String(error);
                 if (attempt === this.retries) {
                     logger.error(`Authz check failed after ${attempt + 1} attempts`, {
                         error: msg,

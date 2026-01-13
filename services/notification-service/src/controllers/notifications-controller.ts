@@ -7,6 +7,12 @@ import { NotificationEvent } from "../types/events";
 import { auditClient } from "../clients/audit-client";
 import { authzClient } from "../clients/authz-client";
 
+/**
+ * Lists notifications for the authenticated user with pagination.
+ * 
+ * @param req - Express request object containing pagination parameters.
+ * @param res - Express response object.
+ */
 export async function listNotifications(req: Request, res: Response): Promise<void> {
     const userId: string = req.context?.userId ?? "";
     if (userId.length === 0) {
@@ -23,6 +29,7 @@ export async function listNotifications(req: Request, res: Response): Promise<vo
 
     const result = await inboxService.list(userId, page, limit, isRead);
 
+    // Record audit log for accessing inbox
     await auditClient.recordUserAction({
         action: "notifications.inbox.list",
         actorId: userId,
@@ -45,6 +52,12 @@ export async function listNotifications(req: Request, res: Response): Promise<vo
     });
 }
 
+/**
+ * Marks a specific notification as read.
+ * 
+ * @param req - Express request object containing notification ID.
+ * @param res - Express response object.
+ */
 export async function markAsRead(req: Request, res: Response): Promise<void> {
     const userId: string = req.context?.userId ?? "";
     if (userId.length === 0) {
@@ -77,6 +90,12 @@ export async function markAsRead(req: Request, res: Response): Promise<void> {
     res.status(204).send();
 }
 
+/**
+ * Marks a specific notification as unread.
+ * 
+ * @param req - Express request object containing notification ID.
+ * @param res - Express response object.
+ */
 export async function markAsUnread(req: Request, res: Response): Promise<void> {
     const userId: string = req.context?.userId ?? "";
     if (userId.length === 0) {
@@ -109,6 +128,13 @@ export async function markAsUnread(req: Request, res: Response): Promise<void> {
     res.status(204).send();
 }
 
+/**
+ * Handles fallback notification sending when direct channels are unavailable.
+ * Requires special permission `notifications:send`.
+ * 
+ * @param req - Express request object containing the notification payload.
+ * @param res - Express response object.
+ */
 export async function fallbackSend(req: Request, res: Response): Promise<void> {
     const userId: string = req.context?.userId ?? "";
     if (userId.length === 0) {

@@ -6,10 +6,18 @@ import { logger } from "../utils/logger";
 import { EmailJob } from "../types/events";
 import { hashEmail, maskEmail } from "../utils/privacy";
 
+/**
+ * Scheduler for processing pending email jobs.
+ * Polls the database for due jobs and processes them in batches with concurrency support.
+ */
 export class EmailScheduler {
     private timer: NodeJS.Timeout | null = null;
     private running = false;
 
+    /**
+     * Starts the email scheduler.
+     * Sets up a timer to poll for jobs at configured intervals.
+     */
     start(): void {
         if (this.timer) {
             return;
@@ -21,6 +29,10 @@ export class EmailScheduler {
         logger.debug("Email scheduler started", { interval: config.emailPollIntervalMs });
     }
 
+    /**
+     * Stops the email scheduler.
+     * Clears the polling timer.
+     */
     stop(): void {
         if (this.timer) {
             clearInterval(this.timer);

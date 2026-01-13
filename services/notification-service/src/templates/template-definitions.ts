@@ -10,8 +10,6 @@ export interface TemplateDefinition {
     bodyFile?: string;
 }
 
-const placeholder = "{{placeholder}}";
-
 export const templateDefinitions: TemplateDefinition[] = [
     {
         templateKey: "USER_REGISTERED_IN_APP",

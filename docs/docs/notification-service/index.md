@@ -1,10 +1,8 @@
-# notification service
+# Notification Service
 
 **Owner:** @Sergiusz Sanetra
 
 ---
- 
-# Notification Service
 
 The **Notification Service** orchestrates all outbound user-facing communications for RiskRadar. It ingests domain events, applies routing rules, renders channel-specific templates, persists in-app notifications, queues transactional emails with retries, and publishes detailed audit trails. Events may arrive asynchronously via Kafka or synchronously through a fallback REST endpoint, ensuring users never miss critical platform activities.
 
@@ -48,7 +46,7 @@ The **Notification Service** orchestrates all outbound user-facing communication
 | Column | Type | Description |
 |--------|------|-------------|
 | id | UUID | Primary key |
-| event_type | VARCHAR | RiskRadar event identifier (e.g., `USER_REGISTERED`). Supported types: `AUDIT_SECURITY_EVENT_DETECTED`, `ROLE_ASSIGNED`, `ROLE_REVOKED`, `MEDIA_APPROVED`, `MEDIA_REJECTED`, `MEDIA_FLAGGED_NSFW`, `MEDIA_CENSORED`, `MEDIA_DELETED_SYSTEM`, `MEDIA_STORAGE_THRESHOLD`, `USER_REGISTERED`, `USER_PASSWORD_RESET_REQUESTED`, `USER_BANNED`, `USER_UNBANNED` |
+| event_type | VARCHAR | RiskRadar event identifier (e.g., `USER_REGISTERED`). Supported types: `AUDIT_SECURITY_EVENT_DETECTED`, `ROLE_ASSIGNED`, `ROLE_REVOKED`, `MEDIA_APPROVED`, `MEDIA_REJECTED`, `MEDIA_FLAGGED_NSFW`, `MEDIA_CENSORED`, `MEDIA_DELETED_SYSTEM`, `MEDIA_STORAGE_THRESHOLD`, `USER_REGISTERED`, `USER_PASSWORD_RESET_REQUESTED`, `USER_BANNED`, `USER_UNBANNED`, `REPORT_CREATED`, `REPORT_STATUS_CHANGED`, `FAKE_REPORT_DETECTED`, `REPORT_AI_VERIFIED`, `REPORT_AI_FLAGGED` |
 | audience | VARCHAR | `user` or `admin` audience scope |
 | channels | JSONB | Array of enabled channels (`["in_app","email"]`) |
 | template_mappings | JSONB | Per-channel template keys |
@@ -153,7 +151,7 @@ Returns component health based on live dependency probes. The Kafka entry now ex
 		},
 		"smtp": "disabled"
 	},
-	"timestamp": "2025-11-19T12:34:56.000Z"
+	"timestamp": "2026-01-13T12:34:56.000Z"
 }
 ```
 
@@ -184,7 +182,7 @@ Query parameters:
 			"title": "Witaj w serwisie!",
 			"body": "Twoje konto zostało pomyślnie utworzone.",
 			"isRead": false,
-			"createdAt": "2025-11-19T10:10:00.000Z"
+			"createdAt": "2026-01-13T10:10:00.000Z"
 		}
 	]
 }
@@ -219,8 +217,6 @@ Fallback endpoint to trigger notifications without Kafka.
 **Request Body**
 ```json
 {
-	"eventId": "optional-uuid",
-	"eventType": "USER_REGISTERED",
 	"userId": "1c7f...",
 	"initiatorId": "admin-uuid",
 	"payload": { "displayName": "Anna", "email": "anna@example.com" },
@@ -265,6 +261,14 @@ When no brokers are configured, the consumer stays disabled and the service reli
 |------------|----------|---------------|-------------------------|-------|
 | `USER_REGISTERED` | `in_app`, `email` | `USER_REGISTERED_IN_APP`, `USER_REGISTERED_EMAIL` | _(none)_ | Include `displayName` for friendly salutation, `appUrl` for the CTA button, and override `email` in the payload when you do not want to rely on the User Service lookup. |
 | `USER_PASSWORD_RESET_REQUESTED` | `email` | `USER_PASSWORD_RESET_REQUESTED_EMAIL` | `payload.resetUrl` (must be https:// or http://) | Template explains that a password reset was requested and renders both a button and the raw URL so the user can open the link and define a new password. Optional `displayName`/`expiresInMinutes` personalize the copy. |
+| `REPORT_CREATED` | `email` | `REPORT_CREATED_EMAIL` | `title` | Sent when a new report is created by user. |
+| `REPORT_STATUS_CHANGED` | `in_app`, `email` | `REPORT_STATUS_CHANGED_IN_APP`, `REPORT_STATUS_CHANGED_EMAIL` | `title`, `newStatus` | Notifies user about report status update. |
+| `FAKE_REPORT_DETECTED` | `in_app`, `email` | `FAKE_REPORT_DETECTED_IN_APP`, `FAKE_REPORT_DETECTED_EMAIL` | `fake_probability` | Sent when AI detects potentially fake report. |
+| `MEDIA_APPROVED` | `in_app` | `MEDIA_APPROVED_IN_APP` | _(none)_ | Notifies user about approved media. |
+| `MEDIA_REJECTED` | `in_app`, `email` | `MEDIA_REJECTED_IN_APP`, `MEDIA_REJECTED_EMAIL` | `reason` | Notifies user about rejected media. |
+| `MEDIA_FLAGGED_NSFW` | `in_app`, `email` | `MEDIA_FLAGGED_NSFW_IN_APP`, `MEDIA_FLAGGED_NSFW_EMAIL` | _(none)_ | Content flagged as NSFW. |
+| `USER_BANNED` | `in_app`, `email` | `USER_BANNED_IN_APP`, `USER_BANNED_EMAIL` | `reason` | User ban notification. |
+| `USER_UNBANNED` | `in_app`, `email` | `USER_UNBANNED_IN_APP`, `USER_UNBANNED_EMAIL` | _(none)_ | User unban notification. |
 
 Guidelines
 
