@@ -52,6 +52,8 @@ export interface SubmissionResult {
     reportId: string
 }
 
+import { getFreshAccessToken } from "@/lib/auth/auth-service"
+
 // API base URLs (will be proxied through Next.js API routes)
 const AI_CATEGORIZATION_URL = "/api/ai/categorize"
 const AI_VERIFICATION_URL = "/api/ai/verify"
@@ -66,11 +68,13 @@ export async function categorizeReport(
     userId: string = "anonymous"
 ): Promise<CategorizationResponse> {
     const tempReportId = `temp-${Date.now()}`
+    const token = await getFreshAccessToken()
 
     const response = await fetch(AI_CATEGORIZATION_URL, {
         method: "POST",
         headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
             report_id: tempReportId,
@@ -99,10 +103,13 @@ export async function verifyReportContent(
     description: string,
     userId: string
 ): Promise<VerificationResponse> {
+    const token = await getFreshAccessToken()
+
     const response = await fetch(AI_VERIFICATION_URL, {
         method: "POST",
         headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
             report_id: reportId,

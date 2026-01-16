@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { AUDIT_SERVICE_URL, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
 
 export async function GET(request: NextRequest) {
     const authHeader = request.headers.get("Authorization")
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const upstreamUrl = new URL(`${AUDIT_SERVICE_URL}/logs/login-history`)
+    const upstreamUrl = new URL(`${GATEWAY_URL}/api/audit/logs/login-history`)
 
     searchParams.forEach((value, key) => {
         upstreamUrl.searchParams.set(key, value)

@@ -86,8 +86,8 @@ import { NextRequest, NextResponse } from "next/server"
  */
 export async function withAuthHandler(
     request: NextRequest,
-    handler: (token: string) => Promise<NextResponse>
-): Promise<NextResponse> {
+    handler: (token: string) => Promise<Response | NextResponse>
+): Promise<Response | NextResponse> {
     const authHeader = request.headers.get("Authorization")
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {

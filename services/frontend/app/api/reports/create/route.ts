@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
-
-const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || "http://127.0.0.1:8085"
+import { GATEWAY_URL, withAuthHandler } from "@/lib/api/server-config"
 
 export async function POST(request: NextRequest) {
-    try {
+    return withAuthHandler(request, async (token) => {
         const body = await request.json()
 
         console.log("API Route: Creating report with data:", body)
 
-        const authHeader = request.headers.get("Authorization")
-
-        // Forward the request to report-service
-        const response = await fetch(`${REPORT_SERVICE_URL}/createReport`, {
+        // Gateway strips /api/reports, so report-service receives /createReport
+        const response = await fetch(`${GATEWAY_URL}/api/reports/createReport`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "User-Agent": request.headers.get("user-agent") || "RiskRadar-Frontend",
-                ...(authHeader ? { Authorization: authHeader } : {})
+                Authorization: `Bearer ${token}`
             },
             body: JSON.stringify(body)
         })
@@ -29,14 +26,5 @@ export async function POST(request: NextRequest) {
 
         const data = await response.json()
         return NextResponse.json(data, { status: 201 })
-    } catch (error: unknown) {
-        console.error("Failed to create report:", error)
-        return NextResponse.json(
-            {
-                error: "Failed to create report",
-                details: error instanceof Error ? error.message : undefined
-            },
-            { status: 500 }
-        )
-    }
+    })
 }

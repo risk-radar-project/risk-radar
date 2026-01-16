@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-
-const AI_VERIFICATION_SERVICE_URL =
-    process.env.AI_VERIFICATION_SERVICE_URL || "http://ai-verification-duplication-service:8080"
+import { GATEWAY_URL, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
 
 /**
  * POST /api/ai/verify
@@ -9,6 +7,11 @@ const AI_VERIFICATION_SERVICE_URL =
  */
 export async function POST(request: NextRequest) {
     try {
+        const authHeader = request.headers.get("Authorization")
+        if (!authHeader) {
+            return errorResponse("Unauthorized", 401)
+        }
+
         const body = await request.json()
 
         console.log("AI Verify API: Forwarding request to verification service")
@@ -18,14 +21,14 @@ export async function POST(request: NextRequest) {
         const timeoutId = setTimeout(() => controller.abort(), 15000) // 15s timeout (BERT can be slower)
 
         try {
-            const response = await fetch(`${AI_VERIFICATION_SERVICE_URL}/verify`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(body),
-                signal: controller.signal
-            })
+            const response = await fetch(
+                `${GATEWAY_URL}/api/ai/verification/verify`,
+                withAuthAndUserId(authHeader, {
+                    method: "POST",
+                    body: JSON.stringify(body),
+                    signal: controller.signal
+                })
+            )
 
             clearTimeout(timeoutId)
 

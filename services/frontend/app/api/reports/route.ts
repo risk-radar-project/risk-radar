@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server"
 
-const MAP_SERVICE_URL = process.env.MAP_SERVICE_URL || "http://127.0.0.1:8086"
+const GATEWAY_URL = process.env.GATEWAY_URL || "http://api-gateway:8080"
 
 export async function GET() {
     try {
-        console.log(`API Route: Fetching reports from ${MAP_SERVICE_URL}...`)
-        const response = await fetch(`${MAP_SERVICE_URL}/reports`, {
+        console.log(`API Route: Fetching reports from ${GATEWAY_URL}...`)
+        const response = await fetch(`${GATEWAY_URL}/api/map/reports`, {
             cache: "no-store",
             headers: {
                 "Content-Type": "application/json"

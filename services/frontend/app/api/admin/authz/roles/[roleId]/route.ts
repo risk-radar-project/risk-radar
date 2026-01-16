@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { AUTHZ_SERVICE_URL, withAuth, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuth, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
 
 type RouteParams = { params: Promise<{ roleId: string }> }
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        const res = await fetch(`${AUTHZ_SERVICE_URL}/roles/${roleId}`, withAuth(authHeader))
+        const res = await fetch(`${GATEWAY_URL}/api/authz/roles/${roleId}`, withAuth(authHeader))
 
         if (!res.ok) {
             const errorText = await res.text().catch(() => "Unknown error")
@@ -38,7 +38,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     try {
         const body = await request.json()
-        const res = await fetch(`${AUTHZ_SERVICE_URL}/roles/${roleId}`, {
+        const res = await fetch(`${GATEWAY_URL}/api/authz/roles/${roleId}`, {
             method: "PUT",
             ...withAuthAndUserId(authHeader),
             body: JSON.stringify(body)
@@ -71,7 +71,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        const res = await fetch(`${AUTHZ_SERVICE_URL}/roles/${roleId}`, {
+        const res = await fetch(`${GATEWAY_URL}/api/authz/roles/${roleId}`, {
             method: "DELETE",
             ...withAuthAndUserId(authHeader)
         })

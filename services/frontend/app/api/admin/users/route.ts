@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { USER_SERVICE_URL, withAuth, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuth, errorResponse } from "@/lib/api/server-config"
 
 export async function GET(request: Request) {
     const authHeader = request.headers.get("Authorization")
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const size = searchParams.get("size") || "10"
 
     try {
-        const res = await fetch(`${USER_SERVICE_URL}/users?page=${page}&size=${size}`, withAuth(authHeader))
+        const res = await fetch(`${GATEWAY_URL}/api/users?page=${page}&size=${size}`, withAuth(authHeader))
 
         if (!res.ok) {
             const errorText = await res.text().catch(() => "Unknown error")
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json()
-        const res = await fetch(`${USER_SERVICE_URL}/users`, {
+        const res = await fetch(`${GATEWAY_URL}/api/users`, {
             method: "POST",
             ...withAuth(authHeader),
             body: JSON.stringify(body)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { AUTHZ_SERVICE_URL, withAuth, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuth, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
 
 type RouteParams = { params: Promise<{ permissionId: string }> }
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        const res = await fetch(`${AUTHZ_SERVICE_URL}/permissions/${permissionId}`, withAuth(authHeader))
+        const res = await fetch(`${GATEWAY_URL}/api/authz/permissions/${permissionId}`, withAuth(authHeader))
 
         if (!res.ok) {
             return errorResponse(`Failed to fetch permission: ${res.status}`, res.status)
@@ -36,7 +36,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     try {
         const body = await request.json()
-        const res = await fetch(`${AUTHZ_SERVICE_URL}/permissions/${permissionId}`, {
+        const res = await fetch(`${GATEWAY_URL}/api/authz/permissions/${permissionId}`, {
             method: "PUT",
             ...withAuthAndUserId(authHeader),
             body: JSON.stringify(body)
@@ -68,7 +68,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        const res = await fetch(`${AUTHZ_SERVICE_URL}/permissions/${permissionId}`, {
+        const res = await fetch(`${GATEWAY_URL}/api/authz/permissions/${permissionId}`, {
             method: "DELETE",
             ...withAuthAndUserId(authHeader)
         })

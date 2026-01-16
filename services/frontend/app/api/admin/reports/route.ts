@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
-import { REPORT_SERVICE_URL, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuthHandler, errorResponse } from "@/lib/api/server-config"
 
 export async function GET(request: NextRequest) {
-    try {
+    return withAuthHandler(request, async (token) => {
         const searchParams = request.nextUrl.searchParams
         const queryString = searchParams.toString()
-        const authHeader = request.headers.get("Authorization")
 
-        const url = `${REPORT_SERVICE_URL}/reports${queryString ? `?${queryString}` : ""}`
+        // Gateway strips /api/reports, so report-service receives /reports
+        // Explicitly hit /reports to avoid any root-path ambiguity
+        const url = `${GATEWAY_URL}/api/reports/reports${queryString ? `?${queryString}` : ""}`
 
         const response = await fetch(url, {
             cache: "no-store",
             headers: {
                 "Content-Type": "application/json",
-                ...(authHeader ? { Authorization: authHeader } : {})
+                Authorization: `Bearer ${token}`
             }
         })
 
@@ -25,8 +26,5 @@ export async function GET(request: NextRequest) {
 
         const data = await response.json()
         return NextResponse.json(data)
-    } catch (error: unknown) {
-        console.error("[admin/reports] Failed to fetch from backend:", error)
-        return errorResponse("Failed to fetch data", 500)
-    }
+    })
 }

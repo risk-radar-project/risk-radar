@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { AUTHZ_SERVICE_URL, withAuth, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuth, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
 
 // GET /api/admin/authz/roles - List all roles
 export async function GET(request: NextRequest) {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const res = await fetch(`${AUTHZ_SERVICE_URL}/roles`, withAuth(authHeader))
+        const res = await fetch(`${GATEWAY_URL}/api/authz/roles`, withAuth(authHeader))
 
         if (!res.ok) {
             const errorText = await res.text().catch(() => "Unknown error")
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json()
-        const res = await fetch(`${AUTHZ_SERVICE_URL}/roles`, {
+        const res = await fetch(`${GATEWAY_URL}/api/authz/roles`, {
             method: "POST",
             ...withAuthAndUserId(authHeader),
             body: JSON.stringify(body)

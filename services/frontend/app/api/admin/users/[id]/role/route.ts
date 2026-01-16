@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { USER_SERVICE_URL, withAuth, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuth, errorResponse } from "@/lib/api/server-config"
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const authHeader = request.headers.get("Authorization")
@@ -12,7 +12,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     try {
         const body = await request.json()
 
-        const res = await fetch(`${USER_SERVICE_URL}/users/${id}/roles`, {
+        const res = await fetch(`${GATEWAY_URL}/api/users/${id}/roles`, {
             method: "POST",
             ...withAuth(authHeader),
             body: JSON.stringify(body)

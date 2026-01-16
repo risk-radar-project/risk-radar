@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { parseJwt } from "@/lib/auth/jwt-utils"
-import { USER_SERVICE_URL, REPORT_SERVICE_URL, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, errorResponse } from "@/lib/api/server-config"
 
 export async function GET(request: Request) {
     try {
@@ -44,7 +44,8 @@ export async function GET(request: Request) {
         }
 
         try {
-            const reportRes = await fetch(`${REPORT_SERVICE_URL}/reports/stats`, {
+            // Gateway strips /api/reports, so report-service receives /reports/stats
+            const reportRes = await fetch(`${GATEWAY_URL}/api/reports/reports/stats`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "X-User-ID": payload.userId || ""
@@ -66,7 +67,7 @@ export async function GET(request: Request) {
         }
 
         try {
-            const userRes = await fetch(`${USER_SERVICE_URL}/users/stats`, {
+            const userRes = await fetch(`${GATEWAY_URL}/api/users/stats`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "X-User-ID": payload.userId || ""
