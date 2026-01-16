@@ -36,7 +36,7 @@ func (r *UserRoleRepository) CountByRoleID(roleID uuid.UUID) (int, error) {
 // GetUserRoles retrieves all roles for a user
 func (r *UserRoleRepository) GetUserRoles(userID uuid.UUID) ([]Role, error) {
 	query := `
-        SELECT ro.id, ro.name, ro.description, ro.created_at, ro.updated_at
+        SELECT ro.id, ro.name, COALESCE(ro.description, '') as description, ro.created_at, ro.updated_at
         FROM roles ro
         INNER JOIN user_roles ur ON ro.id = ur.role_id
         WHERE ur.user_id = $1

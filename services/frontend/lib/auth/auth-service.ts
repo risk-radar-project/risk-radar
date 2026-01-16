@@ -1,6 +1,11 @@
 import { isTokenExpired } from "@/lib/auth/jwt-utils"
 
+// Client-side gateway URL for browser-initiated requests (login, refresh, WebSocket)
+// Only use for operations that MUST go directly to gateway from browser
 export const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:8090"
+
+// API URLs - most API calls should use Next.js Route Handlers (/api/...)
+// These are kept for backward compatibility with components that haven't been migrated
 export const API_BASE_URL = `${GATEWAY_URL}/api`
 export const REPORTS_API_URL = `${GATEWAY_URL}/api/reports`
 export const MEDIA_API_URL = `${GATEWAY_URL}/api/media`
@@ -34,7 +39,8 @@ export async function refreshAccessToken(
     refreshToken: string
 ): Promise<{ accessToken: string; refreshToken: string } | null> {
     try {
-        const response = await fetch(`${API_BASE_URL}/refresh`, {
+        // Use local Next.js route handler for production-ready deployment
+        const response = await fetch(`/api/refresh`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

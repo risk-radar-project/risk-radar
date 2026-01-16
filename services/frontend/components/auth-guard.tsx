@@ -8,10 +8,13 @@ import { refreshAccessToken } from "@/lib/auth/auth-service"
 const PUBLIC_PATHS = ["/", "/login", "/register", "/terms", "/reset-password"]
 
 // Map paths to required permissions
-// NOTE: More specific paths must come BEFORE generic ones (e.g., /admin/verification before /admin)
+// NOTE: Admin panel is restricted to ROLE_ADMIN only
 const ROUTE_PERMISSIONS: Record<string, string[]> = {
-    "/admin/users": ["PERM_USERS:VIEW", "PERM_*:*", "ROLE_ADMIN", "ROLE_MODERATOR"],
-    "/admin/verification": ["PERM_REPORTS:VALIDATE", "PERM_*:*", "ROLE_ADMIN", "ROLE_VOLUNTEER"],
+    "/admin/users": ["PERM_USERS:VIEW", "PERM_*:*", "ROLE_ADMIN"],
+    "/admin/verification": ["PERM_REPORTS:VALIDATE", "PERM_*:*", "ROLE_ADMIN"],
+    "/admin/audit": ["PERM_AUDIT:VIEW", "PERM_*:*", "ROLE_ADMIN"],
+    "/admin/stats": ["PERM_STATS:VIEW", "PERM_*:*", "ROLE_ADMIN"],
+    "/admin/roles": ["PERM_ROLES:EDIT", "PERM_*:*", "ROLE_ADMIN"],
     "/admin": ["PERM_SYSTEM:ADMIN", "PERM_*:*", "ROLE_ADMIN"],
     "/stats": ["PERM_STATS:VIEW", "PERM_*:*", "ROLE_ADMIN"],
     "/audit": ["PERM_AUDIT:VIEW", "PERM_*:*", "ROLE_ADMIN"],

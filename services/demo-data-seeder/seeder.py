@@ -6,9 +6,11 @@ import logging
 import datetime
 import bcrypt
 import shutil
+import secrets
+import string
 from typing import List, Dict, Any
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv 
 
 import psycopg2
 from psycopg2.extras import execute_batch, Json
@@ -30,9 +32,17 @@ logger = logging.getLogger('demo-seeder')
 # Configuration
 DB_URL = os.environ.get('DATABASE_URL')
 DEMO_MODE = os.environ.get('DEMO_MODE', 'false').lower() == 'true'
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
 MEDIA_SERVICE_URL = os.environ.get('MEDIA_SERVICE_URL', 'http://media-service:8080')
 JWT_SECRET = os.environ.get('JWT_SECRET', 'aSV68OrraQ8m+mRxcmEZFcqjRoA4Hfk4fHVhtmKDeC9lhm2m95h9tRcietLUZs0vL19vX4nJZdflh/ju+Py+Kw==')
+EMAIL_DOMAIN = os.environ.get('EMAIL_DOMAIN', 'riskradar.ovh')
+
+def generate_secure_password(length: int = 32) -> str:
+    """Generate a cryptographically secure random password."""
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+# Generate random superadmin password (or use env variable if set)
+SUPERADMIN_PASSWORD = os.environ.get('SUPERADMIN_PASSWORD') or generate_secure_password(32)
 
 # Constants
 KRAKOW_CENTER_LAT = 50.0647
@@ -70,9 +80,99 @@ REPORT_STATUSES = ["PENDING"] * 30 + ["VERIFIED"] * 60 + ["REJECTED"] * 10
 AI_CONFIDENCE_LEVELS = ["HIGH", "MEDIUM", "LOW"]
 
 # UUIDs for consistency
-ADMIN_UUID = "11111111-1111-1111-1111-111111111111"
+SUPERADMIN_UUID = "11111111-1111-1111-1111-111111111111"  # Real superadmin with full permissions
 
 fake = Faker(['pl_PL'])
+
+# Realistic report templates per category
+REPORT_TEMPLATES = {
+    "VANDALISM": [
+        ("Graffiti na murze", "Na ścianie budynku przy ul. {street} pojawiło się duże graffiti. Szpeci okolicę i wymaga usunięcia."),
+        ("Zniszczona ławka w parku", "Ławka w parku została celowo zniszczona - połamane deski i pogięte metalowe elementy."),
+        ("Rozbita witryna sklepowa", "Ktoś rozbił szybę wystawową sklepu. Szkło leży na chodniku, niebezpieczeństwo dla przechodniów."),
+        ("Zdewastowany przystanek", "Przystanek autobusowy został zdewastowany - rozbite szyby, pomazane ściany."),
+        ("Uszkodzona tablica informacyjna", "Tablica z mapą okolicy została wyrwana z podłoża i zniszczona."),
+        ("Podpalony kosz na śmieci", "Ktoś podpalił kosz na śmieci, jest spalony i wymaga wymiany."),
+        ("Zniszczony plac zabaw", "Huśtawka na placu zabaw ma przecięte łańcuchy, zjeżdżalnia porysowana."),
+    ],
+    "INFRASTRUCTURE": [
+        ("Dziura w jezdni", "Duża dziura w asfalcie na ul. {street}. Zagraża bezpieczeństwu kierowców."),
+        ("Uszkodzony chodnik", "Chodnik ma pęknięte płyty i wystające krawędzie - łatwo się potknąć."),
+        ("Niedziałająca latarnia", "Latarnia uliczna nie świeci od kilku dni. Okolica jest bardzo ciemna wieczorami."),
+        ("Zepsuta sygnalizacja świetlna", "Sygnalizacja świetlna na skrzyżowaniu mruga na żółto, nie działa prawidłowo."),
+        ("Uszkodzona barierka", "Barierka ochronna przy drodze jest wygięta i nie spełnia swojej funkcji."),
+        ("Zapadnięty studzienka", "Pokrywa studzienki jest poniżej poziomu jezdni, powoduje hałas przy przejeżdżaniu."),
+        ("Zarośnięty chodnik", "Chodnik jest całkowicie zarośnięty krzakami, trzeba schodzić na jezdnię."),
+    ],
+    "DANGEROUS_SITUATION": [
+        ("Wiszące kable elektryczne", "Kable elektryczne zwisają nisko nad chodnikiem przy ul. {street}. Bardzo niebezpieczne!"),
+        ("Niestabilne rusztowanie", "Rusztowanie przy budowie wygląda na niestabilne, brak zabezpieczeń."),
+        ("Oblodzone schody", "Schody prowadzące do przejścia podziemnego są oblodzone i bardzo śliskie."),
+        ("Brak oświetlenia w tunelu", "W tunelu dla pieszych nie działają lampy, jest całkowicie ciemno."),
+        ("Dzikie psy w okolicy", "W okolicy parku grasuje sfora dzikich psów, zachowują się agresywnie."),
+        ("Wyciek gazu?", "Czuć silny zapach gazu w okolicy ul. {street}. Proszę o pilną kontrolę."),
+        ("Otwarta studzienka bez pokrywy", "Studzienka kanalizacyjna nie ma pokrywy! Ktoś może wpaść."),
+    ],
+    "TRAFFIC_ACCIDENT": [
+        ("Kolizja dwóch samochodów", "Na skrzyżowaniu doszło do kolizji. Oba pojazdy stoją na środku drogi."),
+        ("Potrącenie rowerzysty", "Rowerzysta został potrącony przez samochód. Na miejscu są służby ratunkowe."),
+        ("Samochód wjechał w słup", "Kierowca stracił panowanie i uderzył w latarnię. Słup jest uszkodzony."),
+        ("Wypadek na przejściu dla pieszych", "Pieszy został potrącony na przejściu. Karetka jest w drodze."),
+        ("Motocykl przewrócił się na zakręcie", "Motocyklista przewrócił się na zakręcie, leży na jezdni."),
+        ("Zderzenie z tramwajem", "Samochód osobowy zderzył się z tramwajem. Ruch tramwajowy wstrzymany."),
+    ],
+    "PARTICIPANT_BEHAVIOR": [
+        ("Agresywny kierowca", "Kierowca auta {car} zachowuje się bardzo agresywnie - wyprzedza na podwójnej ciągłej."),
+        ("Pirat drogowy", "Kierowca przekracza znacznie prędkość w terenie zabudowanym."),
+        ("Blokowanie przejazdu", "Kierowca celowo blokuje przejazd innym pojazdom."),
+        ("Jazda pod prąd", "Widziałem samochód jadący pod prąd ulicą jednokierunkową."),
+        ("Niebezpieczne wyprzedzanie", "Kierowca dostawczaka wyprzedza w miejscu niedozwolonym."),
+        ("Używanie telefonu za kierownicą", "Kierowca autobusu miejskiego używa telefonu podczas jazdy."),
+    ],
+    "PARTICIPANT_HAZARD": [
+        ("Niewidoczny pieszy", "Osoba w ciemnym ubraniu przechodzi przez ruchliwą ulicę poza przejściem."),
+        ("Rowerzysta na chodniku", "Rowerzysta jedzie po chodniku z dużą prędkością, zagraża pieszym."),
+        ("Hulajnoga na jezdni", "Osoba na hulajnodze elektrycznej jedzie środkiem jezdni."),
+        ("Dzieci bawiące się przy drodze", "Grupa dzieci bawi się piłką tuż przy ruchliwej ulicy."),
+        ("Pijany pieszy na drodze", "Osoba nietrzeźwa chodzi po jezdni, ignorując ruch samochodów."),
+        ("Brak kasku na motorze", "Kierowca skutera jedzie bez kasku ochronnego."),
+    ],
+    "WASTE_ILLEGAL_DUMPING": [
+        ("Nielegalne wysypisko śmieci", "Ktoś wyrzucił stertę śmieci w lesie przy ul. {street}. Widać meble i opony."),
+        ("Przepełnione kontenery", "Kontenery na śmieci są przepełnione, odpady leżą dookoła."),
+        ("Porzucona lodówka", "Przy drodze porzucono starą lodówkę. Stoi tam od tygodnia."),
+        ("Śmieci w rzece", "W rzece pływają plastikowe butelki i torby. Ktoś wyrzuca tu odpady."),
+        ("Wyrzucone gruz budowlany", "Na działce porzucono gruz i odpady budowlane."),
+        ("Palenie śmieci", "Ktoś pali śmieci na podwórku, dym unosi się nad okolicą."),
+    ],
+    "BIOLOGICAL_HAZARD": [
+        ("Martwy ptak", "Na chodniku leży martwy gołąb. Może być chory, proszę o usunięcie."),
+        ("Gniazdo os przy wejściu", "Przy wejściu do budynku znajduje się duże gniazdo os. Niebezpieczne dla mieszkańców."),
+        ("Szczury w śmietniku", "W okolicy śmietnika widziano dużo szczurów. Wymaga deratyzacji."),
+        ("Kleszcze w parku", "W parku przy ul. {street} jest dużo kleszczy. Potrzebne opryski."),
+        ("Barszcz Sosnowskiego", "Przy ścieżce rowerowej rośnie barszcz Sosnowskiego - roślina trująca!"),
+        ("Zanieczyszczona woda w stawie", "Woda w stawie miejskim ma dziwny kolor i nieprzyjemny zapach."),
+    ],
+    "OTHER": [
+        ("Hałas z budowy", "Prace budowlane prowadzone są w nocy, uniemożliwiając sen mieszkańcom."),
+        ("Nieprawidłowe parkowanie", "Samochody regularnie parkują na trawniku przy ul. {street}."),
+        ("Brak ławek w parku", "W nowym parku brakuje ławek do siedzenia."),
+        ("Nieczytelny rozkład jazdy", "Rozkład jazdy na przystanku jest wyblakły i nieczytelny."),
+        ("Awaria fontanny", "Fontanna miejska nie działa od miesiąca."),
+        ("Zgubiony pies", "W okolicy biega zagubiony pies z obrożą. Wygląda na przyjaznego."),
+    ]
+}
+
+KRAKOW_STREETS = [
+    "Floriańska", "Grodzka", "Szewska", "Długa", "Starowiślna", "Dietla", "Karmelicka", 
+    "Krakowska", "Kalwaryjska", "Wielicka", "Wadowicka", "Lea", "Pawia", "Lubicz",
+    "Mogilska", "Bieńczycka", "Czyżyny", "Podgórska", "Limanowskiego", "Konopnickiej"
+]
+
+CAR_DESCRIPTIONS = [
+    "srebrnego Volkswagena", "białego BMW", "czarnego Audi", "czerwonej Toyoty",
+    "granatowego Forda", "szarej Skody", "zielonego Opla", "niebieskiego Mercedesa"
+]
 
 def get_db_connection():
     """Create a database connection with retries"""
@@ -150,12 +250,12 @@ def upload_media_file(file_path, token):
         # We assume Direct connection for seeding speed and simplicity
         url = f"{MEDIA_SERVICE_URL}/media"
         
-        # Admin User Details
+        # Superadmin User Details
         headers = {
             "Authorization": f"Bearer {token}",
-            "X-User-ID": ADMIN_UUID,
+            "X-User-ID": SUPERADMIN_UUID,
             "X-User-Role": "admin",
-            "X-User-Email": "admin@riskradar.local",
+            "X-User-Email": "superadmin@riskradar.local",
             "X-Correlation-ID": f"seeder-{uuid.uuid4()}"
         }
         
@@ -231,68 +331,33 @@ def generate_location_in_krakow():
     
     return lat, lon
 
-def ensure_roles(conn):
-    """Ensure basic roles and permissions exist if they were wiped"""
-    logger.info("Verifying/Restoring Roles and Permissions...")
+def wait_for_roles(conn):
+    """Wait for authz-service to populate roles and permissions"""
+    logger.info("Waiting for authz-service to initialize roles (migration check)...")
     cur = conn.cursor()
+    timeout = 60 # seconds
+    start = time.time()
     
-    # 1. Insert Roles
-    roles = ["admin", "moderator", "volunteer", "user"]
-    for r in roles:
-        cur.execute("INSERT INTO roles (name) VALUES (%s) ON CONFLICT (name) DO NOTHING", (r,))
+    while time.time() - start < timeout:
+        cur.execute("SELECT count(*) FROM roles WHERE name = 'admin'")
+        count = cur.fetchone()[0]
+        if count > 0:
+            cur.execute("SELECT count(*) FROM permissions")
+            p_count = cur.fetchone()[0]
+            if p_count > 5: # Arbitrary check to ensure permissions are seeded
+                logger.info("✅ Roles and Permissions detected.")
+                return
+        
+        logger.info("⏳ Waiting for Roles/Permissions to appear in DB...")
+        time.sleep(2)
     
-    # 2. Insert Basic Permissions (Simplified)
-    # This is a fallback. Ideally authz-service handles this complexity.
-    # We will just recreate basic ones needed for demo interactions.
-    
-    permissions = [
-        # Resource, Action, Name
-        ("system", "*", "*:*"), 
-        ("reports", "create", "reports:create"),
-        ("reports", "read", "reports:read"),
-        ("media", "update", "media:update"),
-        ("media", "read-all", "media:read-all"),
-        ("media", "upload", "media:upload") # If exists
-    ]
-    
-    for res, act, name in permissions:
-        cur.execute("""
-            INSERT INTO permissions (name, resource, action) 
-            VALUES (%s, %s, %s) 
-            ON CONFLICT (name) DO NOTHING
-        """, (name, res, act))
-
-    # 3. Link Admin to *:*
-    cur.execute("SELECT id FROM roles WHERE name = 'admin'")
-    admin_role_id = cur.fetchone()[0]
-    
-    cur.execute("SELECT id FROM permissions WHERE name = '*:*'")
-    perm_id = cur.fetchone()[0]
-    
-    cur.execute("""
-        INSERT INTO role_permissions (role_id, permission_id) 
-        VALUES (%s, %s)
-        ON CONFLICT (role_id, permission_id) DO NOTHING
-    """, (admin_role_id, perm_id))
-    
-    # 4. Link User to reports:create/read
-    cur.execute("SELECT id FROM roles WHERE name = 'user'")
-    user_role_id = cur.fetchone()[0]
-    
-    cur.execute("SELECT id FROM permissions WHERE name IN ('reports:create', 'reports:read')")
-    for row in cur.fetchall():
-        cur.execute("""
-            INSERT INTO role_permissions (role_id, permission_id) 
-            VALUES (%s, %s)
-            ON CONFLICT (role_id, permission_id) DO NOTHING
-        """, (user_role_id, row[0]))
-
-    logger.info("Roles and Permissions ensured.")
+    logger.error("❌ Timed out waiting for authz-service to seed roles.")
+    raise Exception("Authz service did not seed roles in time. Is it running?")
 
 def seed_data():
     conn = get_db_connection()
     wait_for_tables(conn)
-    ensure_roles(conn) # New Step
+    wait_for_roles(conn)
     cur = conn.cursor()
 
 
@@ -307,17 +372,24 @@ def seed_data():
     # ----------------
     logger.info("Seeding Users & Roles...")
     
-    hashed_password = generate_hashed_password("admin123") # Default password for non-admin demo users
-    hashed_admin_password = generate_hashed_password(ADMIN_PASSWORD)
-
+    logger.info("="*60)
+    logger.info("🔐 SUPERADMIN CREDENTIALS:")
+    logger.info(f"   username='superadmin' password='{SUPERADMIN_PASSWORD}'")
+    logger.info("="*60)
+    logger.info("📢 TEST ACCOUNTS:")
+    logger.info("   ADMIN:      username='admin' password='admin'")
+    logger.info("   MODERATOR:  username='moderator' password='moderator'")
+    logger.info("   VOLUNTEER:  username='wolontariusz' password='wolontariusz'")
+    logger.info("   USER:       username='uzytkownik' password='uzytkownik'")
+    logger.info("="*60)
+    
     users = [
         # (uuid, email, username, password_hash, role_name)
-        # Note: We create BOTH 'admin' and 'superadmin' to be safe with login variations
-        (ADMIN_UUID, "admin@riskradar.local", "admin", hashed_admin_password, "admin"), 
-        (str(uuid.uuid4()), "superadmin@riskradar.local", "superadmin", hashed_admin_password, "admin"),
-        (str(uuid.uuid4()), "moderator@demo.pl", "moderator", hashed_password, "moderator"),
-        (str(uuid.uuid4()), "wolontariusz@demo.pl", "wolontariusz", hashed_password, "volunteer"),
-        (str(uuid.uuid4()), "user@demo.pl", "uzytkownik", hashed_password, "user")
+        (SUPERADMIN_UUID, f"superadmin@{EMAIL_DOMAIN}", "superadmin", generate_hashed_password(SUPERADMIN_PASSWORD), "admin"),
+        (str(uuid.uuid4()), f"admin@{EMAIL_DOMAIN}", "admin", generate_hashed_password("admin"), "admin"),
+        (str(uuid.uuid4()), f"moderator@{EMAIL_DOMAIN}", "moderator", generate_hashed_password("moderator"), "moderator"),
+        (str(uuid.uuid4()), f"wolontariusz@{EMAIL_DOMAIN}", "wolontariusz", generate_hashed_password("wolontariusz"), "volunteer"),
+        (str(uuid.uuid4()), f"uzytkownik@{EMAIL_DOMAIN}", "uzytkownik", generate_hashed_password("uzytkownik"), "user")
     ]
     
     user_map = {} # username -> uuid
@@ -353,8 +425,8 @@ def seed_data():
     # ---------------
     logger.info("Seeding Media Assets via Media Service API...")
     
-    # We will upload images using the Admin user token
-    admin_token = generate_admin_jwt(ADMIN_UUID, "admin@riskradar.local", "superadmin")
+    # We will upload images using the Superadmin user token (full permissions)
+    admin_token = generate_admin_jwt(SUPERADMIN_UUID, "superadmin@riskradar.local", "superadmin")
     
     category_media_map = {} # category_name -> media_uuid
     
@@ -378,8 +450,9 @@ def seed_data():
     reports_data = []
     report_images_data = []
     
+    # Use realistic date range up to today (January 14, 2026)
     start_date = datetime.date(2025, 10, 1)
-    end_date = datetime.date(2026, 2, 28)
+    end_date = datetime.date.today()  # Use current date, not future dates
     
     demo_user_ids = list(user_map.values())
 
@@ -394,9 +467,15 @@ def seed_data():
         
         lat, lon = generate_location_in_krakow()
         
-        # Real-ish title description
-        title = fake.sentence(nb_words=4).replace(".", "")
-        desc = fake.paragraph(nb_sentences=2)
+        # Get realistic title and description from templates
+        templates = REPORT_TEMPLATES.get(cat_code, REPORT_TEMPLATES["OTHER"])
+        template_title, template_desc = random.choice(templates)
+        
+        # Fill in placeholders
+        street = random.choice(KRAKOW_STREETS)
+        car = random.choice(CAR_DESCRIPTIONS)
+        title = template_title
+        desc = template_desc.format(street=street, car=car)
         
         # Timestamp
         created_at = fake.date_time_between(start_date=start_date, end_date=end_date)
@@ -481,23 +560,72 @@ def seed_data():
     logger.info("Generating Notifications...")
     # NOTE: Schema for notifications_inbox: 
     # id, user_id, event_id, event_type, title, body, metadata, is_read, ...
+    # IMPORTANT: event_type must match notification-service templates (see validation/schemas.ts)
     
     notif_data = []
+    # These event_types match notification-service's template-definitions.ts
     notif_templates = [
-        ("REPORT_APPROVED", "Twoje zgłoszenie zostało zaakceptowane", "Dziękujemy za wkład w bezpieczeństwo."),
-        ("REPORT_REJECTED", "Zgłoszenie odrzucone", "Twoje zgłoszenie narusza regulamin."),
-        ("AI_FLAGGED", "Weryfikacja AI", "System oznaczył Twoje zgłoszenie do dodatkowej weryfikacji.")
+        # Report status changes (REPORT_STATUS_CHANGED)
+        ("REPORT_STATUS_CHANGED", "Zmiana statusu zgłoszenia", "Status Twojego zgłoszenia 'Dziura w jezdni przy ul. Dietla' został zmieniony na: VERIFIED"),
+        ("REPORT_STATUS_CHANGED", "Zgłoszenie zweryfikowane", "Status Twojego zgłoszenia 'Wandalizm na Plantach' został zmieniony na: VERIFIED"),
+        ("REPORT_STATUS_CHANGED", "Zgłoszenie odrzucone", "Status Twojego zgłoszenia 'Uszkodzona latarnia' został zmieniony na: REJECTED"),
+        ("REPORT_STATUS_CHANGED", "Zgłoszenie w trakcie realizacji", "Status Twojego zgłoszenia 'Nielegalne wysypisko śmieci' został zmieniony na: IN_PROGRESS"),
+        
+        # AI verification (REPORT_AI_VERIFIED)
+        ("REPORT_AI_VERIFIED", "Raport zweryfikowany przez AI", "Twój raport dotyczący uszkodzonej infrastruktury został automatycznie zweryfikowany przez system AI."),
+        ("REPORT_AI_VERIFIED", "Automatyczna weryfikacja zakończona", "System AI zakończył weryfikację Twojego zgłoszenia. Raport został oznaczony jako wiarygodny."),
+        
+        # AI flagged reports (REPORT_AI_FLAGGED)
+        ("REPORT_AI_FLAGGED", "Raport oznaczony przez AI", "Twój raport został oznaczony jako wymagający dodatkowej weryfikacji przez moderatora."),
+        ("REPORT_AI_FLAGGED", "Zgłoszenie wymaga uwagi", "System AI wykrył potencjalne nieścisłości. Moderator sprawdzi zgłoszenie."),
+        
+        # Fake report detected (FAKE_REPORT_DETECTED)
+        ("FAKE_REPORT_DETECTED", "Wykryto podejrzany raport", "Twój raport został oznaczony jako potencjalnie nieprawdziwy. Skontaktuj się z moderatorem."),
+        
+        # Media operations (MEDIA_APPROVED, MEDIA_REJECTED, MEDIA_FLAGGED_NSFW)
+        ("MEDIA_APPROVED", "Plik zatwierdzony", "Twoje zdjęcie dołączone do zgłoszenia zostało zatwierdzone i jest teraz widoczne."),
+        ("MEDIA_REJECTED", "Plik odrzucony", "Twoje zdjęcie zostało odrzucone. Powód: Niewyraźne zdjęcie, proszę dodać lepszej jakości."),
+        ("MEDIA_FLAGGED_NSFW", "Plik oznaczony jako wrażliwy", "Twoje zdjęcie zostało oznaczone jako zawierające treści wymagające weryfikacji."),
+        
+        # Role changes (ROLE_ASSIGNED, ROLE_REVOKED)
+        ("ROLE_ASSIGNED", "Nowa rola przypisana", "Gratulacje! Zostałeś awansowany na wolontariusza. Możesz teraz weryfikować zgłoszenia."),
+        ("ROLE_REVOKED", "Rola cofnięta", "Twoja rola moderatora została tymczasowo zawieszona. Skontaktuj się z administratorem."),
+        
+        # User account (USER_REGISTERED, USER_BANNED, USER_UNBANNED)
+        ("USER_REGISTERED", "Witaj w serwisie!", "Twoje konto w Risk Radar zostało pomyślnie utworzone. Zacznij zgłaszać zagrożenia!"),
+        ("USER_UNBANNED", "Konto odblokowane", "Twoje konto zostało odblokowane. Możesz ponownie korzystać z systemu Risk Radar."),
+        
+        # Report created (REPORT_CREATED) 
+        ("REPORT_CREATED", "Zgłoszenie utworzone", "Twoje zgłoszenie 'Uszkodzona nawierzchnia przy Rynku' zostało przyjęte do weryfikacji."),
+        ("REPORT_CREATED", "Nowe zgłoszenie zarejestrowane", "Dziękujemy za zgłoszenie! Twój raport został przekazany do weryfikacji przez AI."),
+        
+        # Security alerts (AUDIT_SECURITY_EVENT_DETECTED)
+        ("AUDIT_SECURITY_EVENT_DETECTED", "Alert bezpieczeństwa", "Wykryto logowanie z nowego urządzenia. Jeśli to nie Ty, zmień hasło."),
     ]
     
+    # Welcome demo notification for each user (unread)
+    WELCOME_DEMO_NOTIFICATION = (
+        "USER_REGISTERED",
+        "🎉 Witaj w trybie demo!",
+        "To jest konto demonstracyjne systemu Risk Radar. Wszystkie funkcje działają w trybie demo - możesz swobodnie testować zgłaszanie zdarzeń, przeglądanie mapy i inne opcje. Dane są resetowane okresowo."
+    )
+    
     for uid in demo_user_ids:
-        # Generate 5 read, 1 unread for each user
-        for i in range(6):
-            is_read = (i < 5)
+        # First add the welcome demo notification (always unread, newest)
+        notif_data.append((
+            str(uuid.uuid4()), uid, str(uuid.uuid4()), 
+            WELCOME_DEMO_NOTIFICATION[0], WELCOME_DEMO_NOTIFICATION[1], WELCOME_DEMO_NOTIFICATION[2], 
+            Json({"demo": True}), False, datetime.datetime.now()
+        ))
+        
+        # Generate 5 read notifications for each user
+        for i in range(5):
             evt_type, title, body = random.choice(notif_templates)
+            ts = fake.date_time_between(start_date=start_date, end_date=end_date)
             
             notif_data.append((
                 str(uuid.uuid4()), uid, str(uuid.uuid4()), evt_type, title, body, 
-                Json({}), is_read, datetime.datetime.now()
+                Json({}), True, ts
             ))
 
     execute_batch(cur, """

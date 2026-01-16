@@ -1,0 +1,32 @@
+import { NextRequest, NextResponse } from "next/server"
+import { AUDIT_SERVICE_URL, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
+
+export async function GET(request: NextRequest) {
+    const authHeader = request.headers.get("Authorization")
+    if (!authHeader) {
+        return errorResponse("Unauthorized", 401)
+    }
+
+    const { searchParams } = new URL(request.url)
+    const upstreamUrl = new URL(`${AUDIT_SERVICE_URL}/logs/login-history`)
+
+    searchParams.forEach((value, key) => {
+        upstreamUrl.searchParams.set(key, value)
+    })
+
+    try {
+        const res = await fetch(upstreamUrl.toString(), withAuthAndUserId(authHeader))
+
+        if (!res.ok) {
+            const errorText = await res.text().catch(() => "Unknown error")
+            console.error(`[admin/audit/login-history] Upstream error ${res.status}:`, errorText)
+            return errorResponse(`Failed to fetch login history: ${res.status}`, res.status)
+        }
+
+        const data = await res.json()
+        return NextResponse.json(data)
+    } catch (error) {
+        console.error("[admin/audit/login-history] Error:", error)
+        return errorResponse("Internal Server Error", 500)
+    }
+}

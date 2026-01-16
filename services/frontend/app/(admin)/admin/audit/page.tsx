@@ -134,7 +134,13 @@ export default function AuditPage() {
                 // Only update if this is the latest request
                 if (lastRequestTime.current === requestId) {
                     if (error) {
-                        toast.error("Błąd pobierania logów", { description: error })
+                        // Fix: Ensure description is a string/node, not an object
+                        toast.error("Błąd pobierania logów", {
+                            description:
+                                typeof error === "object"
+                                    ? (error as Error)?.message || JSON.stringify(error)
+                                    : String(error)
+                        })
                     } else {
                         setLogs(data.data)
                         setPagination(data.pagination)
@@ -154,10 +160,12 @@ export default function AuditPage() {
         fetchLogs()
     }, [filters, isLive])
 
-    // WebSocket logic
+    // WebSocket logic - needs direct connection to backend (Next.js doesn't proxy WebSockets well)
     useEffect(() => {
         if (isLive) {
             const token = localStorage.getItem("access_token")
+            // WebSocket needs to connect directly to the API Gateway
+            // Use NEXT_PUBLIC_API_GATEWAY_URL for browser-side connections
             const gatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8090"
 
             socketRef.current = io(gatewayUrl, {

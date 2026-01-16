@@ -184,12 +184,12 @@ func PermissionChanged(kind, actorID, permissionID, actionName, resource, descri
 
 // DBError helper
 func DBError(operation, class string) {
-	LogAction(&AuditLog{Service: "authz-service", Action: "db_error", Status: "error", LogType: "ERROR", Metadata: map[string]any{"operation": operation, "error_class": class}})
+	LogAction(&AuditLog{Service: "authz-service", Action: "db_error", Actor: map[string]any{"id": "system", "type": "system"}, Status: "error", LogType: "ERROR", Metadata: map[string]any{"operation": operation, "error_class": class}})
 }
 
 // GenericEvent helper
 func GenericEvent(eventType string, payload any) {
-	LogAction(&AuditLog{Service: "authz-service", Action: eventType, Status: "success", LogType: "INFO", Metadata: map[string]any{"payload": payload}})
+	LogAction(&AuditLog{Service: "authz-service", Action: eventType, Actor: map[string]any{"id": "system", "type": "system"}, Status: "success", LogType: "INFO", Metadata: map[string]any{"payload": payload}})
 }
 
 func enrich(a *AuditLog) {
@@ -207,6 +207,10 @@ func enrich(a *AuditLog) {
 	}
 	if a.LogType == "" {
 		a.LogType = "INFO"
+	}
+	// Actor is required by audit-log-service schema
+	if a.Actor == nil {
+		a.Actor = map[string]any{"id": "system", "type": "system"}
 	}
 }
 

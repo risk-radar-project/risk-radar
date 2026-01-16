@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server"
 import { parseJwt } from "@/lib/auth/jwt-utils"
-
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://127.0.0.1:8080"
-const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || "http://127.0.0.1:8085"
+import { USER_SERVICE_URL, REPORT_SERVICE_URL, errorResponse } from "@/lib/api/server-config"
 
 export async function GET(request: Request) {
     try {
         // 1. Check Authorization
         const authHeader = request.headers.get("Authorization")
         if (!authHeader?.startsWith("Bearer ")) {
-            return NextResponse.json({ error: "Missing or invalid authorization token" }, { status: 401 })
+            return errorResponse("Missing or invalid authorization token", 401)
         }
 
         const token = authHeader.substring(7)

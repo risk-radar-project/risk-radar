@@ -1,5 +1,5 @@
 import type { ApiResponse } from "./types"
-import { NOTIFICATIONS_API_URL, getFreshAccessToken } from "@/lib/auth/auth-service"
+import { getFreshAccessToken } from "@/lib/auth/auth-service"
 
 export type Notification = {
     id: string
@@ -42,7 +42,7 @@ export async function getNotifications(
     if (params.limit !== undefined) queryParams.set("limit", params.limit.toString())
     if (params.isRead !== undefined) queryParams.set("isRead", params.isRead.toString())
 
-    const response = await fetch(`${NOTIFICATIONS_API_URL}/notifications?${queryParams.toString()}`, {
+    const response = await fetch(`/api/notifications?${queryParams.toString()}`, {
         method: "GET",
         headers: {
             Authorization: `Bearer ${token}`
@@ -75,7 +75,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<Ap
         throw new Error("Nie jesteś zalogowany")
     }
 
-    const response = await fetch(`${NOTIFICATIONS_API_URL}/notifications/${notificationId}/read`, {
+    const response = await fetch(`/api/notifications/${notificationId}/read`, {
         method: "POST",
         headers: {
             Authorization: `Bearer ${token}`
@@ -106,7 +106,7 @@ export async function markNotificationAsUnread(notificationId: string): Promise<
         throw new Error("Nie jesteś zalogowany")
     }
 
-    const response = await fetch(`${NOTIFICATIONS_API_URL}/notifications/${notificationId}/unread`, {
+    const response = await fetch(`/api/notifications/${notificationId}/unread`, {
         method: "POST",
         headers: {
             Authorization: `Bearer ${token}`

@@ -25,9 +25,16 @@ export function useHydrateSession() {
             const payload = parseJwt(token)
             if (payload) {
                 // Map payload to SessionUser
+                // Note: userId contains UUID, sub contains username (for historical reasons)
+                // username claim was added for clarity
                 const user: SessionUser = {
                     id: payload.userId || payload.sub || "",
-                    username: payload.sub || "User",
+                    username:
+                        typeof payload.username === "string"
+                            ? payload.username
+                            : typeof payload.sub === "string"
+                              ? payload.sub
+                              : "User",
                     email: (payload.email as string) || "",
                     roles: payload.roles || []
                 }

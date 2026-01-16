@@ -53,18 +53,19 @@ def clean_database():
         
         # Order matters due to foreign keys!
         tables_to_truncate = [
+            # "schema_migrations", # DO NOT RESET MIGRATIONS - Services only migrate on startup!
             "audit_logs",
             "notifications_inbox",
             "email_jobs",
             "event_dispatch_log",
-            "notification_rules",
-            "notification_templates",
+            # "notification_rules", # Config table - seeded by notification-service
+            # "notification_templates", # Config table - seeded by notification-service
             "report_image_ids", # ElementCollection for Report
             "report",
-            "role_permissions",
+            # "role_permissions", # Keep static roles/perms
             "user_roles",
-            "permissions",
-            "roles",
+            # "permissions", # Keep static roles/perms
+            # "roles", # Keep static roles/perms
             "users",
             "media_assets",
             # Add other tables here if needed

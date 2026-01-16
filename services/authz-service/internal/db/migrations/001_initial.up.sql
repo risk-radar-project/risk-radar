@@ -188,7 +188,7 @@ BEGIN
         'reports:categorize', 'reports:rate-severity', 'users:profile', 'users:history',
         'users:delete-account', 'ai:chat', 'ai:summary',
         -- Volunteer specific permissions
-        'reports:cancel-any', 'reports:validate'
+        'reports:cancel-any', 'reports:validate', 'reports:edit'
     )
     ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -203,18 +203,19 @@ BEGIN
     ON CONFLICT (role_id, permission_id) DO NOTHING;
 END $$;
 
--- Seed default admin user into user_roles
+-- Seed superadmin user into user_roles
 -- Note: authz-service does not own the 'users' table, so we only seed the role assignment.
--- The user with this ID must be created in user-service manually or synchronized.
+-- The user with this ID must be created in user-service.
 DO $$
 DECLARE
     admin_role_id UUID;
-    -- Hardcoded Admin UUID for bootstrapping (e.g. for development/recovery)
-    admin_user_id UUID := '11111111-1111-1111-1111-111111111111'; 
+    -- Superadmin UUID - has full permissions
+    superadmin_user_id UUID := '11111111-1111-1111-1111-111111111111';
 BEGIN
     SELECT id INTO admin_role_id FROM roles WHERE name = 'admin';
 
+    -- Assign admin role to superadmin
     INSERT INTO user_roles (user_id, role_id)
-    VALUES (admin_user_id, admin_role_id)
+    VALUES (superadmin_user_id, admin_role_id)
     ON CONFLICT (user_id, role_id) DO NOTHING;
 END $$;

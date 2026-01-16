@@ -2,8 +2,9 @@ import type { ApiResponse, LoginEvent, AuditLogFilters, AuditLogResponse } from 
 import { isTokenExpired } from "@/lib/auth/jwt-utils"
 import { refreshAccessToken } from "@/lib/auth/auth-service"
 
-// Prefer explicit gateway URL when provided; fallback to local gateway port.
-const AUDIT_API_BASE = `${process.env.NEXT_PUBLIC_API_GATEWAY_URL ?? "http://localhost:8090"}/api/audit`
+// Use Next.js Route Handlers as BFF - all requests go through /api/admin/audit
+// This ensures consistent routing and proper server-side proxying
+const AUDIT_API_BASE = "/api/admin/audit"
 
 async function getFreshAccessToken(): Promise<string | null> {
     if (typeof window === "undefined") return null
@@ -41,20 +42,23 @@ export async function getAuditLogs(filters: AuditLogFilters): Promise<ApiRespons
         }
     }
 
-    const url = new URL(`${AUDIT_API_BASE}/logs`)
-    if (filters.service) url.searchParams.set("service", filters.service)
-    if (filters.action) url.searchParams.set("action", filters.action)
-    if (filters.actor_id) url.searchParams.set("actor_id", filters.actor_id)
-    if (filters.status) url.searchParams.set("status", filters.status)
-    if (filters.log_type) url.searchParams.set("log_type", filters.log_type)
-    if (filters.start_date) url.searchParams.set("start_date", filters.start_date)
-    if (filters.end_date) url.searchParams.set("end_date", filters.end_date)
-    if (filters.page) url.searchParams.set("page", String(filters.page))
-    if (filters.limit) url.searchParams.set("limit", String(filters.limit))
-    if (filters.sort_by) url.searchParams.set("sort_by", filters.sort_by)
-    if (filters.order) url.searchParams.set("order", filters.order)
+    // Build URL with query parameters
+    const params = new URLSearchParams()
+    if (filters.service) params.set("service", filters.service)
+    if (filters.action) params.set("action", filters.action)
+    if (filters.actor_id) params.set("actor_id", filters.actor_id)
+    if (filters.status) params.set("status", filters.status)
+    if (filters.log_type) params.set("log_type", filters.log_type)
+    if (filters.start_date) params.set("start_date", filters.start_date)
+    if (filters.end_date) params.set("end_date", filters.end_date)
+    if (filters.page) params.set("page", String(filters.page))
+    if (filters.limit) params.set("limit", String(filters.limit))
+    if (filters.sort_by) params.set("sort_by", filters.sort_by)
+    if (filters.order) params.set("order", filters.order)
 
-    const response = await fetch(url.toString(), {
+    const url = `${AUDIT_API_BASE}?${params.toString()}`
+
+    const response = await fetch(url, {
         cache: "no-store",
         headers: {
             Authorization: `Bearer ${token}`
@@ -88,11 +92,13 @@ export async function getLoginHistory(actorId: string, limit = 10): Promise<ApiR
         return { data: [], error: "Not authenticated" }
     }
 
-    const url = new URL(`${AUDIT_API_BASE}/logs/login-history`)
-    url.searchParams.set("actor_id", actorId)
-    url.searchParams.set("limit", String(limit))
+    const params = new URLSearchParams()
+    params.set("actor_id", actorId)
+    params.set("limit", String(limit))
 
-    const response = await fetch(url.toString(), {
+    const url = `${AUDIT_API_BASE}/login-history?${params.toString()}`
+
+    const response = await fetch(url, {
         headers: {
             Authorization: `Bearer ${token}`
         }

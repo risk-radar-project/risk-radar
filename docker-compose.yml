@@ -18,7 +18,7 @@ x-global-env: &global-env
     JWT_REFRESH_SECRET: bNa5h++JFlleDXl3wm0pSDSlSD2rDrigCRPJTt0F00vRonkabew2JsKKHMUTwvaOXH8u0oQ8ZXnphXh/gl0F5g==
     DATABASE_URL: postgres://risk-radar-admin:passwd@postgres:5432/risk-radar?sslmode=disable
     NODE_ENV: development
-    DEMO_MODE: "${DEMO_MODE:-false}"
+    DEMO_MODE: "false"
 
 services:
     user-service:
@@ -265,11 +265,17 @@ services:
             - media-service
         environment:
             <<: *global-env
+            # Server-side URLs (internal Docker network)
             GATEWAY_URL: http://api-gateway:8080
             MAP_SERVICE_URL: http://map-service:8080
             REPORT_SERVICE_URL: http://report-service:8080
             USER_SERVICE_URL: http://user-service:8080
-            MEDIA_SERVICE_URL: http://api-gateway:8080/api/media
+            AUTHZ_SERVICE_URL: http://authz-service:8080
+            AUDIT_SERVICE_URL: http://audit-log-service:8080
+            MEDIA_SERVICE_URL: http://media-service:8080
+            NOTIFICATION_SERVICE_URL: http://notification-service:8080
+            # Client-side URL (browser access - for WebSockets only)
+            NEXT_PUBLIC_API_GATEWAY_URL: http://localhost:8090
         networks:
             - backend
         ports:

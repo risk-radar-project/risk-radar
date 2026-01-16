@@ -195,6 +195,7 @@ func ClientIP(r *http.Request) string {
 
 func DemoMode(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// In demo mode, only block DELETE to prevent data destruction
 		if r.Method == http.MethodDelete {
 			WriteJSONError(w, http.StatusForbidden, "DEMO_MODE_RESTRICTION", "Delete actions are disabled in Demo Mode")
 			return

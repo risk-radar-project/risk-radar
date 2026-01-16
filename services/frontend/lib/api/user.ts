@@ -1,5 +1,5 @@
 import type { ApiResponse, User } from "./types"
-import { API_BASE_URL, getFreshAccessToken } from "@/lib/auth/auth-service"
+import { getFreshAccessToken } from "@/lib/auth/auth-service"
 
 // Fetch current user profile from backend
 export async function getUserProfile(): Promise<ApiResponse<User>> {
@@ -12,7 +12,7 @@ export async function getUserProfile(): Promise<ApiResponse<User>> {
         }
     }
 
-    const response = await fetch(`${API_BASE_URL}/me`, {
+    const response = await fetch(`/api/me`, {
         method: "GET",
         headers: {
             Authorization: `Bearer ${token}`
@@ -38,7 +38,7 @@ export async function getUserProfile(): Promise<ApiResponse<User>> {
 }
 // Request a password reset link via API Gateway
 export async function requestPasswordReset(email: string): Promise<ApiResponse<{ message: string }>> {
-    const response = await fetch(`${API_BASE_URL}/forgot-password`, {
+    const response = await fetch(`/api/forgot-password`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -72,7 +72,7 @@ export async function changeEmail(newEmail: string): Promise<ApiResponse<void>> 
     const token = await getFreshAccessToken()
     if (!token) return { data: undefined as unknown as void, error: "Not authenticated" }
 
-    const response = await fetch(`${API_BASE_URL}/change-email`, {
+    const response = await fetch(`/api/change-email`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -100,7 +100,7 @@ export async function changeEmail(newEmail: string): Promise<ApiResponse<void>> 
 }
 
 export async function confirmPasswordReset(token: string, newPassword: string): Promise<ApiResponse<{ message: string }>> {
-    const response = await fetch(`${API_BASE_URL}/reset-password`, {
+    const response = await fetch(`/api/reset-password`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -129,7 +129,7 @@ export async function confirmPasswordReset(token: string, newPassword: string): 
 }
 
 export async function validateResetToken(token: string): Promise<ApiResponse<{ valid: boolean }>> {
-    const response = await fetch(`${API_BASE_URL}/validate-reset-token`, {
+    const response = await fetch(`/api/validate-reset-token`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"

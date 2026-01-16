@@ -1,6 +1,8 @@
-import { GATEWAY_URL, getFreshAccessToken } from "@/lib/auth/auth-service"
+import { getFreshAccessToken } from "@/lib/auth/auth-service"
 
-const AUTHZ_BASE_URL = `${GATEWAY_URL}/api/authz`
+// Use Next.js Route Handlers as BFF - all requests go through /api/admin/authz
+// This ensures consistent routing and proper server-side proxying
+const AUTHZ_BASE_URL = "/api/admin/authz"
 
 export type Permission = {
     id: string
