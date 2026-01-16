@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server"
 import { parseJwt } from "@/lib/auth/jwt-utils"
-
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://127.0.0.1:8080"
-const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || "http://127.0.0.1:8085"
+import { GATEWAY_URL, errorResponse } from "@/lib/api/server-config"
 
 export async function GET(request: Request) {
     try {
         // 1. Check Authorization
         const authHeader = request.headers.get("Authorization")
         if (!authHeader?.startsWith("Bearer ")) {
-            return NextResponse.json({ error: "Missing or invalid authorization token" }, { status: 401 })
+            return errorResponse("Missing or invalid authorization token", 401)
         }
 
         const token = authHeader.substring(7)
@@ -46,7 +44,8 @@ export async function GET(request: Request) {
         }
 
         try {
-            const reportRes = await fetch(`${REPORT_SERVICE_URL}/reports/stats`, {
+            // Gateway strips /api/reports, so report-service receives /reports/stats
+            const reportRes = await fetch(`${GATEWAY_URL}/api/reports/reports/stats`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "X-User-ID": payload.userId || ""
@@ -68,7 +67,7 @@ export async function GET(request: Request) {
         }
 
         try {
-            const userRes = await fetch(`${USER_SERVICE_URL}/users/stats`, {
+            const userRes = await fetch(`${GATEWAY_URL}/api/users/stats`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "X-User-ID": payload.userId || ""

@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
+import { GATEWAY_URL, withAuthHandler } from "@/lib/api/server-config"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
-    const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || "http://127.0.0.1:8085"
-
-    try {
-        const authHeader = request.headers.get("Authorization")
-
-        const res = await fetch(`${REPORT_SERVICE_URL}/reports/pending`, {
+    return withAuthHandler(request, async (token) => {
+        // Gateway strips /api/reports, so report-service receives /reports/pending
+        const res = await fetch(`${GATEWAY_URL}/api/reports/reports/pending`, {
             cache: "no-store",
             headers: {
-                ...(authHeader ? { Authorization: authHeader } : {})
+                Authorization: `Bearer ${token}`
             }
         })
 
@@ -23,8 +21,5 @@ export async function GET(request: NextRequest) {
 
         const data = await res.json()
         return NextResponse.json(data)
-    } catch (error) {
-        console.error("[API] Error fetching pending reports:", error)
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-    }
+    })
 }

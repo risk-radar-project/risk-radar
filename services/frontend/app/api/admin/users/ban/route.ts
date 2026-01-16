@@ -1,23 +1,18 @@
 import { NextResponse } from "next/server"
+import { GATEWAY_URL, withAuth, errorResponse } from "@/lib/api/server-config"
 
 export async function POST(request: Request) {
     const authHeader = request.headers.get("Authorization")
     if (!authHeader) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        return errorResponse("Unauthorized", 401)
     }
 
-    const body = await request.json()
-
-    const USER_SERVICE = process.env.USER_SERVICE_URL || "http://127.0.0.1:8080"
-    const targetUrl = `${USER_SERVICE}/banUser`
-
     try {
-        const res = await fetch(targetUrl, {
+        const body = await request.json()
+
+        const res = await fetch(`${GATEWAY_URL}/api/banUser`, {
             method: "POST",
-            headers: {
-                Authorization: authHeader,
-                "Content-Type": "application/json"
-            },
+            ...withAuth(authHeader),
             body: JSON.stringify(body)
         })
 
@@ -29,7 +24,7 @@ export async function POST(request: Request) {
         const data = await res.json()
         return NextResponse.json(data)
     } catch (error) {
-        console.error("Error banning user:", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        console.error("[admin/users/ban] Error:", error)
+        return errorResponse("Internal Server Error", 500)
     }
 }

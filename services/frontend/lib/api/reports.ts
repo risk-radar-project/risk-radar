@@ -1,6 +1,5 @@
-import { apiFetch } from "./fetcher"
 import type { ApiResponse, Report } from "./types"
-import { getFreshAccessToken, REPORTS_API_URL } from "@/lib/auth/auth-service"
+import { getFreshAccessToken } from "@/lib/auth/auth-service"
 
 // Fetch user's own reports
 export async function getMyReports(
@@ -23,18 +22,25 @@ export async function getMyReports(
 
     const token = await getFreshAccessToken()
 
-    const data = await apiFetch<{ content: Report[]; totalElements: number; totalPages: number }>(
-        `${REPORTS_API_URL}/my-reports?${params.toString()}`,
-        {
-            headers: token ? { Authorization: `Bearer ${token}` } : {}
-        }
-    )
+    const response = await fetch(`/api/reports/my-reports?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+
+    if (!response.ok) {
+        throw new Error("Failed to fetch reports")
+    }
+
+    const data = await response.json()
     return { data }
 }
 
 // Fetch report details
 export async function getReport(id: string): Promise<ApiResponse<Report>> {
-    const data = await apiFetch<Report>(`${REPORTS_API_URL}/${id}`)
+    const response = await fetch(`/api/reports/${id}`)
+    if (!response.ok) {
+        throw new Error("Failed to fetch report")
+    }
+    const data = await response.json()
     return { data }
 }
 
@@ -44,20 +50,30 @@ export async function updateReport(
     data: { title: string; description: string; category?: string }
 ): Promise<ApiResponse<Report>> {
     const token = await getFreshAccessToken()
-    const updated = await apiFetch<Report>(`${REPORTS_API_URL}/${id}`, {
+    const response = await fetch(`/api/reports/${id}`, {
         method: "PATCH",
-        body: JSON.stringify(data),
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(data)
     })
+    if (!response.ok) {
+        throw new Error("Failed to update report")
+    }
+    const updated = await response.json()
     return { data: updated }
 }
 
 // Delete a report
 export async function deleteReport(id: string): Promise<ApiResponse<void>> {
     const token = await getFreshAccessToken()
-    await apiFetch<void>(`${REPORTS_API_URL}/${id}`, {
+    const response = await fetch(`/api/reports/${id}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {}
     })
+    if (!response.ok && response.status !== 204) {
+        throw new Error("Failed to delete report")
+    }
     return { data: undefined as unknown as void }
 }

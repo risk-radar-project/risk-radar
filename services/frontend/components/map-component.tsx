@@ -7,6 +7,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css"
 import "leaflet.markercluster/dist/MarkerCluster.Default.css"
 import "leaflet.markercluster"
 import { useAuth } from "@/hooks/use-auth"
+import { getFreshAccessToken } from "@/lib/auth/auth-service"
 
 const MEDIA_SERVICE_BASE_URL = "/api/image/"
 
@@ -383,7 +384,10 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
 
                     // Safe error handling
                     img.addEventListener("error", () => {
-                        img.style.display = "none"
+                        console.error(`Failed to load image: ${thumbImageUrl}`)
+                        // Keep visible but maybe show error border
+                        img.style.border = "2px solid red"
+                        // img.style.display = "none" // Don't hide completely so we know it's there
                     })
 
                     imageContainer.appendChild(img)
@@ -812,10 +816,18 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
         }
 
         try {
+            const token = await getFreshAccessToken()
+            if (!token) {
+                throw new Error("Brak tokenu. Zaloguj się ponownie.")
+            }
+
             // Call AI Assistant API
             const response = await fetch("/api/ai-assistant/nearby-threats", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     latitude: lat,
                     longitude: lng,
@@ -824,7 +836,8 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
             })
 
             if (!response.ok) {
-                throw new Error("AI analysis failed")
+                const text = await response.text()
+                throw new Error(text || "AI analysis failed")
             }
 
             const data = await response.json()
@@ -838,11 +851,12 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
             })
         } catch (error) {
             console.error("AI analysis error:", error)
+            const msg = error instanceof Error ? error.message : "Nie udało się pobrać analizy."
             setAiResponse({
                 visible: true,
                 dangerLevel: "Błąd",
                 dangerScore: 0,
-                summary: "Nie udało się pobrać analizy. Spróbuj ponownie później.",
+                summary: msg,
                 reportsCount: 0
             })
         } finally {

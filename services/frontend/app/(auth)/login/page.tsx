@@ -9,7 +9,6 @@ import { Eye, EyeOff, UserCircle } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useEffect } from "react"
-import { GATEWAY_URL } from "@/lib/auth/auth-service"
 
 const DEMO_ACCOUNTS = [
     { label: "👑 Admin", username: "admin", password: "admin" },
@@ -100,7 +99,8 @@ export default function LoginPage() {
         if (isValid) {
             setIsLoading(true)
             try {
-                const response = await fetch(`${GATEWAY_URL}/api/login`, {
+                // Use local Next.js route handler for production-ready deployment
+                const response = await fetch(`/api/login`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"

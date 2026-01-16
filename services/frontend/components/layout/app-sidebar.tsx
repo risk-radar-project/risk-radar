@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
-import { GATEWAY_URL } from "@/lib/auth/auth-service"
 import { cn } from "@/lib/utils"
 import { useUnreadNotificationsCount } from "@/hooks/use-notifications"
 import { usePermission } from "@/hooks/use-permission"
@@ -39,7 +38,7 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
         try {
             const token = localStorage.getItem("access_token")
             if (token) {
-                fetch(`${GATEWAY_URL}/api/users/logout`, {
+                fetch(`/api/users/logout`, {
                     method: "POST",
                     headers: {
                         Authorization: `Bearer ${token}`
@@ -97,11 +96,11 @@ export function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
                 {/* Navigation Links */}
                 <nav className="custom-scrollbar mt-8 flex flex-1 flex-col gap-2 overflow-y-auto">
                     <Link
-                        className="flex items-center gap-3 rounded-lg bg-[#d97706] px-3 py-2 font-semibold text-[#120c07] shadow-md transition-colors hover:bg-[#d97706]/80"
+                        className="flex items-center gap-3 rounded-lg bg-[#d97706] px-3 py-2 font-semibold text-white shadow-md transition-colors hover:bg-[#d97706]/80"
                         href="/submit-report"
                     >
                         <span className="material-symbols-outlined">add_location_alt</span>
-                        <p className="text-base leading-normal">Zgłoś Zdarzenie</p>
+                        <p className="text-base leading-normal">Zgłoś zdarzenie</p>
                     </Link>
 
                     <div className="my-2 border-t border-[#e0dcd7]/10"></div>

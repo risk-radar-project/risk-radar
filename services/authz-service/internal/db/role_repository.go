@@ -21,7 +21,7 @@ func NewRoleRepository(db *sql.DB) *RoleRepository {
 // GetAll retrieves all roles
 func (r *RoleRepository) GetAll() ([]Role, error) {
 	query := `
-        SELECT id, name, description, created_at, updated_at
+        SELECT id, name, COALESCE(description, '') as description, created_at, updated_at
         FROM roles
         ORDER BY name
     `
@@ -49,7 +49,7 @@ func (r *RoleRepository) GetAll() ([]Role, error) {
 // GetByID retrieves a role by ID
 func (r *RoleRepository) GetByID(id uuid.UUID) (*Role, error) {
 	query := `
-        SELECT id, name, description, created_at, updated_at
+        SELECT id, name, COALESCE(description, '') as description, created_at, updated_at
         FROM roles
         WHERE id = $1
     `
@@ -71,7 +71,7 @@ func (r *RoleRepository) GetByID(id uuid.UUID) (*Role, error) {
 // GetByName retrieves a role by name
 func (r *RoleRepository) GetByName(name string) (*Role, error) {
 	query := `
-        SELECT id, name, description, created_at, updated_at
+        SELECT id, name, COALESCE(description, '') as description, created_at, updated_at
         FROM roles
         WHERE name = $1
     `
@@ -160,7 +160,7 @@ func (r *RoleRepository) Delete(id uuid.UUID) error {
 // GetPermissions retrieves all permissions for a role
 func (r *RoleRepository) GetPermissions(roleID uuid.UUID) ([]Permission, error) {
 	query := `
-        SELECT p.id, p.name, p.description, p.resource, p.action, p.created_at
+        SELECT p.id, p.name, COALESCE(p.description, '') as description, p.resource, p.action, p.created_at
         FROM permissions p
         JOIN role_permissions rp ON p.id = rp.permission_id
         WHERE rp.role_id = $1

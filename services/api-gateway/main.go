@@ -90,6 +90,11 @@ func NewGatewayHandler(cfg config.RuntimeConfig) (http.Handler, error) {
 	r.Use(middleware.RequestLogger(createLogFunc(cfg.AuditLogURL)))
 	r.Use(middleware.Correlation)
 
+	if os.Getenv("DEMO_MODE") == "true" {
+		r.Use(middleware.DemoMode)
+		log.Println("Demo Mode enabled: DELETE actions are restricted")
+	}
+
 	r.Get("/status", statusHandler)
 	r.Get("/api/docs/openapi.yaml", openAPIHandler)
 	r.Get("/api/docs", swaggerHandler)

@@ -1,27 +1,20 @@
 import { NextResponse } from "next/server"
+import { GATEWAY_URL, withAuth, errorResponse } from "@/lib/api/server-config"
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const authHeader = request.headers.get("Authorization")
     if (!authHeader) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        return errorResponse("Unauthorized", 401)
     }
 
     const { id } = await params
-    const body = await request.json()
-
-    // Use USER_SERVICE_URL directly to bypass Gateway potential issues
-    const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://127.0.0.1:8080"
-
-    // user-service:8080/users/{id}/roles
-    const targetUrl = `${USER_SERVICE_URL}/users/${id}/roles`
 
     try {
-        const res = await fetch(targetUrl, {
+        const body = await request.json()
+
+        const res = await fetch(`${GATEWAY_URL}/api/users/${id}/roles`, {
             method: "POST",
-            headers: {
-                Authorization: authHeader,
-                "Content-Type": "application/json"
-            },
+            ...withAuth(authHeader),
             body: JSON.stringify(body)
         })
 
@@ -39,7 +32,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         const data = await res.json()
         return NextResponse.json(data)
     } catch (error) {
-        console.error("Error updating role:", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        console.error(`[admin/users/${id}/role] Error:`, error)
+        return errorResponse("Internal Server Error", 500)
     }
 }

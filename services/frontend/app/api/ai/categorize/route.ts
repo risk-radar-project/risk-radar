@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-
-const AI_CATEGORIZATION_SERVICE_URL = process.env.AI_CATEGORIZATION_SERVICE_URL || "http://ai-categorization-service:8080"
+import { GATEWAY_URL, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
 
 /**
  * POST /api/ai/categorize
@@ -8,6 +7,11 @@ const AI_CATEGORIZATION_SERVICE_URL = process.env.AI_CATEGORIZATION_SERVICE_URL 
  */
 export async function POST(request: NextRequest) {
     try {
+        const authHeader = request.headers.get("Authorization")
+        if (!authHeader) {
+            return errorResponse("Unauthorized", 401)
+        }
+
         const body = await request.json()
 
         console.log("AI Categorize API: Forwarding request to categorization service")
@@ -17,14 +21,14 @@ export async function POST(request: NextRequest) {
         const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
 
         try {
-            const response = await fetch(`${AI_CATEGORIZATION_SERVICE_URL}/categorize`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(body),
-                signal: controller.signal
-            })
+            const response = await fetch(
+                `${GATEWAY_URL}/api/ai/categorization/categorize`,
+                withAuthAndUserId(authHeader, {
+                    method: "POST",
+                    body: JSON.stringify(body),
+                    signal: controller.signal
+                })
+            )
 
             clearTimeout(timeoutId)
 

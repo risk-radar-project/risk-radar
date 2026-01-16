@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-
-const AI_ASSISTANT_SERVICE_URL = process.env.AI_ASSISTANT_SERVICE_URL || "http://threat-analysis-service:8080"
+import { GATEWAY_URL, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
 
 /**
  * POST /api/ai-assistant/nearby-threats
@@ -28,6 +27,11 @@ const AI_ASSISTANT_SERVICE_URL = process.env.AI_ASSISTANT_SERVICE_URL || "http:/
  */
 export async function POST(request: NextRequest) {
     try {
+        const authHeader = request.headers.get("Authorization")
+        if (!authHeader) {
+            return errorResponse("Unauthorized", 401)
+        }
+
         const body = await request.json()
 
         console.log("AI Assistant API: Analyzing nearby threats", {
@@ -46,19 +50,19 @@ export async function POST(request: NextRequest) {
         const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s timeout for AI
 
         try {
-            const response = await fetch(`${AI_ASSISTANT_SERVICE_URL}/api/v1/nearby-threats`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    latitude: body.latitude,
-                    longitude: body.longitude,
-                    radius_km: body.radius_km || 1.0,
-                    user_id: body.user_id || null
-                }),
-                signal: controller.signal
-            })
+            const response = await fetch(
+                `${GATEWAY_URL}/api/ai/assistant/api/v1/nearby-threats`,
+                withAuthAndUserId(authHeader, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        latitude: body.latitude,
+                        longitude: body.longitude,
+                        radius_km: body.radius_km || 1.0,
+                        user_id: body.user_id || null
+                    }),
+                    signal: controller.signal
+                })
+            )
 
             clearTimeout(timeoutId)
 

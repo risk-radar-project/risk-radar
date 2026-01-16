@@ -20,7 +20,7 @@ func NewPermissionRepository(db *sql.DB) *PermissionRepository {
 // GetByRoleID retrieves all permissions for a role
 func (r *PermissionRepository) GetByRoleID(roleID uuid.UUID) ([]Permission, error) {
 	query := `
-        SELECT p.id, p.name, p.description, p.resource, p.action, p.created_at
+        SELECT p.id, p.name, COALESCE(p.description, '') as description, p.resource, p.action, p.created_at
         FROM permissions p
         JOIN role_permissions rp ON p.id = rp.permission_id
         WHERE rp.role_id = $1
@@ -49,7 +49,7 @@ func (r *PermissionRepository) GetByRoleID(roleID uuid.UUID) ([]Permission, erro
 // GetByUserID retrieves all permissions for a user through their roles
 func (r *PermissionRepository) GetByUserID(userID uuid.UUID) ([]Permission, error) {
 	query := `
-        SELECT DISTINCT p.id, p.name, p.description, p.resource, p.action, p.created_at
+        SELECT DISTINCT p.id, p.name, COALESCE(p.description, '') as description, p.resource, p.action, p.created_at
         FROM permissions p
         INNER JOIN role_permissions rp ON p.id = rp.permission_id
         INNER JOIN user_roles ur ON rp.role_id = ur.role_id
@@ -139,7 +139,7 @@ func (r *PermissionRepository) RemoveFromRole(roleID, permissionID uuid.UUID) er
 // GetAll retrieves all available permissions from the global catalog
 func (r *PermissionRepository) GetAll() ([]Permission, error) {
 	query := `
-        SELECT id, name, description, resource, action, created_at
+        SELECT id, name, COALESCE(description, '') as description, resource, action, created_at
         FROM permissions
         ORDER BY resource, action
     `
@@ -178,7 +178,7 @@ func (r *PermissionRepository) RemoveAllFromRole(roleID uuid.UUID) error {
 // GetByID retrieves a permission by its ID
 func (r *PermissionRepository) GetByID(id uuid.UUID) (*Permission, error) {
 	query := `
-        SELECT id, name, description, resource, action, created_at
+        SELECT id, name, COALESCE(description, '') as description, resource, action, created_at
         FROM permissions
         WHERE id = $1
     `
@@ -201,7 +201,7 @@ func (r *PermissionRepository) GetByID(id uuid.UUID) (*Permission, error) {
 // GetByName retrieves a permission by its name
 func (r *PermissionRepository) GetByName(name string) (*Permission, error) {
 	query := `
-        SELECT id, name, description, resource, action, created_at
+        SELECT id, name, COALESCE(description, '') as description, resource, action, created_at
         FROM permissions
         WHERE name = $1
     `

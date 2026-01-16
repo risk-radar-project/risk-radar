@@ -7,7 +7,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { Eye, EyeOff } from "lucide-react"
-import { GATEWAY_URL } from "@/lib/auth/auth-service"
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({
@@ -111,7 +110,7 @@ export default function RegisterPage() {
         if (isValid) {
             setIsLoading(true)
             try {
-                const response = await fetch(`${GATEWAY_URL}/api/register`, {
+                const response = await fetch(`/api/register`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"

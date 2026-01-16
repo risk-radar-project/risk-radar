@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-
-const MEDIA_SERVICE_URL = process.env.MEDIA_SERVICE_URL || "http://127.0.0.1:8084"
+import { GATEWAY_URL } from "@/lib/api/server-config"
 
 export async function POST(request: NextRequest) {
     try {
@@ -10,7 +9,9 @@ export async function POST(request: NextRequest) {
 
         const authHeader = request.headers.get("Authorization")
 
-        const response = await fetch(`${MEDIA_SERVICE_URL}/media`, {
+        // Gateway strips /api/media, so media-service receives /media
+        // media-service has router mounted at /media
+        const response = await fetch(`${GATEWAY_URL}/api/media/media`, {
             method: "POST",
             headers: {
                 ...(authHeader ? { Authorization: authHeader } : {})

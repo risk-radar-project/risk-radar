@@ -44,7 +44,7 @@ routes:
     auth_required: false
   - prefix: "/api/media"
     upstream: "http://media-service:8080"
-    auth_required: true
+    auth_required: false
     upload_max_bytes: 10485760
   - prefix: "/api/ai/categorization"
     upstream: "http://ai-categorization-service:8080"

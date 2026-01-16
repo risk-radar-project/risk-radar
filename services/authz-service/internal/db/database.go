@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -70,6 +71,18 @@ func (d *Database) Close() error {
 
 // Run database migrations
 func (d *Database) Migrate() error {
+	cwd, _ := os.Getwd()
+	log.Printf("Current working directory: %s", cwd)
+	if _, err := os.Stat("internal/db/migrations"); os.IsNotExist(err) {
+		log.Printf("Migration directory 'internal/db/migrations' does not exist")
+	} else {
+		log.Printf("Migration directory found")
+		files, _ := os.ReadDir("internal/db/migrations")
+		for _, f := range files {
+			log.Printf("Found migration file: %s", f.Name())
+		}
+	}
+
 	driver, err := postgres.WithInstance(d.DB, &postgres.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to create postgres driver: %w", err)
