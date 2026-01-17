@@ -58,6 +58,7 @@ services:
             - api-gateway
         environment:
             <<: *global-env
+            HOSTNAME: "0.0.0.0"
             # Server-side URLs (internal Docker network)
             GATEWAY_URL: http://api-gateway:8080
             MAP_SERVICE_URL: http://map-service:8080
@@ -115,7 +116,7 @@ services:
         networks:
             - backend
         ports:
-            - "127.0.0.1:8000:8000"
+            - "127.0.0.1:8000:80"
         volumes:
             - ./docs:/app:ro
 

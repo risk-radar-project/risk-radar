@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"log"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -26,13 +27,22 @@ func (h Handler) Build(route config.RuntimeRoute) *httputil.ReverseProxy {
 	rp := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
 			trimmed := strings.TrimPrefix(req.URL.Path, route.Prefix)
-			if trimmed == "" {
-				trimmed = "/"
-			}
 			originalHost := req.Host
 			req.URL.Scheme = target.Scheme
 			req.URL.Host = target.Host
-			req.URL.Path = singleJoiningSlash(target.Path, trimmed)
+			
+			var finalPath string
+			if trimmed == "" {
+				// Exact match - use target path directly without adding slash
+				finalPath = target.Path
+				if finalPath == "" {
+					finalPath = "/"
+				}
+			} else {
+				finalPath = singleJoiningSlash(target.Path, trimmed)
+			}
+			
+			req.URL.Path = finalPath
 			req.Host = target.Host
 			setForwardHeaders(req, originalHost)
 		},
@@ -199,3 +209,4 @@ func stripUpstreamCORSHeaders(resp *http.Response) {
 	// Some servers add Vary: Origin for CORS; keep generic Vary but remove duplicates later in the chain
 	// We don't delete Vary entirely to preserve caching semantics
 }
+

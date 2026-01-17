@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"log"
 	"crypto/rsa"
 	"encoding/base64"
 	"errors"
@@ -152,3 +153,4 @@ func NormalizeError(err error) string {
 func Now() time.Time {
 	return time.Now().UTC()
 }
+

@@ -16,7 +16,7 @@ server:
 
 jwt:
   algorithm: HS256
-  issuer: "riskradar.ovh"
+  issuer: ""  # Empty for now - user-service doesn't set issuer in tokens
   hmac_secret: "${JWT_ACCESS_SECRET}"
 
 cors:
@@ -42,29 +42,29 @@ routes:
     upstream: "http://user-service:8080"
     auth_required: false
   - prefix: "/api/authz"
-    upstream: "http://authz-service:8080"
+    upstream: "http://authz-service:8080/authz"
     auth_required: true
   - prefix: "/api/notifications"
-    upstream: "http://notification-service:8080"
+    upstream: "http://notification-service:8080/notifications"
     auth_required: true
   - prefix: "/api/reports"
-    upstream: "http://report-service:8080"
+    upstream: "http://report-service:8080/reports"
     auth_required: true
   - prefix: "/api/map"
     upstream: "http://map-service:8080"
     auth_required: false
   - prefix: "/api/media"
-    upstream: "http://media-service:8080"
+    upstream: "http://media-service:8080/media"
     auth_required: false
     upload_max_bytes: 10485760
   - prefix: "/api/ai/categorization"
-    upstream: "http://ai-categorization-service:8080"
+    upstream: "http://ai-categorization-service:8080/categorization"
     auth_required: true
   - prefix: "/api/ai/verification"
-    upstream: "http://ai-verification-duplication-service:8080"
+    upstream: "http://ai-verification-duplication-service:8080/verification"
     auth_required: true
   - prefix: "/api/ai/assistant"
-    upstream: "http://ai-assistant-service:8080"
+    upstream: "http://ai-assistant-service:8080/assistant"
     auth_required: true
   - prefix: "/api/audit"
     upstream: "http://audit-log-service:8080"
