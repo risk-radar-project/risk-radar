@@ -1,0 +1,508 @@
+# ============================================
+# Risk Radar - Production Docker Compose
+# ============================================
+# 
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# First time setup with demo data:
+#   docker compose -f docker-compose.prod.yml run --rm demo-seeder
+#
+# Requirements:
+#   - .env file with all secrets (see deployment/.env.production.template)
+#   - Cloudflare Tunnel configured for riskradar.ovh
+#
+# ============================================
+
+x-global-env: &global-env
+    HOSTNAME: ${HOSTNAME:-riskradar.ovh}
+    NODE_ENV: production
+    DEMO_MODE: "false"
+    # Service ports (internal)
+    USER_SERVICE_PORT: 8080
+    AUTHZ_SERVICE_PORT: 8080
+    AUDIT_LOG_SERVICE_PORT: 8080
+    AI_CATEGORIZATION_SERVICE_PORT: 8080
+    MEDIA_SERVICE_PORT: 8080
+    REPORT_SERVICE_PORT: 8080
+    MAP_SERVICE_PORT: 8080
+    NOTIFICATION_SERVICE_PORT: 8080
+    AI_ASSISTANT_SERVICE_PORT: 8080
+    AI_VERIFICATION_DUPLICATION_SERVICE_PORT: 8080
+    DOCS_SERVICE_PORT: 8000
+    # Infrastructure
+    POSTGRES_PORT: 5432
+    REDIS_PORT: 6379
+    ZOOKEEPER_PORT: 2181
+    # Secrets (from .env file)
+    JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+    JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+    DATABASE_URL: postgres://${POSTGRES_USER:-riskradar_prod}:${POSTGRES_PASSWORD}@postgres:5432/risk-radar?sslmode=disable
+
+services:
+    # ==========================================
+    # PUBLIC SERVICES (exposed via Cloudflare)
+    # ==========================================
+
+    frontend:
+        build:
+            context: ./services/frontend
+            dockerfile: Dockerfile.prod
+            args:
+                NEXT_PUBLIC_API_GATEWAY_URL: https://${HOSTNAME:-riskradar.ovh}
+                NEXT_PUBLIC_GATEWAY_URL: https://${HOSTNAME:-riskradar.ovh}
+                NEXT_PUBLIC_MEDIA_URL: https://${HOSTNAME:-riskradar.ovh}/api/media/media/
+        container_name: frontend
+        restart: unless-stopped
+        depends_on:
+            - api-gateway
+        environment:
+            <<: *global-env
+            # Server-side URLs (internal Docker network)
+            GATEWAY_URL: http://api-gateway:8080
+            MAP_SERVICE_URL: http://map-service:8080
+            REPORT_SERVICE_URL: http://report-service:8080
+            USER_SERVICE_URL: http://user-service:8080
+            AUTHZ_SERVICE_URL: http://authz-service:8080
+            AUDIT_SERVICE_URL: http://audit-log-service:8080
+            MEDIA_SERVICE_URL: http://media-service:8080
+            NOTIFICATION_SERVICE_URL: http://notification-service:8080
+            # Client-side URLs (for WebSockets - goes through Cloudflare)
+            NEXT_PUBLIC_API_GATEWAY_URL: https://${HOSTNAME:-riskradar.ovh}
+            NEXT_PUBLIC_GATEWAY_URL: https://${HOSTNAME:-riskradar.ovh}
+        networks:
+            - backend
+        ports:
+            - "127.0.0.1:3000:3000"
+
+    api-gateway:
+        build:
+            context: ./services/api-gateway
+            dockerfile: Dockerfile
+        container_name: api-gateway
+        restart: unless-stopped
+        environment:
+            <<: *global-env
+            GATEWAY_CONFIG: /app/config.prod.yaml
+        volumes:
+            - ./services/api-gateway/config.prod.yaml:/app/config.prod.yaml:ro
+        depends_on:
+            - user-service
+            - authz-service
+            - report-service
+            - media-service
+            - notification-service
+            - audit-log-service
+            - ai-categorization-service
+            - ai-verification-duplication-service
+            - ai-assistant-service
+            - map-service
+        networks:
+            - backend
+        ports:
+            - "127.0.0.1:8090:8080"
+
+    # ==========================================
+    # DOCUMENTATION (exposed via Cloudflare)
+    # ==========================================
+
+    docs-service:
+        build:
+            context: ./docs
+            dockerfile: Dockerfile
+        container_name: docs-service
+        restart: unless-stopped
+        networks:
+            - backend
+        ports:
+            - "127.0.0.1:8000:8000"
+        volumes:
+            - ./docs:/app:ro
+
+    # ==========================================
+    # INTERNAL MICROSERVICES (no public ports)
+    # ==========================================
+
+    user-service:
+        build:
+            context: ./services/user-service
+            dockerfile: Dockerfile
+        container_name: user-service
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
+        environment:
+            <<: *global-env
+            KAFKA_BROKERS: kafka:9092
+        networks:
+            - backend
+        # NO ports exposed - internal only
+
+    authz-service:
+        build:
+            context: ./services/authz-service
+            dockerfile: Dockerfile
+        container_name: authz-service
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+        environment:
+            <<: *global-env
+            HTTP_PORT: 8080
+            AUDIT_KAFKA_ENABLED: "true"
+            AUDIT_KAFKA_BROKERS: kafka:9092
+            AUDIT_KAFKA_TOPIC: audit_logs
+            AUDIT_KAFKA_CLIENT_ID: authz-service
+        networks:
+            - backend
+
+    audit-log-service:
+        build:
+            context: ./services/audit-log-service
+            dockerfile: Dockerfile
+        container_name: audit-log-service
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
+        environment:
+            <<: *global-env
+            PORT: 8080
+            LOG_LEVEL: info
+            WEBSOCKET_ENABLED: "true"
+            LOG_RETENTION_DAYS: 365
+            KAFKA_BROKERS: kafka:9092
+            KAFKA_CLIENT_ID: audit-log-service
+            KAFKA_GROUP_ID: audit-log-service-consumer
+            KAFKA_TOPIC: audit_logs
+        networks:
+            - backend
+
+    ai-categorization-service:
+        build:
+            context: ./services/ai-categorization-service
+            dockerfile: Dockerfile
+        container_name: ai-categorization-service
+        restart: unless-stopped
+        depends_on:
+            kafka:
+                condition: service_healthy
+            audit-log-service:
+                condition: service_started
+        environment:
+            <<: *global-env
+            PORT: 8080
+            KAFKA_BROKERS: kafka:9092
+            KAFKA_CLIENT_ID: ai-categorization-service
+            KAFKA_ENABLED: "true"
+            AUDIT_SERVICE_URL: http://audit-log-service:8080
+            AUDIT_ENABLED: "true"
+        networks:
+            - backend
+
+    ai-assistant-service:
+        build:
+            context: ./services/ai-assistant-service
+            dockerfile: Dockerfile
+        container_name: ai-assistant-service
+        restart: unless-stopped
+        depends_on:
+            kafka:
+                condition: service_healthy
+            audit-log-service:
+                condition: service_started
+        environment:
+            <<: *global-env
+            PORT: 8080
+            KAFKA_BROKERS: kafka:9092
+            KAFKA_CLIENT_ID: ai-assistant-service
+            KAFKA_ENABLED: "true"
+            AUDIT_SERVICE_URL: http://audit-log-service:8080
+            AUDIT_ENABLED: "true"
+            GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+            GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL:-models/gemini-2.5-flash}
+            REPORT_SERVICE_URL: http://report-service:8080
+        networks:
+            - backend
+
+    ai-verification-duplication-service:
+        build:
+            context: ./services/ai-verification-duplication-service/production
+            dockerfile: Dockerfile
+        container_name: ai-verification-duplication-service
+        restart: unless-stopped
+        depends_on:
+            kafka:
+                condition: service_healthy
+            audit-log-service:
+                condition: service_started
+        environment:
+            <<: *global-env
+            PORT: 8080
+            KAFKA_BROKERS: kafka:9092
+            KAFKA_CLIENT_ID: ai-verification-duplication-service
+            KAFKA_ENABLED: "true"
+            AUDIT_SERVICE_URL: http://audit-log-service:8080
+            AUDIT_ENABLED: "true"
+        networks:
+            - backend
+
+    media-service:
+        build:
+            context: ./services/media-service
+            dockerfile: Dockerfile
+        container_name: media-service
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+        environment:
+            <<: *global-env
+            HTTP_PORT: 8080
+            AUTHZ_BASE_URL: http://authz-service:8080
+            AUDIT_KAFKA_ENABLED: "true"
+            AUDIT_KAFKA_BROKERS: kafka:9092
+            AUDIT_KAFKA_TOPIC: audit_logs
+            AUDIT_KAFKA_CLIENT_ID: media-service
+            MEDIA_ROOT: /app/data
+        networks:
+            - backend
+        volumes:
+            - media_data:/app/data
+
+    notification-service:
+        build:
+            context: ./services/notification-service
+            dockerfile: Dockerfile
+        container_name: notification-service
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
+            mailpit:
+                condition: service_started
+        environment:
+            <<: *global-env
+            PORT: 8080
+            KAFKA_BROKERS: kafka:9092
+            KAFKA_CLIENT_ID: notification-service
+            KAFKA_GROUP_ID: notification-service-consumer
+            KAFKA_TOPIC: notification_events
+            SMTP_HOST: mailpit
+            SMTP_PORT: 1025
+            MAIL_FROM: '"Powiadomienia Risk Radar" <no-reply@riskradar.ovh>'
+            USER_SERVICE_BASE_URL: http://user-service:8080
+            AUDIT_LOG_SERVICE_BASE_URL: http://audit-log-service:8080
+        networks:
+            - backend
+
+    report-service:
+        build:
+            context: ./services/report-service
+            dockerfile: Dockerfile
+        container_name: report-service
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        environment:
+            <<: *global-env
+            HTTP_PORT: 8080
+            KAFKA_BROKERS: kafka:9092
+            KAFKA_CLIENT_ID: report-service
+            REPORT_KAFKA_TOPIC: report
+        networks:
+            - backend
+
+    map-service:
+        build:
+            context: ./services/map-service
+            dockerfile: Dockerfile
+        container_name: map-service
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
+            report-service:
+                condition: service_started
+        environment:
+            <<: *global-env
+        networks:
+            - backend
+
+    # ==========================================
+    # INFRASTRUCTURE
+    # ==========================================
+
+    postgres:
+        image: postgres:17
+        container_name: postgres
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER:-riskradar_prod}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+            POSTGRES_DB: risk-radar
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        networks:
+            - backend
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-riskradar_prod} -d risk-radar"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    redis:
+        image: redis:latest
+        container_name: redis
+        restart: unless-stopped
+        volumes:
+            - redis_data:/data
+        networks:
+            - backend
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    zookeeper:
+        image: confluentinc/cp-zookeeper:7.5.0
+        container_name: zookeeper
+        restart: unless-stopped
+        environment:
+            ZOOKEEPER_CLIENT_PORT: 2181
+            ZOOKEEPER_TICK_TIME: 2000
+            ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: ERROR
+            ZOOKEEPER_TOOLS_LOG4J_LOGLEVEL: ERROR
+        networks:
+            - backend
+        healthcheck:
+            test: echo srvr | nc localhost 2181 || exit 1
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    kafka:
+        image: confluentinc/cp-kafka:7.5.0
+        container_name: kafka
+        restart: unless-stopped
+        depends_on:
+            zookeeper:
+                condition: service_healthy
+        environment:
+            KAFKA_BROKER_ID: 1
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+            KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+            KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+            KAFKA_LOG4J_ROOT_LOGLEVEL: ERROR
+            KAFKA_TOOLS_LOG4J_LOGLEVEL: ERROR
+            KAFKA_LOG4J_LOGGERS: "kafka=ERROR,kafka.controller=ERROR,kafka.producer.async.DefaultEventHandler=ERROR,state.change.logger=ERROR"
+        networks:
+            - backend
+        healthcheck:
+            test: nc -z localhost 9092 || exit 1
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # ==========================================
+    # MAIL (Mailpit - local only, no external SMTP)
+    # ==========================================
+
+    mailpit:
+        image: axllent/mailpit:latest
+        container_name: mailpit
+        restart: unless-stopped
+        networks:
+            - backend
+        ports:
+            # Web UI accessible via Cloudflare Tunnel (mail.riskradar.ovh)
+            - "127.0.0.1:8025:8025"
+        # SMTP port 1025 is internal only (no host port binding)
+
+    # ==========================================
+    # CLOUDFLARE TUNNEL (optional - can run separately)
+    # ==========================================
+
+    cloudflared:
+        image: cloudflare/cloudflared:latest
+        container_name: cloudflared
+        restart: unless-stopped
+        command: tunnel --no-autoupdate run
+        environment:
+            TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+        networks:
+            - backend
+        depends_on:
+            - frontend
+            - api-gateway
+            - docs-service
+            - mailpit
+        profiles:
+            - tunnel
+
+    # ==========================================
+    # DEMO DATA SEEDER (run manually once)
+    # ==========================================
+
+    demo-seeder:
+        build:
+            context: ./services/demo-data-seeder
+            dockerfile: Dockerfile
+        container_name: demo-seeder
+        depends_on:
+            postgres:
+                condition: service_healthy
+        environment:
+            <<: *global-env
+            DATABASE_URL: postgres://${POSTGRES_USER:-riskradar_prod}:${POSTGRES_PASSWORD}@postgres:5432/risk-radar
+            DEMO_MODE: "true"
+            MEDIA_DESTINATION: /media_storage
+            SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-ChangeMe!SecurePassword123}
+            EMAIL_DOMAIN: ${HOSTNAME:-riskradar.ovh}
+        volumes:
+            - media_data:/media_storage
+        networks:
+            - backend
+        profiles:
+            - seeder
+
+# ==========================================
+# VOLUMES (persistent data)
+# ==========================================
+
+volumes:
+    postgres_data:
+        driver: local
+    redis_data:
+        driver: local
+    media_data:
+        driver: local
+
+# ==========================================
+# NETWORKS
+# ==========================================
+
+networks:
+    backend:
+        name: riskradar-backend

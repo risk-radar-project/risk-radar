@@ -1,0 +1,65 @@
+# ============================================
+# Risk Radar - Git Ignore
+# ============================================
+
+# === Environment files (NEVER commit secrets!) ===
+.env
+.env.local
+.env.production
+.env.*.local
+*.env
+
+# === IDE / Editor ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Logs ===
+*.log
+logs/
+
+# === Build artifacts ===
+dist/
+build/
+*.jar
+*.war
+
+# === Node.js (covered by service-specific gitignores) ===
+node_modules/
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.venv/
+venv/
+ENV/
+
+# === Java ===
+target/
+*.class
+
+# === Go ===
+*.exe
+*.exe~
+*.dll
+*.dylib
+
+# === Docker volumes (if mounted locally) ===
+data/
+postgres_data/
+redis_data/
+media_data/
+
+# === Cloudflare credentials ===
+credentials.json
+cloudflared-config.yml
+!deployment/cloudflared-config.yml.example
