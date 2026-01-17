@@ -43,6 +43,7 @@ The **Notification Service** orchestrates all outbound user-facing communication
 ## 📊 Database Schema
 
 ### `notification_rules`
+
 | Column | Type | Description |
 |--------|------|-------------|
 | id | UUID | Primary key |
@@ -54,6 +55,7 @@ The **Notification Service** orchestrates all outbound user-facing communication
 | created_at / updated_at | TIMESTAMPTZ | Audit columns |
 
 ### `notification_templates`
+
 | Column | Type | Description |
 |--------|------|-------------|
 | id | UUID | Primary key |
@@ -66,6 +68,7 @@ The **Notification Service** orchestrates all outbound user-facing communication
 | created_at / updated_at | TIMESTAMPTZ | Audit columns |
 
 ### `notifications_inbox`
+
 | Column | Type | Description |
 |--------|------|-------------|
 | id | UUID | Inbox entry |
@@ -80,6 +83,7 @@ The **Notification Service** orchestrates all outbound user-facing communication
 | created_at | TIMESTAMPTZ | Arrival time |
 
 ### `email_jobs`
+
 | Column | Type | Description |
 |--------|------|-------------|
 | id | UUID | Job identifier |
@@ -94,6 +98,7 @@ The **Notification Service** orchestrates all outbound user-facing communication
 | created_at / updated_at | TIMESTAMPTZ | Audit columns |
 
 ### `event_dispatch_log`
+
 | Column | Type | Description |
 |--------|------|-------------|
 | event_id | UUID | Primary key ensuring idempotency |
@@ -110,8 +115,8 @@ The **Notification Service** orchestrates all outbound user-facing communication
 4. **Rule Lookup** – `notification_rules` defines active channels and template keys per event.
 5. **Rendering** – Template variables merge event payload overrides (e.g., `email`, `displayName`) with canonical attributes.
 6. **Channel Delivery**
-	 - **In-App**: entry persisted in `notifications_inbox`, marked unread, and audit logged as `notification.in_app.queued`.
-	 - **Email**: job inserted into `email_jobs`; scheduler later sends via SMTP with retry + dead-letter semantics.
+  - **In-App**: entry persisted in `notifications_inbox`, marked unread, and audit logged as `notification.in_app.queued`.
+  - **Email**: job inserted into `email_jobs`; scheduler later sends via SMTP with retry + dead-letter semantics.
 7. **Audit Trail** – Every queue/sent/failed transition posts to the Audit Log Service for traceability.
 
 `X-User-ID` headers provided by the API gateway populate `req.context.userId`, which is mandatory for inbox operations.
@@ -135,23 +140,24 @@ The **Notification Service** orchestrates all outbound user-facing communication
 Returns component health based on live dependency probes. The Kafka entry now exposes both the probe status and the consumer runtime mode (`connected`, `fallback`, or `disabled`), so operators can see when the service is relying on the HTTP fallback while Kafka is unavailable. `services.smtp` still resolves to `"up"`, `"down"`, or `"disabled"`, and the top-level `status` flips to `"degraded"` whenever a required dependency is down.
 
 **200 OK**
+
 ```json
 {
-	"status": "ok",
-	"services": {
-		"database": "up",
-		"kafka": {
-			"status": "up",
-			"mode": "connected",
-			"connected": true,
-			"reconnecting": false,
-			"brokersConfigured": true,
-			"lastError": null,
-			"lastFailureAt": null
-		},
-		"smtp": "disabled"
-	},
-	"timestamp": "2026-01-13T12:34:56.000Z"
+ "status": "ok",
+ "services": {
+  "database": "up",
+  "kafka": {
+   "status": "up",
+   "mode": "connected",
+   "connected": true,
+   "reconnecting": false,
+   "brokersConfigured": true,
+   "lastError": null,
+   "lastFailureAt": null
+  },
+  "smtp": "disabled"
+ },
+ "timestamp": "2026-01-13T12:34:56.000Z"
 }
 ```
 
@@ -172,23 +178,25 @@ Query parameters:
 - `isRead` (`true|false`) – optional filter
 
 **200 OK**
+
 ```json
 {
-	"data": [
-		{
-			"id": "ef3f...",
-			"eventId": "7b59...",
-			"eventType": "USER_REGISTERED",
-			"title": "Witaj w serwisie!",
-			"body": "Twoje konto zostało pomyślnie utworzone.",
-			"isRead": false,
-			"createdAt": "2026-01-13T10:10:00.000Z"
-		}
-	]
+ "data": [
+  {
+   "id": "ef3f...",
+   "eventId": "7b59...",
+   "eventType": "USER_REGISTERED",
+   "title": "Witaj w serwisie!",
+   "body": "Twoje konto zostało pomyślnie utworzone.",
+   "isRead": false,
+   "createdAt": "2026-01-13T10:10:00.000Z"
+  }
+ ]
 }
 ```
 
 **Errors**
+
 - `400` – missing `X-User-ID` header or invalid pagination params
 
 ### `POST /notifications/{id}/read`
@@ -215,18 +223,20 @@ Reverts a previously read notification back to the unread state so it remains vi
 Fallback endpoint to trigger notifications without Kafka.
 
 **Request Body**
+
 ```json
 {
-	"userId": "1c7f...",
-	"initiatorId": "admin-uuid",
-	"payload": { "displayName": "Anna", "email": "anna@example.com" },
-	"source": "admin-panel"
+ "userId": "1c7f...",
+ "initiatorId": "admin-uuid",
+ "payload": { "displayName": "Anna", "email": "anna@example.com" },
+ "source": "admin-panel"
 }
 ```
 
 Refer to **Event Templates & Payloads** for event-specific fields such as `payload.resetUrl` required by password reset emails.
 
 **Responses**
+
 - `202 Accepted` – `{ "status": "accepted", "eventId": "generated-uuid" }`
 - `400 Bad Request` – validation failure
 - `500 Internal Server Error` – dispatcher failure (logged + audit trail)
@@ -238,16 +248,17 @@ Refer to **Event Templates & Payloads** for event-specific fields such as `paylo
 - **Topic:** `notification_events` (configurable via `KAFKA_TOPIC`)
 - **Client/Group:** `notification-service` / `notification-service-consumer` (overridable)
 - **Payload Contract:**
-	```json
-	{
-		"eventId": "UUIDv4",
-		"eventType": "USER_REGISTERED",
-		"userId": "UUID",
-		"initiatorId": "UUID | null",
-		"payload": { "displayName": "..." },
-		"source": "originating-service"
-	}
-	```
+ ```json
+ {
+  "eventId": "UUIDv4",
+  "eventType": "USER_REGISTERED",
+  "userId": "UUID",
+  "initiatorId": "UUID | null",
+  "payload": { "displayName": "..." },
+  "source": "originating-service"
+ }
+ ```
+
 - **Validation:** Joi schema rejects missing fields, malformed UUIDs, or blank payloads.
 - **Logging:** Custom Kafka log creator funnels broker logs into Winston; noise can be suppressed via `LOG_KAFKA_EVENTS=false`.
 
@@ -324,21 +335,22 @@ Key environment variables (see `.env.example`):
 ## 🔧 Development
 
 1. **Install dependencies**
-	 ```powershell
-	 cd services/notification-service
-	 npm install
-	 ```
+  ```powershell
+  cd services/notification-service
+  npm install
+  ```
+
 2. **Configure environment** – copy `.env.example` to `.env`, set at least `DATABASE_URL`.
 3. **Run locally**
-	 ```powershell
-	 npm run dev
-	 ```
-	 Migrations, seed data, the email scheduler, and the Kafka consumer start automatically once PostgreSQL is reachable.
+  ```powershell
+  npm run dev
+  ```
+  Migrations, seed data, the email scheduler, and the Kafka consumer start automatically once PostgreSQL is reachable.
 4. **Tests & Coverage**
-	 ```powershell
-	 npm test
-	 npx jest --coverage
-	 ```
+  ```powershell
+  npm test
+  npx jest --coverage
+  ```
 
 ---
 

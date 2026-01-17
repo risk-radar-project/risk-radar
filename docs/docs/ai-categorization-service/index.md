@@ -37,11 +37,13 @@ The **AI Categorization Service** automatically categorizes incident reports usi
 ## 📊 API Endpoints
 
 ### Health Check
+
 ```http
 GET /health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -55,11 +57,13 @@ GET /health
 ---
 
 ### Model Info
+
 ```http
 GET /model-info
 ```
 
 **Response:**
+
 ```json
 {
   "model_type": "sklearn_pipeline",
@@ -78,11 +82,13 @@ GET /model-info
 ---
 
 ### Categorize Report
+
 ```http
 POST /categorize
 ```
 
 **Request Body:**
+
 ```json
 {
   "report_id": "report-123",
@@ -93,6 +99,7 @@ POST /categorize
 ```
 
 **Response:**
+
 ```json
 {
   "report_id": "report-123",

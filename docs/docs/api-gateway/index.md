@@ -83,11 +83,13 @@ The Gateway routes traffic based on the path prefix. It uses a **longest-prefix 
 ## 🛡️ Security & Error Handling
 
 ### Authentication
+
 - Validates **JWT Bearer Tokens** in the `Authorization` header.
 - Supports `HS256` (HMAC) and `RS256` (RSA) algorithms detailed in config.
 - Injects `X-User-ID` header into upstream requests for trusted internal identification.
 
 ### Error Handling
+
 All errors are returned in a uniform JSON format:
 
 ```json
@@ -101,6 +103,7 @@ All errors are returned in a uniform JSON format:
 ```
 
 ### WebSocket Support
+
 The Gateway detects `Upgrade: websocket` headers. When detected, standard request timeouts and body read limits are bypassed to allow persistent connections (e.g., for real-time audit logs).
 
 ---
@@ -108,16 +111,19 @@ The Gateway detects `Upgrade: websocket` headers. When detected, standard reques
 ## 💻 Development
 
 ### Run locally
+
 ```bash
 go run main.go
 ```
 
 ### Run tests
+
 ```bash
 go test ./...
 ```
 
 ### Generate Dev Token
+
 Only available when `NODE_ENV=development` or `ENV=development`.
 **POST** `/api/dev/generate-jwt`
 

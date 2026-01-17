@@ -39,11 +39,13 @@ The **AI Verification-Duplication Service** uses machine learning to detect fake
 ## 📊 API Endpoints
 
 ### Health Check
+
 ```http
 GET /health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -57,6 +59,7 @@ GET /health
 ---
 
 ### Verify Report
+
 ```http
 POST /verify
 ```
@@ -64,6 +67,7 @@ POST /verify
 **Description:** Analyzes a report to determine if it's potentially fake.
 
 **Request Body:**
+
 ```json
 {
   "report_id": "report-789",
@@ -77,6 +81,7 @@ POST /verify
 ```
 
 **Response:**
+
 ```json
 {
   "report_id": "report-789",
@@ -88,6 +93,7 @@ POST /verify
 ```
 
 **Confidence Levels:**
+
 - `high` – Probability difference > 0.3 from threshold
 - `medium` – Probability difference 0.15-0.3 from threshold
 - `low` – Probability difference < 0.15 from threshold
@@ -95,6 +101,7 @@ POST /verify
 ---
 
 ### Check Duplicate
+
 ```http
 POST /check-duplicate
 ```
@@ -102,6 +109,7 @@ POST /check-duplicate
 **Description:** Compares a report against existing reports to detect duplicates.
 
 **Request Body:**
+
 ```json
 {
   "report_id": "report-new",
@@ -119,6 +127,7 @@ POST /check-duplicate
 ```
 
 **Response:**
+
 ```json
 {
   "report_id": "report-new",

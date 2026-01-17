@@ -122,92 +122,106 @@ Report categories (Enum: `ReportCategory.java`):
 ## 🔑 API Endpoints
 
 ### 1. **Create Report**
+
 **POST** `/createReport`
 Creates a new report.
-- `201 Created` — Report created
-- `400 Bad Request` — Validation error
-- `500 Internal Server Error` — Server error
+* `201 Created` — Report created
+* `400 Bad Request` — Validation error
+* `500 Internal Server Error` — Server error
 
 ### 2. **Update Report Status**
+
 **PATCH** `/report/{id}/status`
 Updates report status (`PENDING`, `VERIFIED`, `REJECTED`).
-- `200 OK` — Status updated
-- `500 Internal Server Error` — Update error
+* `200 OK` — Status updated
+* `500 Internal Server Error` — Update error
 
 ### 3. **Get Reports (Paginated)**
+
 **GET** `/?page=0&size=10&sort=createdAt&direction=desc&status=PENDING&category=INFRASTRUCTURE`
 Returns a paginated list of all reports with optional filtering.
-- `200 OK` — Report list
-- `500 Internal Server Error` — Retrieval error
+* `200 OK` — Report list
+* `500 Internal Server Error` — Retrieval error
 
 ### 4. **Get Report by ID**
+
 **GET** `/{id}`
 Returns details of a single report.
-- `200 OK` — Report found
-- `404 Not Found` — Report doesn't exist
-- `500 Internal Server Error` — Retrieval error
+* `200 OK` — Report found
+* `404 Not Found` — Report doesn't exist
+* `500 Internal Server Error` — Retrieval error
 
 ### 5. **Get Verified Reports**
+
 **GET** `/verified` or `/reports/verified`
 Returns a list of reports with **VERIFIED** status.
-- `200 OK` — List of verified reports
-- `500 Internal Server Error` — Retrieval error
+* `200 OK` — List of verified reports
+* `500 Internal Server Error` — Retrieval error
 
 ### 6. **Get Pending Reports**
+
 **GET** `/reports/pending`
 Returns a list of reports with **PENDING** status.
-- `200 OK` — List of pending reports
-- `500 Internal Server Error` — Retrieval error
+* `200 OK` — List of pending reports
+* `500 Internal Server Error` — Retrieval error
 
 ### 7. **Get My Reports**
+
 **GET** `/my-reports`
 Retrieves the authenticated user's reports (requires `X-User-ID` header).
-- `200 OK` — User's report list
-- `401 Unauthorized` — Missing `X-User-ID` header
-- `500 Internal Server Error` — Server error
+* `200 OK` — User's report list
+* `401 Unauthorized` — Missing `X-User-ID` header
+* `500 Internal Server Error` — Server error
 
 ### 8. **Update Report (User)**
+
 **PATCH** `/{id}`
 Updates the user's own report.
-- `200 OK` — Report updated
-- `403 Forbidden` — No permission to edit this report
-- `500 Internal Server Error` — Update error
+* `200 OK` — Report updated
+* `403 Forbidden` — No permission to edit this report
+* `500 Internal Server Error` — Update error
 
 ### 9. **Delete Report (User)**
+
 **DELETE** `/{id}`
 Deletes the user's own report.
-- `200 OK` — Report deleted
-- `403 Forbidden` — No permission to delete
-- `500 Internal Server Error` — Deletion error
+* `200 OK` — Report deleted
+* `403 Forbidden` — No permission to delete
+* `500 Internal Server Error` — Deletion error
 
 ### 10. **Admin: Update Report**
+
 **PUT** `/report/{id}`
 Full report edit by administrator.
-- `200 OK` — Report updated
-- `404 Not Found` — Report doesn't exist
-- `500 Internal Server Error` — Server error
+* `200 OK` — Report updated
+* `404 Not Found` — Report doesn't exist
+* `500 Internal Server Error` — Server error
 
 ### 11. **Admin: Delete Report**
+
 **DELETE** `/report/{id}`
 Deletes any report (admin only).
-- `200 OK` — Report deleted
-- `404 Not Found` — Report doesn't exist
-- `500 Internal Server Error` — Server error
+* `200 OK` — Report deleted
+* `404 Not Found` — Report doesn't exist
+* `500 Internal Server Error` — Server error
 
 ### 12. **Admin: Report Statistics**
+
 **GET** `/reports/stats`
 Retrieves report statistics.
-- `200 OK` — Report statistics
-- `500 Internal Server Error` — Server error
+* `200 OK` — Report statistics
+* `500 Internal Server Error` — Server error
 
 ### 13. **Get Nearby Reports**
+
 **GET** `/nearby`
 Retrieves reports within a specified radius.
 Parameters: `latitude`, `longitude`, `radiusKm` (default: 1.0).
-- `200 OK` — Nearby reports
-- `500 Internal Server Error` — Server error
+* `200 OK` — Nearby reports
+* `500 Internal Server Error` — Server error
 
 ### 14. **Service Status / Health Check**
+
 **GET** `/status`
 Checks service status and database/Kafka connections.
-- `200 OK` — Service status
+* `200 OK` — Service status

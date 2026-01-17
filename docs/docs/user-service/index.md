@@ -76,95 +76,127 @@ It ensures:
 ## 🔑 API Endpoints
 
 ### 1. **Register User**
+
 **POST** `/register`
 Registers a new user.
+
 - `201 Created` — User registered
 - `409 Conflict` — Username/email exists
 - `500 Internal Server Error` — Unexpected error
 
 ### 2. **Login**
+
 **POST** `/login`
 Authenticates and issues JWT access + refresh tokens.
+
 - `200 OK` — Returns tokens
 - `401 Unauthorized` — Invalid credentials or banned
 
 ### 3. **Logout**
+
 **POST** `/logout`
 Invalidates current tokens (access token blacklisted, refresh revoked).
+
 - `200 OK` — Success
 - `401 Unauthorized` — Missing/invalid token
 
 ### 4. **Refresh Token**
+
 **POST** `/refresh`
 Rotates tokens using a valid refresh token.
+
 - `200 OK` — New tokens
 - `401 Unauthorized` — Invalid/expired/banned
 
 ### 5. **Get Current User**
+
 **GET** `/me`
 Retrieves the profile of the currently authenticated user.
+
 - `200 OK` — User profile (id, username, email, roles, permissions)
 - `401 Unauthorized` — Invalid/missing token
 
 ### 6. **Change Email**
+
 **POST** `/change-email`
 Allows the authenticated user to change their email address.
+
 - `200 OK` — Email changed successfully
 - `400 Bad Request` — Email already in use or invalid
 
 ### 7. **Request Password Reset**
+
 **POST** `/forgot-password`
 Initiates the password reset process (e.g., sends an email).
+
 - `200 OK` — Request processed (even if email doesn't exist, for security)
 
 ### 8. **Validate Reset Token**
+
 **POST** `/validate-reset-token`
 Checks if a password reset token is valid.
+
 - `200 OK` — Token is valid
 - `400 Bad Request` — Invalid or expired token
 
 ### 9. **Perform Password Reset**
+
 **POST** `/reset-password`
 Sets a new password using a valid reset token.
+
 - `200 OK` — Password reset successfully
 - `400 Bad Request` — Invalid/expired token OR new password matches the old password
 
 ### 10. **Admin: Ban User**
+
 **POST** `/banUser`
 Bans a user and revokes their tokens.
+
 - `200 OK` — User banned
 - `400 Bad Request` — Already banned or not found
 
 ### 11. **Admin: Unban User**
+
 **POST** `/users/{id}/unban`
 Unbans a user.
+
 - `200 OK` — User unbanned
 - `400 Bad Request` — Error unbanning user
 
 ### 12. **Admin: Update User Role**
+
 **POST** `/users/{id}/roles`
 Updates a user's role.
+
 - `200 OK` — User role updated successfully
 - `400 Bad Request` — Error updating role
 
 ### 13. **Admin: Get All Users**
+
 **GET** `/users`
 Retrieves a paginated list of all users.
+
 - `200 OK` — List of users
 
 ### 14. **Admin: Get User by ID**
+
 **GET** `/users/{id}`
 Retrieves details of a specific user.
+
 - `200 OK` — User details
 
 ### 15. **Admin: User Statistics**
+
 **GET** `/users/stats`
 Retrieves system-wide user statistics.
+
 - `200 OK` — User stats
 
 ### 16. **System Status**
+
 **GET** `/status`
 Returns the operational status of the service.
+
 - `200 OK` — Status information (status, timestamp, appName, uptimeMs)
 
 ---

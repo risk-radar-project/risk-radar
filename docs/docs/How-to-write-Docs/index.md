@@ -9,7 +9,7 @@
 touch docs/my-page.md
 ```
 
-3. Add it to your `mkdocs.yml` file under `nav`:
+1. Add it to your `mkdocs.yml` file under `nav`:
 
 ```yaml
 nav:
@@ -66,6 +66,7 @@ Use triple backticks for blocks:
 def hello():
     print("Hello, world!")
 ```
+
 You can specify the language for syntax highlighting: `python`, `bash`, `yaml`, `json`, etc.
 
 ---

@@ -22,7 +22,7 @@ It ensures:
 
 * **Language:** Java 21
 * **Framework:** Spring Boot 3.5 (Spring Web, RestTemplate, Kafka)
-* **Communication:** 
+* **Communication:**
   * REST (RestTemplate for communication with `report-service`)
   * Kafka (Consumer for AI verification events)
 * **Frontend:** Leaflet, Leaflet.markercluster (OpenStreetMap)
@@ -33,14 +33,17 @@ It ensures:
 ## ⚙️ Core Components
 
 ### 1. Map Page Serving (`MapController.java`)
+
 * Serves the map view (`index.html` page) via `GET /` endpoint.
 
 ### 2. Report Aggregation (`ReportQueryController.java`, `ReportServiceClient.java`)
+
 * `GET /reports` endpoint retrieves a list of verified reports.
 * `ReportServiceClient` fetches reports from `/reports/verified` endpoint in `report-service` using `RestTemplate`.
 * Target URL (`report-service-url`) is configured via `${app.services.report-service-url}` variable.
 
 ### 3. AI Verification Data Cache (`VerificationCacheService.java`)
+
 * Listens to Kafka topic `verification_events` for AI verification results.
 * Stores verification data in-memory (ConcurrentHashMap) for quick access.
 * Provides `GET /verification/{reportId}` endpoint to fetch cached AI data.
@@ -49,6 +52,7 @@ It ensures:
   * `duplicate_check` - Duplicate report detection results
 
 ### 4. Map Visualization (`index.html`)
+
 * Uses **Leaflet** to display the map.
 * Uses **Leaflet.markercluster** plugin for marker grouping.
 * Client-side JavaScript:
@@ -84,6 +88,7 @@ It ensures:
 ## 📊 Data Models
 
 ### ReportDTO
+
 ```java
 public record ReportDTO(
     UUID id,
@@ -100,6 +105,7 @@ public record ReportDTO(
 ```
 
 ### VerificationDataDTO
+
 ```java
 public record VerificationDataDTO(
     String reportId,
@@ -157,6 +163,7 @@ GET http://localhost:8086/verification/37794ccf-d2a8-4ac5-b72f-8f9b10390552
 ```
 
 Response:
+
 ```json
 {
     "reportId": "37794ccf-d2a8-4ac5-b72f-8f9b10390552",

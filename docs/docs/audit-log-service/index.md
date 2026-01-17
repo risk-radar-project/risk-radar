@@ -3,7 +3,7 @@
 **Owner:** @Sergiusz Sanetra
 
 ---
- 
+
 # Audit Log Service
 
 The **Audit Log Service** is a centralized event tracking and audit logging microservice for RiskRadar. It provides comprehensive audit trails, real-time event streaming, and GDPR-compliant data management for all platform activities. This service ensures complete accountability and compliance across the entire RiskRadar ecosystem.
@@ -38,6 +38,7 @@ The **Audit Log Service** is a centralized event tracking and audit logging micr
 ### Tables
 
 #### `audit_logs`
+
 | Column | Type | Description |
 |--------|------|-------------|
 | id | UUID | Primary key (auto-generated) |
@@ -53,6 +54,7 @@ The **Audit Log Service** is a centralized event tracking and audit logging micr
 | is_anonymized | BOOLEAN | Flag indicating if data has been anonymized (default: false) |
 
 #### Indexes
+
 - **Primary Index:** `audit_logs_pkey` on `id`
 - **Time-based Index:** `idx_audit_logs_timestamp` on `timestamp`
 - **Service Index:** `idx_audit_logs_service` on `service`
@@ -68,6 +70,7 @@ The **Audit Log Service** is a centralized event tracking and audit logging micr
 - **Anonymization Index:** `idx_audit_logs_is_anonymized` on `is_anonymized`
 
 #### Database Constraints
+
 - **Status Check:** Ensures status is one of: 'success', 'failure', 'warning', 'error'
 - **Log Type Check:** Ensures log_type is one of: 'ACTION', 'SECURITY', 'SYSTEM', 'ERROR', 'INFO'
 
@@ -76,6 +79,7 @@ The **Audit Log Service** is a centralized event tracking and audit logging micr
 ## 🔄 Event Types & Structure
 
 ### Log Types
+
 - **ACTION** - User actions and business operations
 - **SYSTEM** - Internal system events and operations
 - **SECURITY** - Authentication, authorization, and security events
@@ -83,6 +87,7 @@ The **Audit Log Service** is a centralized event tracking and audit logging micr
 - **INFO** - Informational events and general notices
 
 ### Status Values
+
 - **success** - Operation completed successfully
 - **failure** - Operation failed with error
 - **warning** - Operation completed with warnings
@@ -91,6 +96,7 @@ The **Audit Log Service** is a centralized event tracking and audit logging micr
 ### Standard Event Structure
 
 #### Actor Format
+
 ```json
 {
   "id": "user-uuid-123",
@@ -100,6 +106,7 @@ The **Audit Log Service** is a centralized event tracking and audit logging micr
 ```
 
 #### Target Format
+
 ```json
 {
   "id": "resource-uuid-456",
@@ -139,6 +146,7 @@ The Audit Log Service provides a RESTful API for creating, retrieving, and manag
 Returns the current health status of the service, database connection, and Kafka connection.
 
 **Response 200 OK:**
+
 ```json
 {
   "status": "OK",
@@ -158,6 +166,7 @@ Returns the current health status of the service, database connection, and Kafka
 
 **Response 503 Service Unavailable:**
 When critical dependencies (Database) are unavailable.
+
 ```json
 {
   "status": "OK",
@@ -174,6 +183,7 @@ When critical dependencies (Database) are unavailable.
 ```
 
 Note: On unexpected errors, the service may return:
+
 ```json
 {
   "status": "error",
@@ -182,6 +192,7 @@ Note: On unexpected errors, the service may return:
   "details": "<reason>"
 }
 ```
+
 with HTTP 503.
 
 ---
@@ -193,6 +204,7 @@ with HTTP 503.
 Creates a new audit log entry with automatic timestamp and idempotency support.
 
 **Request Body:**
+
 ```json
 {
   "service": "user-service",
@@ -239,8 +251,8 @@ Creates a new audit log entry with automatic timestamp and idempotency support.
 
 - `operation_id`: Optional, used for idempotency
 
-
 **Response 201 Created:**
+
 ```json
 {
   "id": "932700c7-4c6c-47bd-9614-50cda872220b",
@@ -272,6 +284,7 @@ Creates a new audit log entry with automatic timestamp and idempotency support.
 When `operation_id` matches an existing log, the service returns HTTP 204 with no response body. Idempotency is guaranteed at the database level via a UNIQUE partial index on `operation_id`.
 
 **Response 400 Bad Request:**
+
 ```json
 {
   "error": "Validation failed",
@@ -282,6 +295,7 @@ When `operation_id` matches an existing log, the service returns HTTP 204 with n
 ```
 
 **Response 500 Internal Server Error:**
+
 ```json
 {
   "error": "<internal error message>",
@@ -296,6 +310,7 @@ When `operation_id` matches an existing log, the service returns HTTP 204 with n
 Retrieves audit logs with advanced filtering and pagination. Results are sorted by `timestamp` in descending order.
 
 **Headers:**
+
 - `X-User-ID` (required): ID of the user request. Used for authorization (requires `audit:view` permission).
 
 **Query Parameters:**
@@ -323,11 +338,13 @@ Retrieves audit logs with advanced filtering and pagination. Results are sorted 
 Headers:
 X-User-ID: user-admin-uuid
 **Example Request:**
+
 ```
 GET /logs?service=user-service&status=success&start_date=2025-08-01T00:00:00Z&page=1&limit=20
 ```
 
 **Response 200 OK:**
+
 ```json
 {
   "data": [
@@ -361,6 +378,7 @@ GET /logs?service=user-service&status=success&start_date=2025-08-01T00:00:00Z&pa
 ```
 
 **Response 400 Bad Request:**
+
 ```json
 {
   "error": "Validation failed",
@@ -381,6 +399,7 @@ Retrieves a specific audit log entry by its UUID.
 - `id` (path, required): UUID of the audit log
 
 **Response 200 OK:**
+
 ```json
 {
   "id": "932700c7-4c6c-47bd-9614-50cda872220b",
@@ -409,6 +428,7 @@ Retrieves a specific audit log entry by its UUID.
 ```
 
 **Response 400 Bad Request:**
+
 ```json
 {
   "error": "Validation failed",
@@ -417,6 +437,7 @@ Retrieves a specific audit log entry by its UUID.
 ```
 
 **Response 404 Not Found:**
+
 ```json
 {
   "error": "Audit log not found",
@@ -455,6 +476,7 @@ Returns an array of audit log entries where `service='user-service'`, `action='l
 Anonymizes user data in audit logs for GDPR compliance. Supports dry-run mode for preview.
 
 **Request Body:**
+
 ```json
 {
   "actor_id": "user-123"
@@ -470,6 +492,7 @@ Anonymizes user data in audit logs for GDPR compliance. Supports dry-run mode fo
 - `actor_id`: Required, string
 
 **Response 200 OK (Anonymization Performed):**
+
 ```json
 {
   "message": "Logs anonymized successfully",
@@ -478,6 +501,7 @@ Anonymizes user data in audit logs for GDPR compliance. Supports dry-run mode fo
 ```
 
 **Response 200 OK (Dry Run):**
+
 ```json
 {
   "message": "Dry run completed",
@@ -488,6 +512,7 @@ Anonymizes user data in audit logs for GDPR compliance. Supports dry-run mode fo
 ```
 
 **Response 400 Bad Request:**
+
 ```json
 {
   "error": "Validation failed",
@@ -504,6 +529,7 @@ Anonymizes user data in audit logs for GDPR compliance. Supports dry-run mode fo
 The API returns consistent error responses:
 
 - 400 Bad Request (validation errors):
+
 ```json
 {
   "error": "Validation failed",
@@ -516,6 +542,7 @@ The API returns consistent error responses:
 ```
 
 - 404 Not Found / 500 Internal Server Error:
+
 ```json
 {
   "error": "<cause>",
@@ -524,6 +551,7 @@ The API returns consistent error responses:
 ```
 
 - Health check failures (HTTP 503): either standard status payload with `database_connection` set to `unhealthy`, or:
+
 ```json
 {
   "status": "error",
@@ -542,6 +570,7 @@ The API returns consistent error responses:
 The service provides real-time audit log streaming through Socket.IO. WebSocket is available only when `WEBSOCKET_ENABLED=true`.
 
 #### Connection
+
 ```javascript
 import { io } from 'socket.io-client';
 
@@ -575,6 +604,7 @@ socket.on('connect_error', (err) => {
 ```
 
 #### Unsubscribe
+
 ```javascript
 socket.emit('unsubscribe', {
   service: 'user-service',
@@ -583,15 +613,18 @@ socket.emit('unsubscribe', {
 ```
 
 #### Room Subscriptions
+
 - Service-based rooms: `service:<name>`
 - Log-type rooms: `log_type:<TYPE>`
 
 #### Event Types
+
 - `new_log`: Broadcast for every new log to all connected clients
 - `service_log`: Emitted to clients subscribed to a specific service
 - `log_type_log`: Emitted to clients subscribed to a specific log type
 
 Note:
+
 - There are no user-based rooms or a global admin room implemented.
 - There is no `log-anonymized` event emitted on anonymization.
 
@@ -602,6 +635,7 @@ Note:
 The service consumes audit events from Kafka to support asynchronous ingestion.
 
 ### Configuration
+
 - `KAFKA_BROKERS` (required to enable the consumer) — comma-separated broker list, e.g. `kafka:9092`
 - `KAFKA_CLIENT_ID` — defaults to `audit-log-service`
 - `KAFKA_GROUP_ID` — defaults to `audit-log-service-consumer`
@@ -610,6 +644,7 @@ The service consumes audit events from Kafka to support asynchronous ingestion.
 If `KAFKA_BROKERS` is unset the consumer stays disabled. No SSL or SASL configuration is required; cluster access is internal-only.
 
 ### Message Format
+
 Messages must match the same schema as the REST `POST /logs` endpoint. Example payload:
 
 The consumer validates every message. Invalid or malformed entries are logged and skipped without stopping the service.
@@ -632,12 +667,14 @@ The service implements automated data lifecycle management:
 ### GDPR Compliance
 
 #### Data Anonymization Process
+
 1. **Identification**: Locate all logs for specific actor ID
 2. **Anonymization**: Replace PII with anonymized values
 3. **Flag Update**: Mark with `is_anonymized = true`
 4. **Verification**: Ensure data integrity maintained
 
 #### Anonymized Data Format
+
 When data is anonymized, the system:
 
 - Sets `is_anonymized` flag to `true`
@@ -658,6 +695,7 @@ When data is anonymized, the system:
   "is_anonymized": true
 }
 ```
+
 Note: Only `actor.id` is changed. Other actor fields and metadata remain intact. If `metadata` was null, it is created with just the `anonymized_at` field.
 
 ## 🔧 Development
@@ -670,12 +708,14 @@ Note: Only `actor.id` is changed. Other actor fields and metadata remain intact.
 cd services/audit-log-service
 ```
 
-2. **Install Dependencies**
+1. **Install Dependencies**
+
 ```bash
 npm install
 ```
 
-3. **Setup Environment**
+1. **Setup Environment**
+
 - Copy the example env file and adjust values as needed
 
 ```bash
@@ -695,7 +735,8 @@ cp .env.example .env
 
 Note: Ensure PostgreSQL is running and `DATABASE_URL` is reachable. Migrations run automatically on service startup.
 
-4. **Start Development Server**
+1. **Start Development Server**
+
 ```bash
 npm run dev
 ```

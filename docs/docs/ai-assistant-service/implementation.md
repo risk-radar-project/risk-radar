@@ -182,6 +182,7 @@ Odpowiedź JSON:
 ## UX - Co widzi użytkownik
 
 ### 1. Przycisk na mapie (lewy dolny róg)
+
 ```
 ┌──────────────────┐
 │ ✨ AI Asystent   │
@@ -189,6 +190,7 @@ Odpowiedź JSON:
 ```
 
 ### 2. Stan ładowania
+
 ```
 ┌──────────────────┐
 │ ⟳ Analizuję...   │
@@ -196,6 +198,7 @@ Odpowiedź JSON:
 ```
 
 ### 3. Dymek z odpowiedzią
+
 ```
 ┌────────────────────────────────────┐
 │ 🌟 Analiza bezpieczeństwa          │
@@ -218,6 +221,7 @@ Odpowiedź JSON:
 ## Obsługa przypadków brzegowych
 
 ### Brak raportów w okolicy
+
 ```json
 {
   "danger_level": "Bardzo niski",
@@ -227,14 +231,17 @@ Odpowiedź JSON:
 ```
 
 ### Błąd geolokalizacji
+
 - Wyświetlany alert: "Nie można pobrać Twojej lokalizacji"
 - Przycisk wraca do normalnego stanu
 
 ### Błąd AI Service
+
 - Dymek wyświetla komunikat o błędzie
 - Użytkownik może ponowić próbę
 
 ### Timeout (30s)
+
 - Zwracany status 504
 - Komunikat: "AI analysis timeout - please try again"
 

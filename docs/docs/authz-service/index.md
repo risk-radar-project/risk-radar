@@ -3,7 +3,7 @@
 **Owner:** @Sergiusz Sanetra
 
 ---
- 
+
 # Authorization Service
 
 The **Authorization Service** is a Role-Based Access Control (RBAC) microservice for RiskRadar. It manages roles, permissions, and user authorization across the entire platform. This service provides fine-grained access control for all RiskRadar microservices.
@@ -36,6 +36,7 @@ The **Authorization Service** is a Role-Based Access Control (RBAC) microservice
 ### Tables
 
 #### `roles`
+
 | Column | Type | Description |
 |--------|------|-------------|
 | id | UUID | Primary key |
@@ -45,6 +46,7 @@ The **Authorization Service** is a Role-Based Access Control (RBAC) microservice
 | updated_at | TIMESTAMP | Last update timestamp |
 
 #### `permissions`
+
 | Column | Type | Description |
 |--------|------|-------------|
 | id | UUID | Primary key |
@@ -57,6 +59,7 @@ The **Authorization Service** is a Role-Based Access Control (RBAC) microservice
 *Note: The name field contains the combined format (e.g., "users:ban"), while resource and action are stored separately for efficient querying.*
 
 #### `role_permissions`
+
 | Column | Type | Description |
 |--------|------|-------------|
 | role_id | UUID | Foreign key to roles |
@@ -64,6 +67,7 @@ The **Authorization Service** is a Role-Based Access Control (RBAC) microservice
 | assigned_at | TIMESTAMP | Assignment timestamp |
 
 #### `user_roles`
+
 | Column | Type | Description |
 |--------|------|-------------|
 | user_id | UUID | User identifier |
@@ -75,6 +79,7 @@ The **Authorization Service** is a Role-Based Access Control (RBAC) microservice
 ## 🔐 Default Roles & Permissions
 
 ### Default Roles
+
 - **admin** - System administrator with full access (super admin permission)
 - **moderator** - Content moderator with management permissions
 - **volunteer** - Community helper with validation permissions  
@@ -85,6 +90,7 @@ The **Authorization Service** is a Role-Based Access Control (RBAC) microservice
 The system implements fine-grained permissions organized by resource categories. Each permission follows the format `resource:action`.
 
 #### Reports
+
 - `reports:create` - Create new reports
 - `reports:read` - View reports
 - `reports:edit` - Edit existing reports
@@ -98,6 +104,7 @@ The system implements fine-grained permissions organized by resource categories.
 - `reports:*` - Full access to all report operations
 
 #### Users
+
 - `users:profile` - Manage own profile
 - `users:history` - View own report history
 - `users:delete-account` - Delete own account
@@ -107,31 +114,38 @@ The system implements fine-grained permissions organized by resource categories.
 - `users:*` - Full access to all user operations
 
 #### AI Services
+
 - `ai:chat` - Access AI chat assistant
 - `ai:summary` - Access AI summary features
 - `ai:*` - Full access to all AI features
 
 #### Statistics
+
 - `stats:view` - View system statistics
 - `stats:*` - Full access to statistics
 
 #### Audit
+
 - `audit:view` - View audit logs
 - `audit:*` - Full access to audit features
 
 #### Roles
+
 - `roles:manage` - Manage user roles
 - `roles:view` - View role information
 - `roles:*` - Full access to role management
 
 #### System
+
 - `system:admin` - Full system administration
 - `system:*` - Full access to all system operations
 
 #### Wildcard Permissions
+
 - `*:*` - Full access to everything (super admin permission)
 
 **Wildcard Support:** The system supports wildcards (`*`) in permissions:
+
 - `users:*` - Grants access to any action on users resource
 - `*:reports` - Grants access to reports resource with any action
 - `*:*` - Grants access to everything (super admin)
@@ -141,6 +155,7 @@ The system implements fine-grained permissions organized by resource categories.
 The system includes four predefined roles with hierarchical permissions:
 
 #### User Role (Basic User)
+
 Basic permissions for regular platform users:
 
 - **Reports:** `create`, `read`, `cancel`, `view-location`, `categorize`, `rate-severity`
@@ -149,16 +164,16 @@ Basic permissions for regular platform users:
 
 - **AI Services:** `ai:chat`, `ai:summary`
 
-
 #### Volunteer Role (Community Helper)
+
 Inherits all User permissions plus community moderation:
 
 - **All User permissions** (inherited)
 
 - **Community Moderation:** `reports:cancel-any`, `reports:validate`
 
-
 #### Moderator Role (Content Moderator)
+
 Inherits all Volunteer permissions plus moderation tools:
 
 - **All Volunteer permissions** (inherited)
@@ -169,8 +184,8 @@ Inherits all Volunteer permissions plus moderation tools:
 
 - **System Access:** `stats:view`, `audit:view`
 
-
 #### Admin Role (System Administrator)
+
 Full system access with super admin permission:
 
 - **Super Admin:** `*:*` (grants access to everything in the system)
@@ -203,6 +218,7 @@ The Authorization Service provides a RESTful API for managing roles, permissions
 | `DELETE` | `/users/{userId}/roles/{roleId}` | Remove role from user |
 
 > **Security enforcement:** Every mutating endpoint (POST/PUT/DELETE) requires the `X-User-ID` header and enforces RBAC centrally.
+>
 > - `roles:edit` is required for role creation, updates, and deletion.
 > - `permissions:manage` is required for permission catalog mutations.
 > - `roles:assign` is required for assigning or removing user roles.
@@ -220,6 +236,7 @@ The Authorization Service provides a RESTful API for managing roles, permissions
 Returns the current health status of the service and database connection.
 
 **Response 200 OK:**
+
 ```json
 {
   "status": "OK",
@@ -229,6 +246,7 @@ Returns the current health status of the service and database connection.
 ```
 
 **Response 503 Service Unavailable:**
+
 ```json
 {
   "status": "FAIL",
@@ -246,6 +264,7 @@ Returns the current health status of the service and database connection.
 Retrieves all roles with their associated permissions.
 
 **Response 200 OK:**
+
 ```json
 [
   {
@@ -277,9 +296,11 @@ Retrieves all roles with their associated permissions.
 Retrieves a specific role by ID with its permissions.
 
 **Parameters:**
+
 - `roleId` (path, required): UUID of the role
 
 **Response 200 OK:**
+
 ```json
 {
   "role": {
@@ -303,6 +324,7 @@ Retrieves a specific role by ID with its permissions.
 ```
 
 **Response 400 Bad Request:**
+
 ```json
 {
   "error": "invalid_request",
@@ -312,6 +334,7 @@ Retrieves a specific role by ID with its permissions.
 ```
 
 **Response 404 Not Found:**
+
 ```json
 {
   "error": "not_found",
@@ -327,10 +350,12 @@ Retrieves a specific role by ID with its permissions.
 Creates a new role with specified permissions.
 
 **Authentication:**
+
 - `X-User-ID` Header Required
 - Permission: `roles:edit`
 
 **Request Body:**
+
 ```json
 {
   "name": "test-role-api",
@@ -345,6 +370,7 @@ Creates a new role with specified permissions.
 ```
 
 **Response 201 Created:**
+
 ```json
 {
   "role": {
@@ -368,6 +394,7 @@ Creates a new role with specified permissions.
 ```
 
 **Response 400 Bad Request:**
+
 ```json
 {
   "error": "invalid_request",
@@ -377,6 +404,7 @@ Creates a new role with specified permissions.
 ```
 
 **Response 409 Conflict:**
+
 ```json
 {
   "error": "conflict",
@@ -392,13 +420,16 @@ Creates a new role with specified permissions.
 Updates an existing role with new data and permissions.
 
 **Authentication:**
+
 - `X-User-ID` Header Required
 - Permission: `roles:edit`
 
 **Parameters:**
+
 - `roleId` (path, required): UUID of the role to update
 
 **Request Body:**
+
 ```json
 {
   "name": "test-role-api-updated",
@@ -419,6 +450,7 @@ Updates an existing role with new data and permissions.
 **Response 200 OK:** (Same structure as POST /roles)
 
 **Response 404 Not Found:**
+
 ```json
 {
   "error": "not_found",
@@ -434,16 +466,19 @@ Updates an existing role with new data and permissions.
 Deletes a role by ID.
 
 **Authentication:**
+
 - `X-User-ID` Header Required
 - Permission: `roles:edit`
 
 **Parameters:**
+
 - `roleId` (path, required): UUID of the role to delete
 
 **Response 204 No Content:**
 No response body.
 
 **Response 404 Not Found:**
+
 ```json
 {
   "error": "not_found",
@@ -461,6 +496,7 @@ No response body.
 Retrieves all available permissions in the system.
 
 **Response 200 OK:**
+
 ```json
 [
   {
@@ -489,9 +525,11 @@ Retrieves all available permissions in the system.
 Retrieves a specific permission by its UUID.
 
 **Parameters:**
+
 - `permissionId` (path, required): UUID of the permission
 
 **Response 200 OK:**
+
 ```json
 {
   "id": "c5c860f2-7c38-4a17-a9b3-ee3986abe4a0",
@@ -504,6 +542,7 @@ Retrieves a specific permission by its UUID.
 ```
 
 **Response 400 Bad Request:**
+
 ```json
 {
   "error": "invalid_request",
@@ -513,6 +552,7 @@ Retrieves a specific permission by its UUID.
 ```
 
 **Response 404 Not Found:**
+
 ```json
 {
   "error": "not_found",
@@ -528,10 +568,12 @@ Retrieves a specific permission by its UUID.
 Creates a new permission in the global catalog.
 
 **Authentication:**
+
 - `X-User-ID` Header Required
 - Permission: `permissions:manage`
 
 **Request Body:**
+
 ```json
 {
   "resource": "notifications",
@@ -541,11 +583,13 @@ Creates a new permission in the global catalog.
 ```
 
 **Field Validation:**
+
 - `resource`: Required, 1-50 characters, cannot contain colon (:)
 - `action`: Required, 1-50 characters, cannot contain colon (:)
 - `description`: Required, 1-255 characters
 
 **Response 201 Created:**
+
 ```json
 {
   "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -558,6 +602,7 @@ Creates a new permission in the global catalog.
 ```
 
 **Response 400 Bad Request (Validation Error):**
+
 ```json
 {
   "error": "invalid_request",
@@ -573,10 +618,12 @@ Creates a new permission in the global catalog.
 Updates an existing permission by its UUID.
 
 **Authentication:**
+
 - `X-User-ID` Header Required
 - Permission: `permissions:manage`
 
 **Parameters:**
+
 - `permissionId` (path, required): UUID of the permission to update
 
 **Request Body:** Same as POST
@@ -590,10 +637,12 @@ Updates an existing permission by its UUID.
 Deletes a permission from the global catalog. This operation also removes all role assignments for this permission.
 
 **Authentication:**
+
 - `X-User-ID` Header Required
 - Permission: `permissions:manage`
 
 **Parameters:**
+
 - `permissionId` (path, required): UUID of the permission to delete
 
 **Response 204 No Content:** No response body.
@@ -607,9 +656,11 @@ Deletes a permission from the global catalog. This operation also removes all ro
 Checks if a user has a specific permission.
 
 **Headers:**
+
 - `X-User-ID` (optional): UUID of the actor; required when `userId` query parameter is omitted
 
 **Query Parameters:**
+
 - `userId` (required*): UUID of the user being evaluated (*canonical contract; header fallback allowed for gateway-injected identity)
 - `action` (required*): Permission identifier (e.g., `reports:read`); when combined with `resource`, forms `resource:action`
 - `resource` (optional): Resource segment; combine with `action` to form `resource:action`
@@ -618,6 +669,7 @@ Checks if a user has a specific permission.
 > **Integration note:** The shared platform contract relies on query parameters `userId` and `action`. `X-User-ID` remains supported for gateway-proxied calls but should not replace the canonical query-string integration.
 
 **Response 200 OK:**
+
 ```json
 {
   "has_permission": true
@@ -625,6 +677,7 @@ Checks if a user has a specific permission.
 ```
 
 **Response 400 Bad Request (missing actor):**
+
 ```json
 {
   "error": "invalid_request",
@@ -634,6 +687,7 @@ Checks if a user has a specific permission.
 ```
 
 **Response 400 Bad Request (missing permission):**
+
 ```json
 {
   "error": "invalid_request",
@@ -649,9 +703,11 @@ Checks if a user has a specific permission.
 Retrieves all roles assigned to a specific user.
 
 **Parameters:**
+
 - `userId` (path, required): UUID of the user
 
 **Response 200 OK:**
+
 ```json
 [
   {
@@ -671,9 +727,11 @@ Retrieves all roles assigned to a specific user.
 Retrieves all permissions for a specific user (through their assigned roles).
 
 **Parameters:**
+
 - `userId` (path, required): UUID of the user
 
 **Response 200 OK:**
+
 ```json
 [
   {
@@ -702,12 +760,15 @@ Retrieves all permissions for a specific user (through their assigned roles).
 Assigns a role to a user.
 
 **Parameters:**
+
 - `userId` (path, required): UUID of the user
 
 **Headers:**
+
 - `X-User-ID` (required): Acting user UUID; must hold `roles:assign`
 
 **Request Body:**
+
 ```json
 {
   "role_id": "d4127aff-f2c0-4b9a-8419-1c247a6b56ff"
@@ -718,6 +779,7 @@ Assigns a role to a user.
 No response body.
 
 **Response 400 Bad Request:**
+
 ```json
 {
   "error": "invalid_request",
@@ -727,6 +789,7 @@ No response body.
 ```
 
 **Response 403 Forbidden:**
+
 ```json
 {
   "error": "forbidden",
@@ -742,16 +805,19 @@ No response body.
 Removes a role assignment from a user.
 
 **Parameters:**
+
 - `userId` (path, required): UUID of the user
 - `roleId` (path, required): UUID of the role to remove
 
 **Headers:**
+
 - `X-User-ID` (required): Acting user UUID; must hold `roles:assign`
 
 **Response 204 No Content:**
 No response body.
 
 **Response 404 Not Found:**
+
 ```json
 {
   "error": "not_found",
@@ -763,6 +829,7 @@ No response body.
 ---
 
 ### Error Handling
+
 The API returns consistent error responses:
 
 - **400 Bad Request**: Invalid input, malformed UUIDs, missing required fields
@@ -781,11 +848,9 @@ All error responses include:
 
 - `message`: User-friendly error description
 
-
 ### Change Log
 
 - **2025-11-11:** Aligned `/has-permission` documentation with the shared specification (query parameters as the canonical contract, header accepted for gateway compatibility). Added RBAC error sanitization details and clarified permission validation behaviour for role mutations.
-
 
 ---
 
@@ -810,11 +875,13 @@ All error responses include:
 ### Docker Deployment
 
 #### Build Image
+
 ```bash
 docker build -t authz-service .
 ```
 
 #### Run Container
+
 ```bash
 docker run -p 8080:8080 \
   -e DATABASE_URL="postgres://user:pass@host:5432/db?sslmode=disable" \
@@ -831,15 +898,16 @@ The service automatically runs migrations on startup. Initial data includes:
 
 - Role-permission assignments
 
-
 ---
 
 ## 📊 Monitoring & Logging
 
 ### Audit Logging (Short Overview)
+
 The service sends structured audit events asynchronously via an in‑memory dispatcher. Delivery attempts Kafka first (`audit_logs` topic); if Kafka is disabled or a publish fails, it transparently falls back to the HTTP `/logs` endpoint.
 
 Key actions:
+
 - Access: `access_granted`, `access_denied`
 - Roles: `role_create`, `role_update`, `role_delete`
 - Permissions: `permission_create`, `permission_update`, `permission_delete`
@@ -853,4 +921,3 @@ Config: `AUDIT_KAFKA_*` knobs control the Kafka producer. `AUDIT_LOG_URL` remain
 Counters (in‑memory): `sent`, `failed`, `dropped`, `retries`.
 
 HTTP Logging: colorized request logs to stdout; status ≥ 400 additionally emits `http_error` audit event.
-

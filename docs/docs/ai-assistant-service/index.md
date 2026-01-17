@@ -42,11 +42,13 @@ The **AI Assistant Service** provides conversational AI capabilities for RiskRad
 ## 📊 API Endpoints
 
 ### Health Check
+
 ```http
 GET /health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -59,11 +61,13 @@ GET /health
 ---
 
 ### Chat
+
 ```http
 POST /chat
 ```
 
 **Request Body:**
+
 ```json
 {
   "user_id": "user-123",
@@ -76,6 +80,7 @@ POST /chat
 ```
 
 **Response:**
+
 ```json
 {
   "conversation_id": "conv-456",
@@ -94,11 +99,13 @@ POST /chat
 ---
 
 ### Get Conversation
+
 ```http
 GET /conversations/{conversation_id}
 ```
 
 **Response:**
+
 ```json
 {
   "conversation_id": "conv-456",

@@ -3,7 +3,7 @@
 **Owner:** @Sergiusz Sanetra
 
 ---
- 
+
 # Media Service
 
 The Media Service handles secure upload, storage, processing, moderation, and delivery of image assets. It provides fast thumbnails/previews, strict validation and antivirus screening, permission-aware access to master images, temporary uploads lifecycle, and audit logging of all sensitive actions.
@@ -41,6 +41,7 @@ The Media Service handles secure upload, storage, processing, moderation, and de
 ### Tables
 
 #### `media_assets`
+
 | Column | Type | Description |
 |--------|------|-------------|
 | id | UUID | Primary key |
@@ -69,6 +70,7 @@ The Media Service handles secure upload, storage, processing, moderation, and de
 | updated_at | TIMESTAMPTZ | Update timestamp |
 
 #### Indexes
+
 - `idx_media_owner` on `(owner_id)`
 - `idx_media_status` on `(status)`
 - `idx_media_visibility` on `(visibility)`
@@ -94,7 +96,6 @@ Visibility rules for master image access:
 - Owner: full access to own masters
 - Holders of `media:read-all`: full access
 - Otherwise: returns placeholders depending on state (`forbidden`, `flagged`, `deleted`)
-
 
 The requester identity is passed via `X-User-ID` header.
 
@@ -145,9 +146,9 @@ Multipart form-data:
 
 - `file` (required): JPEG or PNG. Service normalizes to JPEG.
 - Fields (optional):
-	- `visibility`: `public` | `owner` | `staff` (default: `owner`)
-	- `alt`: string (max `ALT_MAX_LEN`)
-	- `temporary`: boolean or string (`1|0|true|false|yes|no|on|off`)
+ 	- `visibility`: `public` | `owner` | `staff` (default: `owner`)
+ 	- `alt`: string (max `ALT_MAX_LEN`)
+ 	- `temporary`: boolean or string (`1|0|true|false|yes|no|on|off`)
 
 Query (optional):
 
@@ -210,6 +211,7 @@ Responses:
 GET `/media`
 
 Retrieve a paginated list of media assets.
+
 - **Staff** (`media:read-all`): Can see all assets. Can filter by `owner`.
 - **Regular Users**: Can see **only their own** assets. The `owner` query parameter is ignored.
 - **Anonymous**: Access denied (500/Internal Error if `X-User-ID` is missing).
@@ -223,17 +225,18 @@ Query:
 - `page` (default 1), `limit` (1..100, default 20)
 
 Response 200 OK:
+
 ```json
 {
-	"data": [/* MediaEntity[] */],
-	"pagination": {
-		"page": 1,
-		"pageSize": 20,
-		"total": 0,
-		"totalPages": 1,
-		"hasNext": false,
-		"hasPrev": false
-	}
+ "data": [/* MediaEntity[] */],
+ "pagination": {
+  "page": 1,
+  "pageSize": 20,
+  "total": 0,
+  "totalPages": 1,
+  "hasNext": false,
+  "hasPrev": false
+ }
 }
 ```
 
@@ -266,6 +269,7 @@ Responses:
 DELETE `/media/{id}`
 
 Marks asset as deleted, removes files, emits audit, and increments counters.
+
 - Owners can delete their own ASSETS.
 - Non-owners must hold `media:delete`.
 
@@ -282,20 +286,24 @@ Responses:
 POST `/media/temporary/keep`
 
 Transition temporary assets to permanent.
+
 - Owners can keep their own temporary assets.
 - Non-owners must hold `media:update`.
 
 Body:
+
 ```json
 { "ids": ["<uuid>", "<uuid>"] }
 ```
 
 Response 200 OK:
+
 ```json
 { "kept": ["<uuid>"], "requested": ["<uuid>"] }
 ```
 
 Errors:
+
 - 400 on validation.
 - 401 when `X-User-ID` is missing.
 - 403 when caller lacks `media:update` for non-owned assets.
@@ -306,20 +314,24 @@ Errors:
 POST `/media/temporary/reject`
 
 Explicitly reject (delete) temporary assets before expiration.
+
 - Owners can reject their own temporary assets.
 - Non-owners must hold `media:delete`.
 
 Body:
+
 ```json
 { "ids": ["<uuid>", "<uuid>"] }
 ```
 
 Response 200 OK:
+
 ```json
 { "rejected": ["<uuid>"], "requested": ["<uuid>"] }
 ```
 
 Errors:
+
 - 400 on validation.
 - 401 when `X-User-ID` is missing.
 - 403 when caller lacks `media:delete` for non-owned assets.
@@ -334,30 +346,31 @@ GET `/status`
 Provides health and capacity snapshot, including database bootstrap info and dependency breaker states.
 
 Sample 200 OK:
+
 ```json
 {
-	"http_status": "OK",
-	"timestamp": "2025-08-30T12:34:56.789Z",
-	"database_connection": "healthy",
-	"database_bootstrap": {
-		"attempts": 1,
-		"last_error": null,
-		"started_at": "2025-08-30T12:34:50.000Z",
-		"is_connected": true
-	},
-	"dependencies": { "audit": "active", "authz": "active" },
-	"dependencies_raw": { "audit": "closed", "authz": "closed" },
-	"media_root": "./data",
-	"disk_total_bytes": 1000000000,
-	"disk_used_bytes": 123456789,
-	"disk_used_percent": 12,
-	"storage_warn": false,
-	"storage_critical": false,
-	"uploads_total": 1,
-	"reads_master_total": 1,
-	"reads_thumb_total": 1,
-	"reads_preview_total": 1,
-	"deletes_total": 0
+ "http_status": "OK",
+ "timestamp": "2025-08-30T12:34:56.789Z",
+ "database_connection": "healthy",
+ "database_bootstrap": {
+  "attempts": 1,
+  "last_error": null,
+  "started_at": "2025-08-30T12:34:50.000Z",
+  "is_connected": true
+ },
+ "dependencies": { "audit": "active", "authz": "active" },
+ "dependencies_raw": { "audit": "closed", "authz": "closed" },
+ "media_root": "./data",
+ "disk_total_bytes": 1000000000,
+ "disk_used_bytes": 123456789,
+ "disk_used_percent": 12,
+ "storage_warn": false,
+ "storage_critical": false,
+ "uploads_total": 1,
+ "reads_master_total": 1,
+ "reads_thumb_total": 1,
+ "reads_preview_total": 1,
+ "deletes_total": 0
 }
 ```
 
@@ -393,22 +406,26 @@ Defaults and parsing live in `src/config/config.ts`.
 ## 🔧 Development
 
 ### Prerequisites
+
 - Node.js 18+
 - PostgreSQL with a database URL like: `postgres://user:pass@localhost:5432/risk-radar?sslmode=disable`
 
 ### Install, Build, Run
 
 Install dependencies:
+
 ```powershell
 npm install
 ```
 
 Dev mode with auto-reload:
+
 ```powershell
 npm run dev
 ```
 
 Run tests:
+
 ```powershell
 npm test
 ```
@@ -436,4 +453,3 @@ Standardized JSON errors:
 - Use `temporary` uploads for draft flows; finalize via `/temporary/keep` or discard via `/temporary/reject`
 - Cache policy: variants are immutable-cached; master is `no-store`
 - Placeholders provided for `deleted`, `flagged`, and `forbidden` cases
-
