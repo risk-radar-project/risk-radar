@@ -1,8 +1,14 @@
+# =============================================================================
+# AI Verification-Duplication Service Docker Image
+# Multi-stage build for optimized image size
+# =============================================================================
+
 # Stage 1: Build dependencies
 FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
+# Install build tools for native extensions
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -11,27 +17,28 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-# Stage 2: Final image
+# Stage 2: Final runtime image
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install Git LFS for model files
+# Install Git LFS for model file verification
 RUN apt-get update && apt-get install -y \
     git \
     git-lfs \
     && git lfs install \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy installed dependencies from builder stage
 COPY --from=builder /install /usr/local
 COPY . .
 
-# Verify model files are not LFS pointers (fail build if they are)
+# Verify model files are actual data (not Git LFS pointers)
 RUN echo "Verifying AI model files..." && \
     if head -c 50 detector_model_components/bert_model_finetuned.pth | grep -q "version https://git-lfs"; then \
-        echo "ERROR: bert_model_finetuned.pth is a Git LFS pointer!" && \
-        echo "Run 'git lfs pull' before building Docker image." && \
-        exit 1; \
+    echo "ERROR: bert_model_finetuned.pth is a Git LFS pointer!" && \
+    echo "Run 'git lfs pull' before building Docker image." && \
+    exit 1; \
     fi && \
     echo "Model files OK"
 

@@ -137,7 +137,7 @@ services:
 
     ai-verification-duplication-service:
         build:
-            context: ./services/ai-verification-duplication-service
+            context: ./services/ai-verification-duplication-service/production
             dockerfile: Dockerfile
         container_name: ai-verification-duplication-service
         depends_on:

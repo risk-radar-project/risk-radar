@@ -1,0 +1,23 @@
+# =============================================================================
+# Production Dependencies - AI Verification Service
+# Minimal dependencies for running inference only
+# =============================================================================
+
+# FastAPI web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+
+# Async HTTP client for audit logging
+aiohttp==3.9.1
+
+# Kafka messaging
+aiokafka==0.10.0
+kafka-python==2.0.2
+
+# Machine Learning - Inference only
+torch>=2.2.0
+transformers==4.35.2
+scikit-learn>=1.4.0
+joblib>=1.3.2
+numpy>=2.0.0
