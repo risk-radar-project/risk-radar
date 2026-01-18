@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     gcc \
     python3-dev \
     libpq-dev \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies
@@ -24,5 +25,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Set entrypoint
-RUN chmod +x entrypoint.sh
+RUN dos2unix entrypoint.sh && chmod +x entrypoint.sh
 ENTRYPOINT ["./entrypoint.sh"]
