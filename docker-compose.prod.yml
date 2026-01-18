@@ -54,7 +54,7 @@ services:
             args:
                 NEXT_PUBLIC_API_GATEWAY_URL: https://${HOSTNAME:-riskradar.ovh}
                 NEXT_PUBLIC_GATEWAY_URL: https://${HOSTNAME:-riskradar.ovh}
-                NEXT_PUBLIC_MEDIA_URL: https://${HOSTNAME:-riskradar.ovh}/api/media/media/
+                NEXT_PUBLIC_MEDIA_URL: https://${HOSTNAME:-riskradar.ovh}/api/media/
         container_name: frontend
         restart: unless-stopped
         depends_on:
