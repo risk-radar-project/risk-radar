@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"log"
 	"bytes"
 	"encoding/json"
 	"io"

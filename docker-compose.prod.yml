@@ -45,6 +45,7 @@ services:
     # ==========================================
 
     frontend:
+        image: risk-radar-frontend-prod
         build:
             context: ./services/frontend
             dockerfile: Dockerfile.prod

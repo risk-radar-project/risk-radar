@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"log"
 	"crypto/rsa"
 	"encoding/base64"
 	"errors"
