@@ -63,9 +63,25 @@ export async function refreshAccessToken(
     }
 }
 
-export function logout() {
+export async function logout() {
+    const token = localStorage.getItem("access_token")
+    
+    // Call backend logout endpoint to invalidate tokens
+    if (token) {
+        try {
+            await fetch("/api/users/logout", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            })
+        } catch (error) {
+            console.error("Backend logout failed:", error)
+            // Continue with local logout even if backend fails
+        }
+    }
+    
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
-    // Optionally call logout endpoint
     window.location.href = "/login"
 }
