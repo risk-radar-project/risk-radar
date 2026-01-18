@@ -17,6 +17,8 @@ x-global-env: &global-env
     JWT_ACCESS_SECRET: aSV68OrraQ8m+mRxcmEZFcqjRoA4Hfk4fHVhtmKDeC9lhm2m95h9tRcietLUZs0vL19vX4nJZdflh/ju+Py+Kw==
     JWT_REFRESH_SECRET: bNa5h++JFlleDXl3wm0pSDSlSD2rDrigCRPJTt0F00vRonkabew2JsKKHMUTwvaOXH8u0oQ8ZXnphXh/gl0F5g==
     DATABASE_URL: postgres://risk-radar-admin:passwd@postgres:5432/risk-radar?sslmode=disable
+    POSTGRES_USER: risk-radar-admin
+    POSTGRES_PASSWORD: passwd
     NODE_ENV: development
     DEMO_MODE: "false"
 
