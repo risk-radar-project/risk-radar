@@ -34,7 +34,7 @@ routes:
     upstream: "http://authz-service:8080"
     auth_required: true
   - prefix: "/api/notifications"
-    upstream: "http://notification-service:8080"
+    upstream: "http://notification-service:8080/notifications"
     auth_required: true
   - prefix: "/api/reports"
     upstream: "http://report-service:8080"
@@ -43,7 +43,7 @@ routes:
     upstream: "http://map-service:8080"
     auth_required: false
   - prefix: "/api/media"
-    upstream: "http://media-service:8080"
+    upstream: "http://media-service:8080/media"
     auth_required: false
     upload_max_bytes: 10485760
   - prefix: "/api/ai/categorization"
