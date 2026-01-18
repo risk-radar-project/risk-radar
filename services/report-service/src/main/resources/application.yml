@@ -5,8 +5,8 @@ spring:
       port: 6379
   datasource:
     url: jdbc:postgresql://postgres:5432/risk-radar
-    username: risk-radar-admin
-    password: passwd
+    username: ${POSTGRES_USER:riskradar_prod}
+    password: ${POSTGRES_PASSWORD:passwd}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
