@@ -45,7 +45,7 @@ export async function GET(request: Request) {
 
         try {
             // Gateway strips /api/reports, so report-service receives /reports/stats
-            const reportRes = await fetch(`${GATEWAY_URL}/api/reports/reports/stats`, {
+            const reportRes = await fetch(`${GATEWAY_URL}/api/reports/stats`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "X-User-ID": payload.userId || ""

@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
 
         // Gateway strips /api/media, so media-service receives /media
         // media-service has router mounted at /media
-        const response = await fetch(`${GATEWAY_URL}/api/media/media`, {
+        const response = await fetch(`${GATEWAY_URL}/api/media`, {
             method: "POST",
             headers: {
                 ...(authHeader ? { Authorization: authHeader } : {})
