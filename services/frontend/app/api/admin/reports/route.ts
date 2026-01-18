@@ -6,8 +6,7 @@ export async function GET(request: NextRequest) {
         const searchParams = request.nextUrl.searchParams
         const queryString = searchParams.toString()
 
-        // Gateway strips /api/reports, so report-service receives /reports
-        // Explicitly hit /reports to avoid any root-path ambiguity
+        // Gateway strips /api/reports prefix, so /api/reports becomes /
         const url = `${GATEWAY_URL}/api/reports${queryString ? `?${queryString}` : ""}`
 
         const response = await fetch(url, {
