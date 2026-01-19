@@ -1,93 +1,93 @@
 # 🚀 Risk Radar - Deployment Guide
 
-Instrukcja wdrożenia aplikacji Risk Radar na VPS z Ubuntu.
+A guide to deploying the Risk Radar application on a VPS with Ubuntu.
 
-## 📋 Wymagania
+## 📋 Requirements
 
-- **System:** Ubuntu 22.04+ (lub inny Linux z Docker)
-- **RAM:** Minimum 8GB (zalecane 16GB)
-- **CPU:** 4 rdzenie
-- **Dysk:** 40GB+ wolnego miejsca
-- **Docker:** 24.0+ z Docker Compose v2
-- **Domena:** Skonfigurowana w Cloudflare z tunelem
+- **System:** Ubuntu 22.04+ (or other Linux with Docker)
+- **RAM:** Minimum 8GB (recommended 16GB)
+- **CPU:** 4 cores
+- **Disk:** 40GB+ free space
+- **Docker:** 24.0+ with Docker Compose v2
+- **Domain:** Configured in Cloudflare with tunnel
 
-## 🔧 Krok 1: Przygotowanie VPS
+## 🔧 Step 1: VPS Preparation
 
 ```bash
-# Aktualizacja systemu
+# Update system
 sudo apt update && sudo apt upgrade -y
 
-# Instalacja Docker (jeśli nie zainstalowany)
+# Install Docker (if not installed)
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker $USER
 
-# Wyloguj się i zaloguj ponownie, lub:
+# Log out and log back in, or:
 newgrp docker
 
-# Sprawdź instalację
+# Verify installation
 docker --version
 docker compose version
 ```
 
-## 📥 Krok 2: Sklonuj repozytorium
+## 📥 Step 2: Clone Repository
 
 ```bash
-# Utwórz katalog dla aplikacji
+# Create application directory
 sudo mkdir -p /opt/risk-radar
 sudo chown $USER:$USER /opt/risk-radar
 cd /opt/risk-radar
 
-# Sklonuj repozytorium
-git clone https://github.com/TWOJE-REPO/risk-radar.git .
-# lub przez SSH:
-# git clone git@github.com:TWOJE-REPO/risk-radar.git .
+# Clone repository
+git clone https://github.com/YOUR-REPO/risk-radar.git .
+# or via SSH:
+# git clone git@github.com:YOUR-REPO/risk-radar.git .
 ```
 
-## 🔐 Krok 3: Konfiguracja zmiennych środowiskowych
+## 🔐 Step 3: Environment Variables Configuration
 
 ```bash
-# Skopiuj szablon
+# Copy template
 cp deployment/.env.production.template .env
 
-# Wygeneruj sekrety
+# Generate secrets
 echo "JWT_ACCESS_SECRET=$(openssl rand -base64 64 | tr -d '\n')"
 echo "JWT_REFRESH_SECRET=$(openssl rand -base64 64 | tr -d '\n')"
 echo "POSTGRES_PASSWORD=$(openssl rand -base64 32 | tr -d '\n')"
 echo "SUPERADMIN_PASSWORD=$(openssl rand -base64 24 | tr -d '\n')"
 
-# Edytuj .env i wklej wygenerowane wartości
+# Edit .env and paste generated values
 nano .env
 ```
 
-### Zawartość `.env`:
+### `.env` Contents:
 
 ```env
 HOSTNAME=riskradar.ovh
 
-# Wklej wygenerowane wartości:
-JWT_ACCESS_SECRET=<twoj_wygenerowany_secret>
-JWT_REFRESH_SECRET=<twoj_wygenerowany_secret>
+# Paste generated values:
+JWT_ACCESS_SECRET=<your_generated_secret>
+JWT_REFRESH_SECRET=<your_generated_secret>
 POSTGRES_USER=riskradar_prod
-POSTGRES_PASSWORD=<twoje_haslo>
-SUPERADMIN_PASSWORD=<haslo_admina>
+POSTGRES_PASSWORD=<your_password>
+SUPERADMIN_PASSWORD=<admin_password>
 
-# Google AI (opcjonalne)
-GOOGLE_API_KEY=<twoj_klucz_api>
+# Google AI (optional)
+GOOGLE_API_KEY=<your_api_key>
 GOOGLE_AI_MODEL=models/gemini-2.5-flash
 
-# Cloudflare Tunnel (jeśli w Docker)
-CLOUDFLARE_TUNNEL_TOKEN=<token_tunelu>
+# Cloudflare Tunnel (if running in Docker)
+CLOUDFLARE_TUNNEL_TOKEN=<tunnel_token>
 ```
 
-## 🌐 Krok 4: Konfiguracja Cloudflare Tunnel
+## 🌐 Step 4: Cloudflare Tunnel Configuration
 
-### Opcja A: Tunel w Docker (zalecane)
+### Option A: Tunnel in Docker (recommended)
 
-1. Zaloguj się do [Cloudflare Zero Trust Dashboard](https://one.dash.cloudflare.com/)
-2. Przejdź do **Access → Tunnels**
-3. Utwórz nowy tunel lub użyj istniejącego
-4. Skopiuj token tunelu do `.env` jako `CLOUDFLARE_TUNNEL_TOKEN`
-5. Skonfiguruj routing w dashboardzie Cloudflare:
+1. Log in to [Cloudflare Zero Trust Dashboard](https://one.dash.cloudflare.com/)
+2. Navigate to **Access → Tunnels**
+3. Create a new tunnel or use an existing one
+4. Copy the tunnel token to `.env` as `CLOUDFLARE_TUNNEL_TOKEN`
+5. Configure routing in Cloudflare dashboard:
 
 | Public hostname | Service |
 |-----------------|---------|
@@ -96,155 +96,155 @@ CLOUDFLARE_TUNNEL_TOKEN=<token_tunelu>
 | `docs.riskradar.ovh` | `http://docs-service:8000` |
 | `mail.riskradar.ovh` | `http://mailpit:8025` |
 
-### Opcja B: Tunel uruchomiony osobno
+### Option B: Tunnel Running Separately
 
-Jeśli wolisz uruchomić cloudflared poza Docker:
+If you prefer to run cloudflared outside Docker:
 
 ```bash
-# Instalacja cloudflared
+# Install cloudflared
 curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
 chmod +x cloudflared
 sudo mv cloudflared /usr/local/bin/
 
-# Konfiguracja (używając pliku config)
+# Configuration (using config file)
 sudo mkdir -p /etc/cloudflared
 sudo cp deployment/cloudflared-config.yml.example /etc/cloudflared/config.yml
-sudo nano /etc/cloudflared/config.yml  # uzupełnij tunnel ID
+sudo nano /etc/cloudflared/config.yml  # fill in tunnel ID
 
-# Uruchom jako serwis
+# Run as service
 sudo cloudflared service install
 sudo systemctl enable cloudflared
 sudo systemctl start cloudflared
 ```
 
-## 🚀 Krok 5: Uruchomienie aplikacji
+## 🚀 Step 5: Launch Application
 
 ```bash
 cd /opt/risk-radar
 
-# Uruchom wszystkie serwisy (bez tunelu w Docker)
+# Start all services (without tunnel in Docker)
 docker compose -f docker-compose.prod.yml up -d
 
-# LUB z tunelem Cloudflare w Docker:
-docker compose -f docker-compose.prod.yml --profile tunnel up -d
+# OR with Cloudflare tunnel in Docker:
+docker compose -f docker-compose.prod.yml --profile cloudflare up -d
 
-# Sprawdź status
+# Check status
 docker compose -f docker-compose.prod.yml ps
 
-# Sprawdź logi
+# Check logs
 docker compose -f docker-compose.prod.yml logs -f
 ```
 
-## 🌱 Krok 6: Seed danych demo (opcjonalne, jednorazowo)
+## 🌱 Step 6: Seed Demo Data (optional, one-time)
 
 ```bash
-# Uruchom seeder (utworzy superadmina i przykładowe dane)
-docker compose -f docker-compose.prod.yml --profile seeder run --rm demo-seeder
+# Run seeder (creates superadmin and sample data)
+docker compose -f docker-compose.prod.yml --profile seeder run --rm demo-data-seeder
 
-# Zaloguj się jako superadmin:
+# Log in as superadmin:
 # Email: superadmin@riskradar.ovh
-# Hasło: (wartość SUPERADMIN_PASSWORD z .env)
+# Password: (SUPERADMIN_PASSWORD value from .env)
 ```
 
-## ✅ Krok 7: Weryfikacja
+## ✅ Step 7: Verification
 
-1. Otwórz https://riskradar.ovh - powinien wyświetlić się frontend
-2. Otwórz https://docs.riskradar.ovh - dokumentacja
-3. Otwórz https://mail.riskradar.ovh - panel Mailpit (zabezpiecz w Cloudflare!)
-4. Przetestuj logowanie jako superadmin
+1. Open https://riskradar.ovh - frontend should be displayed
+2. Open https://docs.riskradar.ovh - documentation
+3. Open https://mail.riskradar.ovh - Mailpit panel (secure in Cloudflare!)
+4. Test login as superadmin
 
-## 🔒 Zabezpieczenie Mailpit
+## 🔒 Securing Mailpit
 
-W Cloudflare Zero Trust Dashboard:
-1. Przejdź do **Access → Applications**
-2. Dodaj nową aplikację dla `mail.riskradar.ovh`
-3. Skonfiguruj politykę dostępu (np. tylko Twój email)
+In Cloudflare Zero Trust Dashboard:
+1. Navigate to **Access → Applications**
+2. Add a new application for `mail.riskradar.ovh`
+3. Configure access policy (e.g., your email only)
 
-## 📊 Przydatne komendy
+## 📊 Useful Commands
 
 ```bash
-# Status serwisów
+# Service status
 docker compose -f docker-compose.prod.yml ps
 
-# Logi wszystkich serwisów
+# All service logs
 docker compose -f docker-compose.prod.yml logs -f
 
-# Logi konkretnego serwisu
+# Specific service logs
 docker compose -f docker-compose.prod.yml logs -f frontend
 
-# Restart wszystkiego
+# Restart everything
 docker compose -f docker-compose.prod.yml restart
 
-# Zatrzymanie
+# Stop
 docker compose -f docker-compose.prod.yml down
 
-# Zatrzymanie z usunięciem volumes (UWAGA: usuwa dane!)
+# Stop with volume removal (WARNING: deletes data!)
 docker compose -f docker-compose.prod.yml down -v
 
-# Aktualizacja (po git pull)
+# Update (after git pull)
 docker compose -f docker-compose.prod.yml build
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-## 🔄 Aktualizacja aplikacji
+## 🔄 Application Update
 
 ```bash
 cd /opt/risk-radar
 
-# Pobierz zmiany
+# Pull changes
 git pull origin main
 
-# Przebuduj obrazy
+# Rebuild images
 docker compose -f docker-compose.prod.yml build
 
-# Zrestartuj z nowymi obrazami
+# Restart with new images
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-## 🐛 Rozwiązywanie problemów
+## 🐛 Troubleshooting
 
-### Serwis nie startuje
+### Service Won't Start
 ```bash
-# Sprawdź logi
-docker compose -f docker-compose.prod.yml logs nazwa-serwisu
+# Check logs
+docker compose -f docker-compose.prod.yml logs service-name
 
-# Sprawdź healthcheck
-docker inspect nazwa-serwisu | grep -A 10 Health
+# Check healthcheck
+docker inspect service-name | grep -A 10 Health
 ```
 
-### Problemy z bazą danych
+### Database Issues
 ```bash
-# Połącz się z PostgreSQL
+# Connect to PostgreSQL
 docker exec -it postgres psql -U riskradar_prod -d risk-radar
 
-# Sprawdź tabele
+# Check tables
 \dt
 ```
 
-### Problemy z pamięcią
+### Memory Issues
 ```bash
-# Sprawdź zużycie
+# Check usage
 docker stats
 
-# Ogranicz pamięć dla serwisów (dodaj do compose)
+# Limit memory for services (add to compose)
 # deploy:
 #   resources:
 #     limits:
 #       memory: 512M
 ```
 
-## 📁 Struktura danych
+## 📁 Data Structure
 
-Dane persystentne są przechowywane w Docker volumes:
-- `riskradar-backend_postgres_data` - baza danych PostgreSQL
-- `riskradar-backend_redis_data` - cache Redis
-- `riskradar-backend_media_data` - przesłane pliki multimedialne
+Persistent data is stored in Docker volumes:
+- `postgres_data` - PostgreSQL database
+- `redis_data` - Redis cache
+- `media_data` - uploaded media files
 
 Backup:
 ```bash
-# Backup PostgreSQL
+# PostgreSQL backup
 docker exec postgres pg_dump -U riskradar_prod risk-radar > backup_$(date +%Y%m%d).sql
 
-# Backup wszystkich volumes
-docker run --rm -v riskradar-backend_postgres_data:/data -v $(pwd):/backup alpine tar czf /backup/postgres_backup.tar.gz /data
+# Backup all volumes
+docker run --rm -v risk-radar_postgres_data:/data -v $(pwd):/backup alpine tar czf /backup/postgres_backup.tar.gz /data
 ```
