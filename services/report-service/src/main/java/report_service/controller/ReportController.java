@@ -170,7 +170,7 @@ public class ReportController {
                 }
         }
 
-        @GetMapping({ "", "/reports" })
+        @GetMapping("")
         public ResponseEntity<?> getReports(
                         @RequestParam(defaultValue = "0") int page,
                         @RequestParam(defaultValue = "10") int size,
@@ -216,7 +216,7 @@ public class ReportController {
                 }
         }
 
-        @GetMapping({ "/verified", "/reports/verified" })
+        @GetMapping("/verified")
         public ResponseEntity<?> getVerifiedReports() {
                 try {
                         List<Report> reports = reportService.getVerifiedReports();
@@ -230,7 +230,7 @@ public class ReportController {
                 }
         }
 
-        @GetMapping("/reports/pending")
+        @GetMapping("/pending")
         @PreAuthorize("hasAuthority('PERM_REPORTS:VALIDATE') or hasAuthority('PERM_*:*')")
         public ResponseEntity<?> getPendingReports() {
                 try {
@@ -547,7 +547,7 @@ public class ReportController {
                 }
         }
 
-        @GetMapping("/reports/stats")
+        @GetMapping("/stats")
         @PreAuthorize("hasAuthority('PERM_STATS:VIEW') or hasAuthority('PERM_REPORTS:VIEW') or hasAuthority('PERM_*:*')")
         public ResponseEntity<?> getReportStats() {
                 try {

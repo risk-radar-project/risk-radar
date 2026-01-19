@@ -10,8 +10,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const variant = searchParams.get("variant")
 
     // Construct URL based on variant (thumb, preview, or default/master)
-    // Note: media-service uses /media/media/{id} pattern
-    let fetchUrl = `${GATEWAY_URL}/api/media/media/${id}`
+    // API Gateway strips /api/media prefix, so /api/media/{id} becomes /{id} which routes to media-service /media/{id}
+    let fetchUrl = `${GATEWAY_URL}/api/media/${id}`
     if (variant === "thumb") {
         fetchUrl += "/thumb"
     } else if (variant === "preview") {

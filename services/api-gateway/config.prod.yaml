@@ -1,25 +1,36 @@
+# ============================================
+# Risk Radar API Gateway - Production Config
+# ============================================
+#
+# This config is optimized for production deployment.
+# Mount this file to /app/config.yaml in the container.
+#
+# ============================================
+
 server:
   port: 8080
-  read_timeout_seconds: 20
-  write_timeout_seconds: 20
-  idle_timeout_seconds: 60
-  upstream_timeout_seconds: 15
+  read_timeout_seconds: 30
+  write_timeout_seconds: 30
+  idle_timeout_seconds: 120
+  upstream_timeout_seconds: 30
 
 jwt:
   algorithm: HS256
-  issuer: ""
+  issuer: ""  # Empty for now - user-service doesn't set issuer in tokens
   hmac_secret: "${JWT_ACCESS_SECRET}"
 
 cors:
-  allowed_origins: ["*"]
+  # In production with Cloudflare Tunnel, allow the specific origin
+  # Cloudflare forwards requests with the original Origin header
+  allowed_origins: ["https://riskradar.ovh", "https://www.riskradar.ovh"]
   allowed_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
   allowed_headers: ["Authorization", "Content-Type", "X-Correlation-ID"]
-  allow_credentials: false
-  max_age_seconds: 600
+  allow_credentials: true
+  max_age_seconds: 3600
 
 default_rate_limit:
-  anonymous: 100
-  authenticated: 300
+  anonymous: 60
+  authenticated: 200
 
 default_upload_max_bytes: 10485760  # 10 MB
 json_body_max_bytes: 2097152        # 2 MB
@@ -58,15 +69,3 @@ routes:
   - prefix: "/api/audit"
     upstream: "http://audit-log-service:8080"
     auth_required: true
-  # - prefix: "/api/monitoring"
-  #   upstream: "http://monitoring-service:8080"
-  #   auth_required: false
-  # - prefix: "/api/admin"
-  #   upstream: "http://admin-service:8080"
-  #   auth_required: true
-  # - prefix: "/api/community"
-  #   upstream: "http://community-service:8080"
-  #   auth_required: true
-  # - prefix: "/api/statistics"
-  #   upstream: "http://statistics-service:8080"
-  #   auth_required: true

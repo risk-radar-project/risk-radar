@@ -19,7 +19,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/src/templates/email ./dist/templates/email
 
-RUN addgroup -g 1001 -S nodejs && adduser -S notifier -u 1001 && mkdir -p logs && chown -R notifier:nodejs logs
+RUN addgroup -g 1001 -S nodejs && adduser -S notifier -u 1001 && mkdir -p logs && chown -R notifier:nodejs /app
 
 USER notifier
 

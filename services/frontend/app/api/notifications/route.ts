@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url)
         const queryString = searchParams.toString()
 
-        const url = `${GATEWAY_URL}/api/notifications/notifications${queryString ? `?${queryString}` : ""}`
+        const url = `${GATEWAY_URL}/api/notifications${queryString ? `?${queryString}` : ""}`
 
         const res = await fetch(url, {
             method: "GET",

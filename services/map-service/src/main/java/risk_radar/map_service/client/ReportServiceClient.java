@@ -19,7 +19,8 @@ public class ReportServiceClient {
     private String reportServiceUrl;
 
     public List<ReportDTO> getVerifiedReports() {
-        String url = reportServiceUrl + "/reports/verified";
+        // report-service endpoint is now /verified (changed from /reports/verified)
+        String url = reportServiceUrl + "/verified";
 
         ReportDTO[] reports = restTemplate.getForObject(url, ReportDTO[].class);
 

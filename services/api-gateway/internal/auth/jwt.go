@@ -152,3 +152,4 @@ func NormalizeError(err error) string {
 func Now() time.Time {
 	return time.Now().UTC()
 }
+

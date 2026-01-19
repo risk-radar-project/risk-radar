@@ -4,11 +4,11 @@ import { Report } from "@/components/map-component"
 import MapWrapper from "@/components/map-wrapper"
 
 async function getInitialReports(): Promise<Report[]> {
-    const MAP_SERVICE_URL = process.env.MAP_SERVICE_URL || "http://127.0.0.1:8086"
+    const GATEWAY_URL = process.env.GATEWAY_URL || "http://api-gateway:8080"
 
     try {
-        // Fetch from map-service
-        const res = await fetch(`${MAP_SERVICE_URL}/reports`, {
+        // Fetch from api-gateway which routes to map-service
+        const res = await fetch(`${GATEWAY_URL}/api/map/reports`, {
             next: { revalidate }
         })
 

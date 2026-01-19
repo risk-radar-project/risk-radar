@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
     return withAuthHandler(request, async (token) => {
-        // Gateway strips /api/reports, so report-service receives /reports/pending
-        const res = await fetch(`${GATEWAY_URL}/api/reports/reports/pending`, {
+        // Gateway strips /api/reports prefix, so /api/reports/pending becomes /pending
+        const res = await fetch(`${GATEWAY_URL}/api/reports/pending`, {
             cache: "no-store",
             headers: {
                 Authorization: `Bearer ${token}`

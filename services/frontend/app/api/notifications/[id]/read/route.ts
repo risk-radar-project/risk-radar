@@ -5,7 +5,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return withAuthHandler(request, async (token) => {
         const { id } = await params
 
-        const res = await fetch(`${GATEWAY_URL}/api/notifications/notifications/${id}/read`, {
+        const res = await fetch(`${GATEWAY_URL}/api/notifications/${id}/read`, {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${token}`
