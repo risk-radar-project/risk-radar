@@ -9,8 +9,8 @@
 #   docker compose -f docker-compose.prod.yml run --rm demo-seeder
 #
 # Requirements:
-#   - .env file with all secrets (see deployment/.env.production.template)
-#   - Cloudflare Tunnel configured for riskradar.ovh
+#   - .env file with all secrets
+#   - Cloudflare Tunnel
 #
 # ============================================
 

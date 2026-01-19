@@ -46,6 +46,9 @@ RiskRadar is built as a **microservices monorepo** with:
 git clone https://github.com/risk-radar-project/risk-radar.git
 cd risk-radar
 
+# Configure environment variables
+cp .env.example .env
+
 # Start all services
 docker compose up --build
 ```
@@ -61,7 +64,10 @@ docker compose up --build
 
 ### 🔧 Environment Variables
 
-The `docker-compose.yml` includes default development values. For production or custom configuration, key variables include:
+The project includes a `.env.example` file with all necessary configuration variables. 
+Copy it to `.env` and adjust the values as needed.
+
+The `docker-compose.yml` uses these variables. Key configurations include:
 
 - `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` – JWT signing secrets
 - `DATABASE_URL` – PostgreSQL connection string
