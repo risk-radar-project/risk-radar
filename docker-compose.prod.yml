@@ -40,6 +40,8 @@ x-global-env: &global-env
     POSTGRES_USER: ${POSTGRES_USER:-riskradar_prod}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     DATABASE_URL: postgres://${POSTGRES_USER:-riskradar_prod}:${POSTGRES_PASSWORD}@postgres:5432/risk-radar?sslmode=disable
+    # Frontend URL for emails etc
+    APP_FRONTEND_URL: https://${HOSTNAME:-riskradar.ovh}
 
 services:
     # ==========================================
@@ -457,6 +459,8 @@ services:
             TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
         networks:
             - backend
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
         depends_on:
             - frontend
             - api-gateway
