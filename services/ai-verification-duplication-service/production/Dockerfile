@@ -35,6 +35,12 @@ COPY . .
 
 # Verify model files are actual data (not Git LFS pointers)
 RUN echo "Verifying AI model files..." && \
+    ls -la && \
+    if [ ! -f detector_model_components/bert_model_finetuned.pth ]; then \
+    echo "ERROR: detector_model_components/bert_model_finetuned.pth not found!" && \
+    echo "Please ensure the model files are present. If using Git LFS, run 'git lfs pull'." && \
+    exit 1; \
+    fi && \
     if head -c 50 detector_model_components/bert_model_finetuned.pth | grep -q "version https://git-lfs"; then \
     echo "ERROR: bert_model_finetuned.pth is a Git LFS pointer!" && \
     echo "Run 'git lfs pull' before building Docker image." && \
