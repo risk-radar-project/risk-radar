@@ -5,8 +5,31 @@
  * Use these ONLY in Route Handlers (app/api/...) and Server Components.
  */
 
+import { NextResponse } from "next/server"
+
 // API Gateway - central routing point for all services
 export const GATEWAY_URL = process.env.GATEWAY_URL || "http://api-gateway:8080"
+
+// Demo mode - blocks all modifying operations
+export const IS_DEMO_MODE = process.env.DEMO_MODE === "true"
+
+/**
+ * Guard for demo mode - returns error response if demo mode is active
+ * Use at the beginning of POST/PUT/PATCH/DELETE handlers to block modifications
+ */
+export function demoModeGuard(): NextResponse | null {
+    if (IS_DEMO_MODE) {
+        return NextResponse.json(
+            { 
+                error: "Ta akcja jest niedostępna w trybie demonstracyjnym",
+                demo_mode: true,
+                message: "W wersji demo można tylko przeglądać dane. Modyfikacje są zablokowane."
+            },
+            { status: 403 }
+        )
+    }
+    return null
+}
 
 // Direct service URLs (bypass gateway for internal calls if needed)
 export const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://user-service:8080"

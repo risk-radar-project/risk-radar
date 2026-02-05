@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server"
-import { GATEWAY_URL, withAuth, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuth, errorResponse, demoModeGuard } from "@/lib/api/server-config"
 
 export async function POST(request: Request) {
+    // Block in demo mode
+    const demoBlock = demoModeGuard()
+    if (demoBlock) return demoBlock
+
     const authHeader = request.headers.get("Authorization")
     if (!authHeader) {
         return errorResponse("Unauthorized", 401)

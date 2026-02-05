@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { GATEWAY_URL, withAuthHandler, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuthHandler, errorResponse, demoModeGuard } from "@/lib/api/server-config"
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    // Block in demo mode
+    const demoBlock = demoModeGuard()
+    if (demoBlock) return demoBlock
+
     return withAuthHandler(request, async (token) => {
         const { id } = await params
         // Gateway strips /api/reports, admin delete endpoint is /report/{id}
@@ -25,6 +29,10 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    // Block in demo mode
+    const demoBlock = demoModeGuard()
+    if (demoBlock) return demoBlock
+
     return withAuthHandler(request, async (token) => {
         const { id } = await params
         const body = await request.json()
@@ -52,6 +60,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    // Block in demo mode
+    const demoBlock = demoModeGuard()
+    if (demoBlock) return demoBlock
+
     return withAuthHandler(request, async (token) => {
         const { id } = await params
         const searchParams = request.nextUrl.searchParams

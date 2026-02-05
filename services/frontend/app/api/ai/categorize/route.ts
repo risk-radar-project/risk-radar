@@ -2,30 +2,71 @@ import { NextRequest, NextResponse } from "next/server"
 import { errorResponse } from "@/lib/api/server-config"
 
 /**
- * Demo mode categories with realistic probabilities
+ * Demo mode categories matching the actual report categories in the system
+ * Each category has Polish keywords for matching
  */
 const DEMO_CATEGORIES = [
-    { category: "INFRASTRUCTURE", keywords: ["droga", "most", "budynek", "chodnik", "latarnia", "dziura", "studzienka"] },
-    { category: "ENVIRONMENT", keywords: ["drzewo", "śmieci", "zanieczyszczenie", "odpady", "hałas", "powietrze"] },
-    { category: "SAFETY", keywords: ["wypadek", "niebezpieczeństwo", "pożar", "kradzież", "wandalizm", "zagrożenie"] },
-    { category: "TRANSPORT", keywords: ["autobus", "tramwaj", "korek", "sygnalizacja", "parking", "rower"] },
-    { category: "OTHER", keywords: [] }
+    { 
+        category: "INFRASTRUCTURE", 
+        label: "Infrastruktura drogowa",
+        keywords: ["droga", "chodnik", "dziura", "studzienka", "latarnia", "znak", "barierka", "nawierzchnia", "jezdnia", "krawężnik"]
+    },
+    { 
+        category: "VANDALISM", 
+        label: "Wandalizm",
+        keywords: ["wandalizm", "graffiti", "zniszczenie", "dewastacja", "uszkodzenie", "rozbite", "połamane"]
+    },
+    { 
+        category: "LIGHTING", 
+        label: "Oświetlenie",
+        keywords: ["oświetlenie", "lampa", "światło", "ciemno", "żarówka", "latarnia"]
+    },
+    { 
+        category: "GREENERY", 
+        label: "Zieleń miejska",
+        keywords: ["drzewo", "krzew", "trawnik", "zieleń", "park", "roślina", "gałąź"]
+    },
+    { 
+        category: "WASTE_ILLEGAL_DUMPING", 
+        label: "Śmieci / nielegalne zaśmiecanie",
+        keywords: ["śmieci", "odpady", "wysypisko", "zaśmiecanie", "kosz", "worki", "butelki"]
+    },
+    { 
+        category: "PARTICIPANT_BEHAVIOR", 
+        label: "Zachowania kierowców/pieszych",
+        keywords: ["kierowca", "pieszy", "agresja", "niebezpieczna", "jazda", "przepisy", "mandat"]
+    },
+    { 
+        category: "PARTICIPANT_HAZARD", 
+        label: "Zagrożenia dla uczestników ruchu",
+        keywords: ["wypadek", "niebezpieczne", "zagrożenie", "kolizja", "potrącenie", "rowerzysta"]
+    },
+    { 
+        category: "BIOLOGICAL_HAZARD", 
+        label: "Zagrożenia biologiczne",
+        keywords: ["szczur", "owad", "kleszcz", "barszcz", "roślina", "inwazyjne", "alergen"]
+    },
+    { 
+        category: "OTHER", 
+        label: "Inne",
+        keywords: []
+    }
 ]
 
-function detectCategory(title: string, description: string): { category: string; confidence: number; probabilities: Record<string, number> } {
+function detectCategory(title: string, description: string): { category: string; label: string; confidence: number; probabilities: Record<string, number> } {
     const text = `${title} ${description}`.toLowerCase()
     
     // Check each category for keyword matches
     const scores: Record<string, number> = {}
     let maxScore = 0
-    let bestCategory = "OTHER"
+    let bestCategory = DEMO_CATEGORIES[DEMO_CATEGORIES.length - 1] // Default to OTHER
     
     for (const cat of DEMO_CATEGORIES) {
         const matchCount = cat.keywords.filter(kw => text.includes(kw)).length
         scores[cat.category] = matchCount > 0 ? 0.3 + (matchCount * 0.15) : 0.05
         if (scores[cat.category] > maxScore) {
             maxScore = scores[cat.category]
-            bestCategory = cat.category
+            bestCategory = cat
         }
     }
     
@@ -37,8 +78,9 @@ function detectCategory(title: string, description: string): { category: string;
     }
     
     return {
-        category: bestCategory,
-        confidence: Math.min(0.95, maxScore),
+        category: bestCategory.category,
+        label: bestCategory.label,
+        confidence: Math.min(0.85, maxScore),
         probabilities
     }
 }
@@ -63,11 +105,12 @@ export async function POST(request: NextRequest) {
         // Simulate processing delay (50-150ms)
         await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100))
 
-        const { category, confidence, probabilities } = detectCategory(title || "", description || "")
+        const { category, label, confidence, probabilities } = detectCategory(title || "", description || "")
 
         return NextResponse.json({
             report_id: report_id || `demo-${Date.now()}`,
             category,
+            category_label: label,
             confidence,
             all_probabilities: probabilities,
             processing_time_ms: Math.round(50 + Math.random() * 100),

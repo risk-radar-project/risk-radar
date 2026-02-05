@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { GATEWAY_URL } from "@/lib/api/server-config"
+import { GATEWAY_URL, demoModeGuard } from "@/lib/api/server-config"
 
 export async function POST(request: NextRequest) {
+    // Block in demo mode
+    const demoBlock = demoModeGuard()
+    if (demoBlock) return demoBlock
+
     try {
         const formData = await request.formData()
 
