@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
-import { GATEWAY_URL, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
+import { errorResponse } from "@/lib/api/server-config"
 
 /**
  * POST /api/ai/verify
- * Proxy to AI Verification-Duplication Service
+ * DEMO MODE: Returns simulated AI verification response
+ * AI Verification service is disabled in demo mode to save resources
  */
 export async function POST(request: NextRequest) {
     try {
@@ -13,45 +14,28 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json()
+        const { report_id, title, description } = body
 
-        console.log("AI Verify API: Forwarding request to verification service")
+        console.log("AI Verify API: [DEMO MODE] Returning simulated verification")
 
-        // Add timeout for better UX
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 15000) // 15s timeout (BERT can be slower)
+        // Simulate processing delay (100-300ms like real BERT would take)
+        await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200))
 
-        try {
-            const response = await fetch(
-                `${GATEWAY_URL}/api/ai/verification/verify`,
-                withAuthAndUserId(authHeader, {
-                    method: "POST",
-                    body: JSON.stringify(body),
-                    signal: controller.signal
-                })
-            )
+        // In demo mode, we always return "not fake" with high confidence
+        // This allows all reports to be submitted smoothly
+        const textLength = ((title || "") + (description || "")).length
+        const hasReasonableContent = textLength > 20
 
-            clearTimeout(timeoutId)
-
-            if (!response.ok) {
-                const errorText = await response.text()
-                console.error(`AI Verification service error: ${response.status}`, errorText)
-                return NextResponse.json(
-                    { error: `Verification service error: ${response.status}` },
-                    { status: response.status }
-                )
-            }
-
-            const data = await response.json()
-            return NextResponse.json(data)
-        } catch (fetchError: unknown) {
-            clearTimeout(timeoutId)
-
-            if (fetchError instanceof Error && fetchError.name === "AbortError") {
-                console.error("AI Verification service timeout")
-                return NextResponse.json({ error: "Verification service timeout" }, { status: 504 })
-            }
-            throw fetchError
-        }
+        return NextResponse.json({
+            report_id: report_id || `demo-${Date.now()}`,
+            is_fake: false,
+            fake_probability: hasReasonableContent ? 0.05 + Math.random() * 0.1 : 0.15 + Math.random() * 0.1,
+            confidence: hasReasonableContent ? "high" : "medium",
+            explanation: "Tryb demo - weryfikacja AI jest wyłączona. Wszystkie zgłoszenia są akceptowane do manualnej weryfikacji.",
+            processing_time_ms: Math.round(100 + Math.random() * 200),
+            demo_mode: true,
+            demo_notice: "Weryfikacja BERT/AI jest niedostępna w trybie demo. Zgłoszenia są akceptowane automatycznie."
+        })
     } catch (error: unknown) {
         console.error("Failed to verify report:", error)
         const errorMessage = error instanceof Error ? error.message : "Unknown error"
