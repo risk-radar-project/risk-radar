@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
-import { GATEWAY_URL } from "@/lib/api/server-config"
+import { GATEWAY_URL, IS_DEMO_MODE } from "@/lib/api/server-config"
 
 export async function POST(request: NextRequest) {
+    if (IS_DEMO_MODE) {
+        return NextResponse.json(
+            { error: "Resetowanie hasła jest niedostępne w trybie demonstracyjnym", demo_mode: true },
+            { status: 403 }
+        )
+    }
+
     try {
         const body = await request.json()
 
