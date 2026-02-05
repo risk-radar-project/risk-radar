@@ -83,8 +83,12 @@ export async function changeEmail(newEmail: string): Promise<ApiResponse<void>> 
 
     if (!response.ok) {
         let errorMessage = "Nie udało się zmienić adresu email"
+        let demoMode = false
         try {
             const body = await response.json()
+            if (body.demo_mode || body.error?.includes?.("demo")) {
+                demoMode = true
+            }
             if (body.error && typeof body.error === "object") {
                 errorMessage = body.error.message || "Wystąpił błąd"
             } else {
@@ -93,7 +97,7 @@ export async function changeEmail(newEmail: string): Promise<ApiResponse<void>> 
         } catch {
             // ignore
         }
-        return { data: undefined as unknown as void, error: errorMessage }
+        return { data: undefined as unknown as void, error: errorMessage, demo_mode: demoMode }
     }
 
     return { data: undefined as unknown as void }

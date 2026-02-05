@@ -15,7 +15,19 @@ export async function verifyReport(reportId: string, token: string) {
         })
 
         if (!res.ok) {
-            console.error("Failed to verify report:", res.status, await res.text())
+            const errorText = await res.text()
+            console.error("Failed to verify report:", res.status, errorText)
+            
+            // Check for demo mode response
+            try {
+                const errorData = JSON.parse(errorText)
+                if (errorData.demo_mode || errorData.error?.includes("demo")) {
+                    return { success: false, error: "demo_mode", demo_mode: true }
+                }
+            } catch {
+                // Not JSON response
+            }
+            
             // If the error is 403, it means the user is not authorized
             if (res.status === 403 || res.status === 401) {
                 return { success: false, error: "Brak uprawnień do weryfikacji zgłoszeń" }
@@ -43,7 +55,19 @@ export async function rejectReport(reportId: string, token: string) {
         })
 
         if (!res.ok) {
-            console.error("Failed to reject report:", res.status, await res.text())
+            const errorText = await res.text()
+            console.error("Failed to reject report:", res.status, errorText)
+            
+            // Check for demo mode response
+            try {
+                const errorData = JSON.parse(errorText)
+                if (errorData.demo_mode || errorData.error?.includes("demo")) {
+                    return { success: false, error: "demo_mode", demo_mode: true }
+                }
+            } catch {
+                // Not JSON response
+            }
+            
             if (res.status === 403 || res.status === 401) {
                 return { success: false, error: "Brak uprawnień do odrzucania zgłoszeń" }
             }

@@ -3,6 +3,7 @@
 export type ApiResponse<T> = {
     data: T
     error?: string
+    demo_mode?: boolean
 }
 
 export type User = {

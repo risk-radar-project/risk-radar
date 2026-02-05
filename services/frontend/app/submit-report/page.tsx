@@ -6,6 +6,7 @@ import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { categorizeReport, type CategorizationResponse, type SubmissionResult } from "@/lib/api/ai"
 import { validateReport, validateAndSanitize } from "@/lib/validation/report-validation"
+import { DemoModeAlert } from "@/components/demo-mode"
 
 import { getFreshAccessToken } from "@/lib/auth/auth-service"
 
@@ -116,6 +117,7 @@ export default function SubmitReportPage() {
     const [isCategorizing, setIsCategorizing] = useState(false)
     const [aiSuggestedCategory, setAiSuggestedCategory] = useState<CategorizationResponse | null>(null)
     const [submissionResult, setSubmissionResult] = useState<SubmissionResult | null>(null)
+    const [showDemoAlert, setShowDemoAlert] = useState(false)
     const categorizationDebounceRef = useRef<NodeJS.Timeout | null>(null)
 
     const [formData, setFormData] = useState({
@@ -468,6 +470,13 @@ export default function SubmitReportPage() {
 
             if (!response.ok) {
                 const errorData = await response.json()
+
+                // Check for demo mode restriction
+                if (errorData.demo_mode || errorData.error?.includes("demo")) {
+                    setShowDemoAlert(true)
+                    setIsSubmitting(false)
+                    return
+                }
 
                 // Check if it's a validation error from backend
                 if (errorData.error && typeof errorData.error === "string") {
@@ -969,6 +978,13 @@ export default function SubmitReportPage() {
                     {isSubmitting && <p className="text-center text-sm text-[#e0dcd7]/60">Wysyłanie zgłoszenia...</p>}
                 </form>
             </div>
+
+            <DemoModeAlert
+                isOpen={showDemoAlert}
+                onClose={() => setShowDemoAlert(false)}
+                title="Dodawanie zgłoszeń niedostępne"
+                description="W trybie demonstracyjnym nie można dodawać nowych zgłoszeń."
+            />
         </div>
     )
 }

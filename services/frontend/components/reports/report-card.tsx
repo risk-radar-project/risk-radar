@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { verifyReport, rejectReport } from "@/lib/actions/report-actions"
+import { DemoModeAlert } from "@/components/demo-mode"
 
 export interface Report {
     id: string
@@ -43,6 +44,8 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [showSuccessAnimation, setShowSuccessAnimation] = useState(false)
     const [showRejectAnimation, setShowRejectAnimation] = useState(false)
+    const [showDemoAlert, setShowDemoAlert] = useState(false)
+    const [demoAlertMessage, setDemoAlertMessage] = useState({ title: "", description: "" })
 
     const hasImages = report.imageIds && report.imageIds.length > 0
     const MEDIA_SERVICE_BASE_URL = process.env.NEXT_PUBLIC_MEDIA_URL || "http://localhost:8084/media/"
@@ -85,7 +88,12 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
         startTransition(async () => {
             const result = await verifyReport(report.id, token)
             if (!result.success) {
-                alert(`Błąd: ${result.error}`)
+                if (result.demo_mode || result.error?.includes("demo")) {
+                    setDemoAlertMessage({ title: "Weryfikacja niedostępna", description: "W trybie demonstracyjnym nie można weryfikować zgłoszeń." })
+                    setShowDemoAlert(true)
+                } else {
+                    alert(`Błąd: ${result.error}`)
+                }
             } else {
                 // Show success animation
                 setShowSuccessAnimation(true)
@@ -109,7 +117,12 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
         startTransition(async () => {
             const result = await rejectReport(report.id, token)
             if (!result.success) {
-                alert(`Błąd: ${result.error}`)
+                if (result.demo_mode || result.error?.includes("demo")) {
+                    setDemoAlertMessage({ title: "Odrzucanie niedostępne", description: "W trybie demonstracyjnym nie można odrzucać zgłoszeń." })
+                    setShowDemoAlert(true)
+                } else {
+                    alert(`Błąd: ${result.error}`)
+                }
             } else {
                 // Show reject animation
                 setShowRejectAnimation(true)
@@ -264,6 +277,13 @@ export function ReportCard({ report, onProcessed }: ReportCardProps) {
                     )}
                 </div>
             </div>
+
+            <DemoModeAlert
+                isOpen={showDemoAlert}
+                onClose={() => setShowDemoAlert(false)}
+                title={demoAlertMessage.title}
+                description={demoAlertMessage.description}
+            />
         </div>
     )
 }

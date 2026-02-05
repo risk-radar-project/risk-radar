@@ -10,6 +10,7 @@ import { ClientSessionHydrator } from "@/components/providers/client-session-hyd
 import { loadSession } from "@/lib/auth/load-session"
 import AuthGuard from "@/components/auth-guard"
 import { PathAwareShell } from "@/components/layout/path-aware-shell"
+import { WelcomeDialog } from "@/components/demo-mode"
 
 const fontSans = Geist({
     variable: "--font-geist-sans",
@@ -59,6 +60,7 @@ export default async function RootLayout({
                     <AuthGuard>
                         <PathAwareShell>{children}</PathAwareShell>
                         <Toaster theme="dark" richColors closeButton />
+                        <WelcomeDialog />
                     </AuthGuard>
                 </QueryClientWrapper>
             </body>

@@ -33,6 +33,7 @@ import {
     MapPin
 } from "lucide-react"
 import { toast } from "sonner"
+import { DemoModeAlert } from "@/components/demo-mode"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
@@ -86,6 +87,8 @@ export function MyReportsClient() {
     const [reportToDelete, setReportToDelete] = useState<string | null>(null)
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null)
     const [editFormData, setEditFormData] = useState({ title: "", description: "", category: "" })
+    const [showDemoAlert, setShowDemoAlert] = useState(false)
+    const [demoAlertMessage, setDemoAlertMessage] = useState({ title: "", description: "" })
 
     const queryClient = useQueryClient()
 
@@ -111,8 +114,14 @@ export function MyReportsClient() {
             queryClient.invalidateQueries({ queryKey: ["my-reports"] })
             setReportToDelete(null)
         },
-        onError: () => {
-            toast.error("Nie udało się usunąć zgłoszenia")
+        onError: (error: Error & { demo_mode?: boolean }) => {
+            if (error.demo_mode || error.message?.includes("demo")) {
+                setDemoAlertMessage({ title: "Usuwanie niedostępne", description: "W trybie demonstracyjnym nie można usuwać zgłoszeń." })
+                setShowDemoAlert(true)
+                setReportToDelete(null)
+            } else {
+                toast.error("Nie udało się usunąć zgłoszenia")
+            }
         }
     })
 
@@ -131,8 +140,14 @@ export function MyReportsClient() {
             queryClient.invalidateQueries({ queryKey: ["my-reports"] })
             setReportToEdit(null)
         },
-        onError: () => {
-            toast.error("Nie udało się zaktualizować zgłoszenia")
+        onError: (error: Error & { demo_mode?: boolean }) => {
+            if (error.demo_mode || error.message?.includes("demo")) {
+                setDemoAlertMessage({ title: "Edycja niedostępna", description: "W trybie demonstracyjnym nie można edytować zgłoszeń." })
+                setShowDemoAlert(true)
+                setReportToEdit(null)
+            } else {
+                toast.error("Nie udało się zaktualizować zgłoszenia")
+            }
         }
     })
 
@@ -625,6 +640,14 @@ export function MyReportsClient() {
                 cancelText="Anuluj"
                 variant="destructive"
                 isLoading={deleteMutation.isPending}
+            />
+
+            {/* Demo Mode Alert */}
+            <DemoModeAlert
+                isOpen={showDemoAlert}
+                onClose={() => setShowDemoAlert(false)}
+                title={demoAlertMessage.title}
+                description={demoAlertMessage.description}
             />
         </div>
     )
