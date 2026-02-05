@@ -27,11 +27,13 @@ export async function GET(request: NextRequest) {
 
 // POST /api/admin/authz/roles - Create a new role
 export async function POST(request: NextRequest) {
-    // Block in demo mode
-    const demoBlock = demoModeGuard()
+    // Get auth header early for demo mode bypass check
+    const authHeader = request.headers.get("Authorization")
+    
+    // Block in demo mode (with admin bypass check)
+    const demoBlock = demoModeGuard(authHeader)
     if (demoBlock) return demoBlock
 
-    const authHeader = request.headers.get("Authorization")
     if (!authHeader) {
         return errorResponse("Unauthorized", 401)
     }

@@ -763,9 +763,14 @@ export default function SubmitReportPage() {
                                                 </span>
                                             </div>
                                         </div>
-                                        <p className="font-medium text-[#e0dcd7]">{aiSuggestedCategory.category}</p>
+                                        <p className="font-medium text-[#e0dcd7]">
+                                            {aiSuggestedCategory.category_label || aiSuggestedCategory.category}
+                                        </p>
                                         <p className="mt-1 text-xs text-[#e0dcd7]/60">
                                             Pewność: {(aiSuggestedCategory.confidence * 100).toFixed(0)}%
+                                            {aiSuggestedCategory.demo_mode && (
+                                                <span className="ml-2 text-[#d97706]/70">(tryb demo)</span>
+                                            )}
                                         </p>
                                     </div>
                                     <button

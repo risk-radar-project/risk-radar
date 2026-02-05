@@ -30,12 +30,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // PUT /api/admin/authz/roles/[roleId] - Update role
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-    // Block in demo mode
-    const demoBlock = demoModeGuard()
+    const { roleId } = await params
+    // Get auth header early for demo mode bypass check
+    const authHeader = request.headers.get("Authorization")
+    
+    // Block in demo mode (with admin bypass check)
+    const demoBlock = demoModeGuard(authHeader)
     if (demoBlock) return demoBlock
 
-    const { roleId } = await params
-    const authHeader = request.headers.get("Authorization")
     if (!authHeader) {
         return errorResponse("Unauthorized", 401)
     }
@@ -68,12 +70,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/admin/authz/roles/[roleId] - Delete role
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-    // Block in demo mode
-    const demoBlock = demoModeGuard()
+    const { roleId } = await params
+    // Get auth header early for demo mode bypass check
+    const authHeader = request.headers.get("Authorization")
+    
+    // Block in demo mode (with admin bypass check)
+    const demoBlock = demoModeGuard(authHeader)
     if (demoBlock) return demoBlock
 
-    const { roleId } = await params
-    const authHeader = request.headers.get("Authorization")
     if (!authHeader) {
         return errorResponse("Unauthorized", 401)
     }

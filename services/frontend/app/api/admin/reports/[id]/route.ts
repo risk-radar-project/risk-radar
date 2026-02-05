@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { GATEWAY_URL, withAuthHandler, errorResponse, demoModeGuard } from "@/lib/api/server-config"
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-    // Block in demo mode
-    const demoBlock = demoModeGuard()
+    // Block in demo mode (with admin bypass check)
+    const authHeader = request.headers.get("Authorization")
+    const demoBlock = demoModeGuard(authHeader)
     if (demoBlock) return demoBlock
 
     return withAuthHandler(request, async (token) => {
@@ -29,8 +30,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-    // Block in demo mode
-    const demoBlock = demoModeGuard()
+    // Block in demo mode (with admin bypass check)
+    const authHeader = request.headers.get("Authorization")
+    const demoBlock = demoModeGuard(authHeader)
     if (demoBlock) return demoBlock
 
     return withAuthHandler(request, async (token) => {
@@ -60,8 +62,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-    // Block in demo mode
-    const demoBlock = demoModeGuard()
+    // Block in demo mode (with admin bypass check)
+    const authHeader = request.headers.get("Authorization")
+    const demoBlock = demoModeGuard(authHeader)
     if (demoBlock) return demoBlock
 
     return withAuthHandler(request, async (token) => {

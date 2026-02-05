@@ -22,8 +22,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 // PATCH update report
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-    // Block in demo mode
-    const demoBlock = demoModeGuard()
+    // Block in demo mode (with admin bypass check)
+    const authHeader = request.headers.get("Authorization")
+    const demoBlock = demoModeGuard(authHeader)
     if (demoBlock) return demoBlock
 
     return withAuthHandler(request, async (token) => {
@@ -46,8 +47,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 // DELETE report
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-    // Block in demo mode
-    const demoBlock = demoModeGuard()
+    // Block in demo mode (with admin bypass check)
+    const authHeader = request.headers.get("Authorization")
+    const demoBlock = demoModeGuard(authHeader)
     if (demoBlock) return demoBlock
 
     return withAuthHandler(request, async (token) => {

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { GATEWAY_URL, withAuthHandler, demoModeGuard } from "@/lib/api/server-config"
 
 export async function POST(request: NextRequest) {
-    // Block in demo mode
-    const demoBlock = demoModeGuard()
+    // Block in demo mode (with admin bypass check)
+    const authHeader = request.headers.get("Authorization")
+    const demoBlock = demoModeGuard(authHeader)
     if (demoBlock) return demoBlock
 
     return withAuthHandler(request, async (token) => {

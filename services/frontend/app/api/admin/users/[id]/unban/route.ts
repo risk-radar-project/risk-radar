@@ -2,11 +2,13 @@ import { NextResponse } from "next/server"
 import { GATEWAY_URL, withAuth, errorResponse, demoModeGuard } from "@/lib/api/server-config"
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    // Block in demo mode
-    const demoBlock = demoModeGuard()
+    // Get auth header early for demo mode bypass check
+    const authHeader = request.headers.get("Authorization")
+    
+    // Block in demo mode (with admin bypass check)
+    const demoBlock = demoModeGuard(authHeader)
     if (demoBlock) return demoBlock
 
-    const authHeader = request.headers.get("Authorization")
     if (!authHeader) {
         return errorResponse("Unauthorized", 401)
     }
