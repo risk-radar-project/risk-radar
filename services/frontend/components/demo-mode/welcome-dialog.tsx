@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Github, MapPin, Shield, Users, Eye } from "lucide-react"
+import { Github, MapPin, Shield, Eye, Code } from "lucide-react"
 import Link from "next/link"
 
 const WELCOME_SHOWN_KEY = "riskradar_welcome_shown"
@@ -40,7 +40,7 @@ export function WelcomeDialog() {
                     <DialogTitle className="text-center text-2xl font-bold">Witamy w RiskRadar! 👋</DialogTitle>
 
                     <DialogDescription className="text-center text-zinc-400">
-                        Interaktywna mapa zgłoszeń zagrożeń i incydentów w Twoim mieście
+                        Webowa mapa zagrożeń w Twoim mieście
                     </DialogDescription>
                 </DialogHeader>
 
@@ -53,18 +53,18 @@ export function WelcomeDialog() {
                         <div>
                             <p className="font-medium text-zinc-200">Projekt Inżynierski</p>
                             <p className="text-sm text-zinc-400">
-                                Ta aplikacja została stworzona jako projekt inżynierski na Politechnice Krakowskiej.
+                                Ta aplikacja została stworzona jako grupowy projekt inżynierski.
                             </p>
                         </div>
                     </div>
 
                     <div className="flex items-start gap-3 rounded-lg border border-zinc-700/50 bg-zinc-800/30 p-3">
                         <div className="rounded-lg bg-purple-500/20 p-2">
-                            <Github className="h-5 w-5 text-purple-400" />
+                            <Code className="h-5 w-5 text-purple-400" />
                         </div>
                         <div>
-                            <p className="font-medium text-zinc-200">Open Source</p>
-                            <p className="text-sm text-zinc-400">Kod źródłowy jest dostępny na GitHubie.</p>
+                            <p className="font-medium text-zinc-200">Kod Źródłowy</p>
+                            <p className="text-sm text-zinc-400">Kod źródłowy aplikacji jest dostępny na GitHubie.</p>
                             <Link
                                 href="https://github.com/risk-radar-project/risk-radar"
                                 target="_blank"
@@ -89,32 +89,6 @@ export function WelcomeDialog() {
                                 </strong>
                                 .
                             </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Demo accounts info */}
-                <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-                        <Users className="h-4 w-4" />
-                        Konta testowe (hasło = login):
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                        <div className="rounded bg-zinc-700/50 px-2 py-1">
-                            <span className="text-zinc-400">Admin:</span>{" "}
-                            <span className="font-mono text-zinc-200">admin</span>
-                        </div>
-                        <div className="rounded bg-zinc-700/50 px-2 py-1">
-                            <span className="text-zinc-400">Moderator:</span>{" "}
-                            <span className="font-mono text-zinc-200">moderator</span>
-                        </div>
-                        <div className="rounded bg-zinc-700/50 px-2 py-1">
-                            <span className="text-zinc-400">Wolontariusz:</span>{" "}
-                            <span className="font-mono text-zinc-200">wolontariusz</span>
-                        </div>
-                        <div className="rounded bg-zinc-700/50 px-2 py-1">
-                            <span className="text-zinc-400">Użytkownik:</span>{" "}
-                            <span className="font-mono text-zinc-200">uzytkownik</span>
                         </div>
                     </div>
                 </div>

@@ -115,8 +115,14 @@ export default function ProfileContent() {
             if (response.error) {
                 // Check for demo mode error
                 if (response.demo_mode) {
-                    setShowDemoAlert(true)
-                    resetEmailDialog()
+                    setIsEmailDialogOpen(false)
+                    setTimeout(() => {
+                        setEmailStep(1)
+                        setNewEmail("")
+                        setConfirmEmail("")
+                        setEmailError("")
+                        setShowDemoAlert(true)
+                    }, 350)
                 } else {
                     toast.error("Nie udało się zmienić adresu email")
                 }
@@ -128,8 +134,14 @@ export default function ProfileContent() {
         },
         onError: (error: Error & { demo_mode?: boolean }) => {
             if (error.demo_mode) {
-                setShowDemoAlert(true)
-                resetEmailDialog()
+                setIsEmailDialogOpen(false)
+                setTimeout(() => {
+                    setEmailStep(1)
+                    setNewEmail("")
+                    setConfirmEmail("")
+                    setEmailError("")
+                    setShowDemoAlert(true)
+                }, 350)
             } else {
                 toast.error("Wystąpił błąd podczas zmiany adresu email")
             }
