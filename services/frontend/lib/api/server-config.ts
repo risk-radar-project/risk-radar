@@ -13,8 +13,9 @@ export const GATEWAY_URL = process.env.GATEWAY_URL || "http://api-gateway:8080"
 // Demo mode - blocks all modifying operations
 export const IS_DEMO_MODE = process.env.DEMO_MODE === "true"
 
-// Usernames that bypass demo mode restrictions (admin accounts)
-const DEMO_MODE_BYPASS_USERS = ["superadmin", "admin"]
+// Usernames that bypass demo mode restrictions (only superadmin can modify data)
+// Demo accounts: admin, moderator, wolontariusz, uzytkownik - all blocked
+const DEMO_MODE_BYPASS_USERS = ["superadmin"]
 
 /**
  * Extract username from JWT token (sub claim)

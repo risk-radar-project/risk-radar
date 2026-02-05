@@ -97,16 +97,24 @@ export function WelcomeDialog() {
                 <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
                     <div className="flex items-center gap-2 text-sm font-medium text-zinc-300">
                         <Users className="h-4 w-4" />
-                        Konta testowe:
+                        Konta testowe (hasło = login):
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                         <div className="rounded bg-zinc-700/50 px-2 py-1">
                             <span className="text-zinc-400">Admin:</span>{" "}
-                            <span className="font-mono text-zinc-200">admin / admin</span>
+                            <span className="font-mono text-zinc-200">admin</span>
                         </div>
                         <div className="rounded bg-zinc-700/50 px-2 py-1">
-                            <span className="text-zinc-400">User:</span>{" "}
-                            <span className="font-mono text-zinc-200">uzytkownik / uzytkownik</span>
+                            <span className="text-zinc-400">Moderator:</span>{" "}
+                            <span className="font-mono text-zinc-200">moderator</span>
+                        </div>
+                        <div className="rounded bg-zinc-700/50 px-2 py-1">
+                            <span className="text-zinc-400">Wolontariusz:</span>{" "}
+                            <span className="font-mono text-zinc-200">wolontariusz</span>
+                        </div>
+                        <div className="rounded bg-zinc-700/50 px-2 py-1">
+                            <span className="text-zinc-400">Użytkownik:</span>{" "}
+                            <span className="font-mono text-zinc-200">uzytkownik</span>
                         </div>
                     </div>
                 </div>
