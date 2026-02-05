@@ -5,7 +5,7 @@
  * Use these ONLY in Route Handlers (app/api/...) and Server Components.
  */
 
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 // API Gateway - central routing point for all services
 export const GATEWAY_URL = process.env.GATEWAY_URL || "http://api-gateway:8080"
@@ -99,8 +99,6 @@ export function withAuthAndUserId(authHeader: string | null, options: RequestIni
 export function errorResponse(message: string, status: number) {
     return Response.json({ error: message }, { status })
 }
-
-import { NextRequest, NextResponse } from "next/server"
 
 /**
  * Wrapper for route handlers that require authentication.
