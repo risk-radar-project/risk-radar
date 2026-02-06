@@ -5,8 +5,66 @@
  * Use these ONLY in Route Handlers (app/api/...) and Server Components.
  */
 
+import { NextRequest, NextResponse } from "next/server"
+
 // API Gateway - central routing point for all services
 export const GATEWAY_URL = process.env.GATEWAY_URL || "http://api-gateway:8080"
+
+// Demo mode - blocks all modifying operations
+export const IS_DEMO_MODE = process.env.DEMO_MODE === "true"
+
+// Usernames that bypass demo mode restrictions (only superadmin can modify data)
+// Demo accounts: admin, moderator, wolontariusz, uzytkownik - all blocked
+const DEMO_MODE_BYPASS_USERS = ["superadmin"]
+
+/**
+ * Extract username from JWT token (sub claim)
+ */
+function extractUsernameFromToken(authHeader: string | null): string | null {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return null
+    }
+    try {
+        const token = authHeader.replace("Bearer ", "")
+        const parts = token.split(".")
+        if (parts.length !== 3) return null
+        const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf-8"))
+        return payload.sub || payload.username || null
+    } catch {
+        return null
+    }
+}
+
+/**
+ * Guard for demo mode - returns error response if demo mode is active
+ * Use at the beginning of POST/PUT/PATCH/DELETE handlers to block modifications
+ * 
+ * @param authHeader - Optional Authorization header to check for admin bypass
+ * @returns NextResponse with 403 if blocked, null if allowed
+ */
+export function demoModeGuard(authHeader?: string | null): NextResponse | null {
+    if (!IS_DEMO_MODE) {
+        return null
+    }
+    
+    // Check if user is an admin that bypasses demo restrictions
+    if (authHeader) {
+        const username = extractUsernameFromToken(authHeader)
+        if (username && DEMO_MODE_BYPASS_USERS.includes(username.toLowerCase())) {
+            console.log(`[DEMO MODE] Bypass for admin user: ${username}`)
+            return null
+        }
+    }
+    
+    return NextResponse.json(
+        { 
+            error: "Ta akcja jest niedostępna w trybie demonstracyjnym",
+            demo_mode: true,
+            message: "W wersji demo można tylko przeglądać dane. Modyfikacje są zablokowane."
+        },
+        { status: 403 }
+    )
+}
 
 // Direct service URLs (bypass gateway for internal calls if needed)
 export const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://user-service:8080"
@@ -76,8 +134,6 @@ export function withAuthAndUserId(authHeader: string | null, options: RequestIni
 export function errorResponse(message: string, status: number) {
     return Response.json({ error: message }, { status })
 }
-
-import { NextRequest, NextResponse } from "next/server"
 
 /**
  * Wrapper for route handlers that require authentication.

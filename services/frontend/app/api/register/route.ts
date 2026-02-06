@@ -1,7 +1,19 @@
 import { NextResponse } from "next/server"
-import { GATEWAY_URL } from "@/lib/api/server-config"
+import { GATEWAY_URL, IS_DEMO_MODE } from "@/lib/api/server-config"
 
 export async function POST(request: Request) {
+    // Block registration in demo mode
+    if (IS_DEMO_MODE) {
+        return NextResponse.json(
+            {
+                error: "Rejestracja jest niedostępna w trybie demonstracyjnym",
+                demo_mode: true,
+                message: "W wersji demo nie można tworzyć nowych kont."
+            },
+            { status: 403 }
+        )
+    }
+
     try {
         const body = await request.json()
 

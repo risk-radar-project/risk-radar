@@ -8,6 +8,7 @@ import { TableBody } from "@/components/ui/table/table-body"
 import { TableRow } from "@/components/ui/table/table-row"
 import { TableCell } from "@/components/ui/table/table-cell"
 import { Search, Filter, ChevronLeft, ChevronRight, Pencil, Trash2, Eye, X, Check, Loader2, RefreshCw } from "lucide-react"
+import { DemoModeAlert } from "@/components/demo-mode"
 
 interface Report {
     id: string
@@ -83,6 +84,8 @@ export default function AdminReportsPage() {
     const [editingReport, setEditingReport] = useState<Report | null>(null)
     const [viewingReport, setViewingReport] = useState<Report | null>(null)
     const [pageSize, setPageSize] = useState(10)
+    const [showDemoAlert, setShowDemoAlert] = useState(false)
+    const [demoAlertMessage, setDemoAlertMessage] = useState({ title: "", description: "" })
 
     const fetchReports = useCallback(async () => {
         setLoading(true)
@@ -174,7 +177,13 @@ export default function AdminReportsPage() {
                 if (response.ok) {
                     fetchReports()
                 } else {
-                    alert("Nie udało się usunąć zgłoszenia")
+                    const errData = await response.json().catch(() => ({}))
+                    if (errData.demo_mode || errData.error?.includes("demo")) {
+                        setDemoAlertMessage({ title: "Usuwanie niedostępne", description: "W trybie demonstracyjnym nie można usuwać zgłoszeń." })
+                        setShowDemoAlert(true)
+                    } else {
+                        alert("Nie udało się usunąć zgłoszenia")
+                    }
                 }
             } catch (err) {
                 console.error("Delete failed:", err)
@@ -214,10 +223,16 @@ export default function AdminReportsPage() {
                     setEditingReport(null)
                 } else {
                     const errorData = await response.json().catch(() => ({}))
-                    console.error("Update failed:", errorData)
-                    alert(
-                        `Nie udało się zaktualizować zgłoszenia: ${errorData.error || errorData.message || response.statusText}`
-                    )
+                    if (errorData.demo_mode || errorData.error?.includes("demo")) {
+                        setEditingReport(null)
+                        setDemoAlertMessage({ title: "Edycja niedostępna", description: "W trybie demonstracyjnym nie można edytować zgłoszeń." })
+                        setShowDemoAlert(true)
+                    } else {
+                        console.error("Update failed:", errorData)
+                        alert(
+                            `Nie udało się zaktualizować zgłoszenia: ${errorData.error || errorData.message || response.statusText}`
+                        )
+                    }
                 }
             } catch (err) {
                 console.error("Update failed:", err)
@@ -238,7 +253,13 @@ export default function AdminReportsPage() {
                 // Update local state immediately for better UX
                 setReports(reports.map((r) => (r.id === id ? { ...r, status: newStatus } : r)))
             } else {
-                alert("Nie udało się zmienić statusu")
+                const errData = await response.json().catch(() => ({}))
+                if (errData.demo_mode || errData.error?.includes("demo")) {
+                    setDemoAlertMessage({ title: "Zmiana statusu niedostępna", description: "W trybie demonstracyjnym nie można zmieniać statusu zgłoszeń." })
+                    setShowDemoAlert(true)
+                } else {
+                    alert("Nie udało się zmienić statusu")
+                }
             }
         } catch (err) {
             console.error("Status change failed:", err)
@@ -647,6 +668,13 @@ export default function AdminReportsPage() {
                     </div>
                 </div>
             )}
+
+            <DemoModeAlert
+                isOpen={showDemoAlert}
+                onClose={() => setShowDemoAlert(false)}
+                title={demoAlertMessage.title}
+                description={demoAlertMessage.description}
+            />
         </div>
     )
 }

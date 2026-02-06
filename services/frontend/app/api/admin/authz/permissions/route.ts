@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { GATEWAY_URL, withAuth, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuth, withAuthAndUserId, errorResponse, demoModeGuard } from "@/lib/api/server-config"
 
 // GET /api/admin/authz/permissions - List all permissions
 export async function GET(request: NextRequest) {
@@ -31,6 +31,9 @@ export async function POST(request: NextRequest) {
     if (!authHeader) {
         return errorResponse("Unauthorized", 401)
     }
+
+    const demoBlock = demoModeGuard(authHeader)
+    if (demoBlock) return demoBlock
 
     try {
         const body = await request.json()

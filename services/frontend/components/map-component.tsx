@@ -942,16 +942,22 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
 
     // Get danger level color
     const getDangerColor = (level: string) => {
-        switch (level) {
-            case "Bardzo niski":
+        const normalizedLevel = level.toUpperCase()
+        switch (normalizedLevel) {
+            case "BARDZO NISKI":
+            case "BARDZO_NISKI":
                 return "bg-green-500"
-            case "Niski":
+            case "NISKI":
                 return "bg-green-400"
-            case "Umiarkowany":
+            case "ŚREDNI":
+            case "UMIARKOWANY":
                 return "bg-yellow-500"
-            case "Wysoki":
+            case "PODWYŻSZONY":
+            case "WYSOKI":
                 return "bg-orange-500"
-            case "Bardzo wysoki":
+            case "BARDZO WYSOKI":
+            case "BARDZO_WYSOKI":
+            case "KRYTYCZNY":
                 return "bg-red-500"
             default:
                 return "bg-zinc-500"
@@ -960,16 +966,22 @@ export default function MapComponent({ initialReports = [], initialLat, initialL
 
     // Get danger level emoji
     const getDangerEmoji = (level: string) => {
-        switch (level) {
-            case "Bardzo niski":
+        const normalizedLevel = level.toUpperCase()
+        switch (normalizedLevel) {
+            case "BARDZO NISKI":
+            case "BARDZO_NISKI":
                 return "🌟"
-            case "Niski":
+            case "NISKI":
                 return "✅"
-            case "Umiarkowany":
+            case "ŚREDNI":
+            case "UMIARKOWANY":
                 return "⚠️"
-            case "Wysoki":
+            case "PODWYŻSZONY":
+            case "WYSOKI":
                 return "🔶"
-            case "Bardzo wysoki":
+            case "BARDZO WYSOKI":
+            case "BARDZO_WYSOKI":
+            case "KRYTYCZNY":
                 return "🚨"
             default:
                 return "❓"

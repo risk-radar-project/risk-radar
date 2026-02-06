@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
-import { GATEWAY_URL } from "@/lib/api/server-config"
+import { GATEWAY_URL, demoModeGuard } from "@/lib/api/server-config"
 
 export async function POST(request: NextRequest) {
+    // Get auth header early for demo mode check
+    const authHeader = request.headers.get("Authorization")
+    
+    // Block in demo mode (with admin bypass check)
+    const demoBlock = demoModeGuard(authHeader)
+    if (demoBlock) return demoBlock
+
     try {
         const formData = await request.formData()
 
         console.log("API Route: Uploading images to media service")
-
-        const authHeader = request.headers.get("Authorization")
 
         // Gateway strips /api/media, so media-service receives /media
         // media-service has router mounted at /media

@@ -15,9 +15,12 @@ export interface CategorizationRequest {
 export interface CategorizationResponse {
     report_id: string
     category: string
+    category_label?: string  // Polish label for display (from demo mode)
     confidence: number
     all_probabilities?: Record<string, number>
     processing_time_ms: number
+    demo_mode?: boolean
+    demo_notice?: string
 }
 
 // Types for AI Verification Service

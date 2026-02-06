@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server"
-import { GATEWAY_URL, withAuth, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuth, errorResponse, demoModeGuard } from "@/lib/api/server-config"
 
 export async function POST(request: Request) {
+    // Get auth header early for demo mode bypass check
     const authHeader = request.headers.get("Authorization")
+    
+    // Block in demo mode (with admin bypass check)
+    const demoBlock = demoModeGuard(authHeader)
+    if (demoBlock) return demoBlock
+
     if (!authHeader) {
         return errorResponse("Unauthorized", 401)
     }

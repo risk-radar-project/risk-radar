@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { GATEWAY_URL, withAuth, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuth, withAuthAndUserId, errorResponse, demoModeGuard } from "@/lib/api/server-config"
 
 type RouteParams = { params: Promise<{ permissionId: string }> }
 
@@ -34,6 +34,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         return errorResponse("Unauthorized", 401)
     }
 
+    const demoBlock = demoModeGuard(authHeader)
+    if (demoBlock) return demoBlock
+
     try {
         const body = await request.json()
         const res = await fetch(`${GATEWAY_URL}/api/authz/permissions/${permissionId}`, {
@@ -66,6 +69,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (!authHeader) {
         return errorResponse("Unauthorized", 401)
     }
+
+    const demoBlock = demoModeGuard(authHeader)
+    if (demoBlock) return demoBlock
 
     try {
         const res = await fetch(`${GATEWAY_URL}/api/authz/permissions/${permissionId}`, {

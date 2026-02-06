@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { GATEWAY_URL, withAuthHandler } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuthHandler, demoModeGuard } from "@/lib/api/server-config"
 
 // GET single report
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,6 +22,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 // PATCH update report
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    // Block in demo mode (with admin bypass check)
+    const authHeader = request.headers.get("Authorization")
+    const demoBlock = demoModeGuard(authHeader)
+    if (demoBlock) return demoBlock
+
     return withAuthHandler(request, async (token) => {
         const { id } = await params
         const body = await request.json()
@@ -42,6 +47,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 // DELETE report
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    // Block in demo mode (with admin bypass check)
+    const authHeader = request.headers.get("Authorization")
+    const demoBlock = demoModeGuard(authHeader)
+    if (demoBlock) return demoBlock
+
     return withAuthHandler(request, async (token) => {
         const { id } = await params
 

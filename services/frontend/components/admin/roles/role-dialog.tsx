@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { DemoModeAlert } from "@/components/demo-mode"
 
 import { Role, Permission, createRole, updateRole } from "@/lib/api/authz"
 import { roleSchema, RoleFormValues } from "@/lib/validation/authz"
@@ -26,6 +27,7 @@ interface RoleDialogProps {
 export function RoleDialog({ open, onOpenChange, role, allPermissions }: RoleDialogProps) {
     const queryClient = useQueryClient()
     const isEditing = !!role
+    const [showDemoAlert, setShowDemoAlert] = useState(false)
 
     const form = useForm<RoleFormValues>({
         resolver: zodResolver(roleSchema),
@@ -72,8 +74,13 @@ export function RoleDialog({ open, onOpenChange, role, allPermissions }: RoleDia
             queryClient.invalidateQueries({ queryKey: ["roles"] })
             onOpenChange(false)
         },
-        onError: (error: Error) => {
-            toast.error(`Błąd: ${error.message}`)
+        onError: (error: Error & { demo_mode?: boolean }) => {
+            if (error.demo_mode || error.message?.includes("demo")) {
+                onOpenChange(false)
+                setShowDemoAlert(true)
+            } else {
+                toast.error(`Błąd: ${error.message}`)
+            }
         }
     })
 
@@ -93,6 +100,7 @@ export function RoleDialog({ open, onOpenChange, role, allPermissions }: RoleDia
     )
 
     return (
+    <>
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="flex max-h-[95vh] w-full max-w-5xl flex-col border-[#e0dcd7]/20 bg-[#362c20] text-[#e0dcd7]">
                 <DialogHeader className="flex-shrink-0">
@@ -230,5 +238,13 @@ export function RoleDialog({ open, onOpenChange, role, allPermissions }: RoleDia
                 </Form>
             </DialogContent>
         </Dialog>
+
+        <DemoModeAlert
+            isOpen={showDemoAlert}
+            onClose={() => setShowDemoAlert(false)}
+            title="Zarządzanie rolami niedostępne"
+            description="W trybie demonstracyjnym nie można tworzyć ani edytować ról."
+        />
+    </>
     )
 }

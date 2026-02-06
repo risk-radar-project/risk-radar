@@ -20,6 +20,7 @@ import { requestPasswordReset, changeEmail } from "@/lib/api/user"
 import { formatDistanceToNow } from "date-fns"
 import { pl } from "date-fns/locale"
 import { Eye, EyeOff } from "lucide-react"
+import { DemoModeAlert } from "@/components/demo-mode"
 
 // Function that masks IP addresses
 function maskIpAddress(ip: string): string {
@@ -106,20 +107,44 @@ export default function ProfileContent() {
     const [confirmEmail, setConfirmEmail] = useState("")
     const [emailError, setEmailError] = useState("")
     const [showFullIPs, setShowFullIPs] = useState(false)
+    const [showDemoAlert, setShowDemoAlert] = useState(false)
 
     const emailMutation = useMutation({
         mutationFn: async (email: string) => changeEmail(email),
         onSuccess: (response) => {
             if (response.error) {
-                toast.error("Nie udało się zmienić adresu email")
+                // Check for demo mode error
+                if (response.demo_mode) {
+                    setIsEmailDialogOpen(false)
+                    setTimeout(() => {
+                        setEmailStep(1)
+                        setNewEmail("")
+                        setConfirmEmail("")
+                        setEmailError("")
+                        setShowDemoAlert(true)
+                    }, 350)
+                } else {
+                    toast.error("Nie udało się zmienić adresu email")
+                }
             } else {
                 toast.success("Adres email został zmieniony")
                 resetEmailDialog()
                 queryClient.invalidateQueries({ queryKey: ["user-profile"] })
             }
         },
-        onError: () => {
-            toast.error("Wystąpił błąd podczas zmiany adresu email")
+        onError: (error: Error & { demo_mode?: boolean }) => {
+            if (error.demo_mode) {
+                setIsEmailDialogOpen(false)
+                setTimeout(() => {
+                    setEmailStep(1)
+                    setNewEmail("")
+                    setConfirmEmail("")
+                    setEmailError("")
+                    setShowDemoAlert(true)
+                }, 350)
+            } else {
+                toast.error("Wystąpił błąd podczas zmiany adresu email")
+            }
         }
     })
 
@@ -393,6 +418,13 @@ export default function ProfileContent() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <DemoModeAlert
+                isOpen={showDemoAlert}
+                onClose={() => setShowDemoAlert(false)}
+                title="Zmiana email niedostępna"
+                description="W trybie demonstracyjnym nie można zmieniać adresu email."
+            />
         </div>
     )
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { GATEWAY_URL, withAuth, withAuthAndUserId, errorResponse } from "@/lib/api/server-config"
+import { GATEWAY_URL, withAuth, withAuthAndUserId, errorResponse, demoModeGuard } from "@/lib/api/server-config"
 
 // GET /api/admin/authz/roles - List all roles
 export async function GET(request: NextRequest) {
@@ -27,7 +27,13 @@ export async function GET(request: NextRequest) {
 
 // POST /api/admin/authz/roles - Create a new role
 export async function POST(request: NextRequest) {
+    // Get auth header early for demo mode bypass check
     const authHeader = request.headers.get("Authorization")
+    
+    // Block in demo mode (with admin bypass check)
+    const demoBlock = demoModeGuard(authHeader)
+    if (demoBlock) return demoBlock
+
     if (!authHeader) {
         return errorResponse("Unauthorized", 401)
     }

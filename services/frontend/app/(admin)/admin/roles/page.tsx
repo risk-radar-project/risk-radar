@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Loader, EmptyState, ModalConfirm } from "@/components/ui/ux"
 import { RolesTable } from "@/components/admin/roles/roles-table"
 import { RoleDialog } from "@/components/admin/roles/role-dialog"
+import { DemoModeAlert } from "@/components/demo-mode"
 import { useRoles, usePermissions } from "@/hooks/use-authz"
 import { Role, deleteRole } from "@/lib/api/authz"
 
@@ -20,6 +21,7 @@ export default function RolesPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedRole, setSelectedRole] = useState<Role | undefined>(undefined)
     const [roleToDelete, setRoleToDelete] = useState<Role | null>(null)
+    const [showDemoAlert, setShowDemoAlert] = useState(false)
 
     const deleteMutation = useMutation({
         mutationFn: (roleId: string) => deleteRole(roleId),
@@ -28,8 +30,13 @@ export default function RolesPage() {
             queryClient.invalidateQueries({ queryKey: ["roles"] })
             setRoleToDelete(null)
         },
-        onError: (error: Error) => {
-            toast.error(`Nie udało się usunąć roli: ${error.message}`)
+        onError: (error: Error & { demo_mode?: boolean }) => {
+            if (error.demo_mode || error.message?.includes("demo")) {
+                setRoleToDelete(null)
+                setShowDemoAlert(true)
+            } else {
+                toast.error(`Nie udało się usunąć roli: ${error.message}`)
+            }
         }
     })
 
@@ -110,6 +117,13 @@ export default function RolesPage() {
                 cancelText="Anuluj"
                 variant="destructive"
                 isLoading={deleteMutation.isPending}
+            />
+
+            <DemoModeAlert
+                isOpen={showDemoAlert}
+                onClose={() => setShowDemoAlert(false)}
+                title="Usuwanie ról niedostępne"
+                description="W trybie demonstracyjnym nie można usuwać ról."
             />
         </div>
     )

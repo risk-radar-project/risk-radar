@@ -1,5 +1,5 @@
 # ============================================
-# Risk Radar - Production Docker Compose
+# Risk Radar - Production Docker Compose (DEMO MODE)
 # ============================================
 # 
 # Usage:
@@ -12,12 +12,18 @@
 #   - .env file with all secrets
 #   - Cloudflare Tunnel
 #
+# DEMO MODE OPTIMIZATIONS:
+#   - AI services disabled (mocked in frontend)
+#   - Kafka/Zookeeper heap limits applied
+#   - Java services with reduced heap
+#   - Saves ~2GB RAM compared to full deployment
+#
 # ============================================
 
 x-global-env: &global-env
     HOSTNAME: ${HOSTNAME:-riskradar.ovh}
     NODE_ENV: production
-    DEMO_MODE: "false"
+    DEMO_MODE: "true"
     # Service ports (internal)
     USER_SERVICE_PORT: 8080
     AUTHZ_SERVICE_PORT: 8080
@@ -99,9 +105,6 @@ services:
             - media-service
             - notification-service
             - audit-log-service
-            - ai-categorization-service
-            - ai-verification-duplication-service
-            - ai-assistant-service
             - map-service
         networks:
             - backend
@@ -213,6 +216,8 @@ services:
             AUDIT_ENABLED: "true"
         networks:
             - backend
+        profiles:
+            - ai-full
 
     ai-assistant-service:
         build:
@@ -238,6 +243,8 @@ services:
             REPORT_SERVICE_URL: http://report-service:8080
         networks:
             - backend
+        profiles:
+            - ai-full
 
     ai-verification-duplication-service:
         build:
@@ -260,6 +267,8 @@ services:
             AUDIT_ENABLED: "true"
         networks:
             - backend
+        profiles:
+            - ai-full
 
     media-service:
         build:
@@ -397,6 +406,8 @@ services:
             ZOOKEEPER_TICK_TIME: 2000
             ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: ERROR
             ZOOKEEPER_TOOLS_LOG4J_LOGLEVEL: ERROR
+            # Memory optimization for demo mode
+            KAFKA_HEAP_OPTS: "-Xms128m -Xmx192m"
         networks:
             - backend
         healthcheck:
@@ -423,6 +434,8 @@ services:
             KAFKA_LOG4J_ROOT_LOGLEVEL: ERROR
             KAFKA_TOOLS_LOG4J_LOGLEVEL: ERROR
             KAFKA_LOG4J_LOGGERS: "kafka=ERROR,kafka.controller=ERROR,kafka.producer.async.DefaultEventHandler=ERROR,state.change.logger=ERROR"
+            # Memory optimization for demo mode
+            KAFKA_HEAP_OPTS: "-Xms256m -Xmx384m"
         networks:
             - backend
         healthcheck:
@@ -459,8 +472,6 @@ services:
             TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
         networks:
             - backend
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
         depends_on:
             - frontend
             - api-gateway

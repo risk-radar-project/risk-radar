@@ -9,6 +9,7 @@ import { TableCell } from "@/components/ui/table/table-cell"
 import { Search, Filter, ChevronLeft, ChevronRight, Ban, ShieldCheck, Eye, X, UserCircle } from "lucide-react"
 import { useRoles } from "@/hooks/use-authz"
 import { usePermission } from "@/hooks/use-permission"
+import { DemoModeAlert } from "@/components/demo-mode"
 
 interface User {
     id: string
@@ -44,6 +45,8 @@ export default function AdminUsersPage() {
     const [totalPages, setTotalPages] = useState(0)
     const [viewingUser, setViewingUser] = useState<User | null>(null)
     const [pageSize, setPageSize] = useState(10)
+    const [showDemoAlert, setShowDemoAlert] = useState(false)
+    const [demoAlertMessage, setDemoAlertMessage] = useState({ title: "", description: "" })
 
     const { hasPermission } = usePermission()
     const canManageAdmins = hasPermission("system:admin")
@@ -183,8 +186,13 @@ export default function AdminUsersPage() {
                 }
             } else {
                 const errData = await res.json().catch(() => ({ error: "Unknown error" }))
-                const errorMsg = errData.error || errData.message || `Błąd ${res.status}`
-                alert(`Wystąpił błąd: ${errorMsg}`)
+                if (errData.demo_mode || errData.error?.includes("demo")) {
+                    setDemoAlertMessage({ title: "Banowanie niedostępne", description: "W trybie demonstracyjnym nie można banować ani odbanować użytkowników." })
+                    setShowDemoAlert(true)
+                } else {
+                    const errorMsg = errData.error || errData.message || `Błąd ${res.status}`
+                    alert(`Wystąpił błąd: ${errorMsg}`)
+                }
             }
         } catch (e) {
             console.error(e)
@@ -209,7 +217,13 @@ export default function AdminUsersPage() {
                     setViewingUser((prev) => (prev ? { ...prev, role: newRole } : null))
                 }
             } else {
-                alert("Nie udało się zmienić roli")
+                const errData = await res.json().catch(() => ({ error: "Unknown error" }))
+                if (errData.demo_mode || errData.error?.includes("demo")) {
+                    setDemoAlertMessage({ title: "Zmiana roli niedostępna", description: "W trybie demonstracyjnym nie można zmieniać ról użytkowników." })
+                    setShowDemoAlert(true)
+                } else {
+                    alert("Nie udało się zmienić roli")
+                }
             }
         } catch (e) {
             console.error(e)
@@ -593,6 +607,13 @@ export default function AdminUsersPage() {
                     </div>
                 </div>
             )}
+
+            <DemoModeAlert
+                isOpen={showDemoAlert}
+                onClose={() => setShowDemoAlert(false)}
+                title={demoAlertMessage.title}
+                description={demoAlertMessage.description}
+            />
         </div>
     )
 }
