@@ -4,7 +4,7 @@ A platform for reporting and viewing local hazards and public safety issues such
 
 ## 🔴 Live Demo & Video
 
-- **Live App:** [Coming Soon](#)
+- **Live App:** [riskradar.ovh](https://riskradar.ovh/)
 - **Demo Video:**
 <video width="100%" controls autoplay muted style="border-radius: 8px; margin: 20px 0;">
   <source src="docs/demo_video.mp4" type="video/mp4">

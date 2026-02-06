@@ -16,6 +16,9 @@ public class NotificationClient {
 
     private final WebClient webClient;
     private final String systemUserId;
+    
+    @Value("${app.frontend.url:http://localhost:3000}")
+    private String frontendUrl;
 
     public NotificationClient(
             @Qualifier("notificationWebClient") WebClient webClient,
@@ -25,8 +28,7 @@ public class NotificationClient {
     }
 
     public void sendPasswordResetEmail(UUID userId, String email, String token) {
-        // TODO: Externalize frontend URL or use configuration
-        String resetUrl = "http://localhost:3000/reset-password?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+        String resetUrl = frontendUrl + "/reset-password?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
 
         var payload = Map.of(
                 "eventType", "USER_PASSWORD_RESET_REQUESTED",

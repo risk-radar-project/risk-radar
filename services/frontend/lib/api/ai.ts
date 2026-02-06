@@ -73,19 +73,20 @@ export async function categorizeReport(
     const tempReportId = `temp-${Date.now()}`
     const token = await getFreshAccessToken()
 
+    // Combine title and description for better context, or just use title
+    // The backend expects a list of "titles" (text strings)
+    const textToCategorize = description ? `${title} . ${description}` : title
+
     const response = await fetch(AI_CATEGORIZATION_URL, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
+        // Adapt to backend contract: { titles: [str] }
         body: JSON.stringify({
-            report_id: tempReportId,
-            title,
-            description: description || "",
-            user_id: userId,
-            metadata: { source: "frontend-preview" }
-        } satisfies CategorizationRequest)
+            titles: [textToCategorize]
+        })
     })
 
     if (!response.ok) {
@@ -93,7 +94,21 @@ export async function categorizeReport(
         throw new Error(`Categorization failed: ${response.status} - ${errorText}`)
     }
 
-    return response.json()
+    const data = await response.json()
+    
+    // Adapt backend response to frontend contract
+    // Backend returns: { results: [ { text, predicted_category, confidence, ... } ] }
+    if (data.results && data.results.length > 0) {
+        const result = data.results[0]
+        return {
+            report_id: tempReportId,
+            category: result.predicted_category,
+            confidence: result.confidence,
+            processing_time_ms: 0 // Not provided by backend
+        }
+    }
+
+    throw new Error("No categorization results returned")
 }
 
 /**
