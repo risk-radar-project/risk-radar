@@ -6,9 +6,7 @@ A platform for reporting and viewing local hazards and public safety issues such
 
 - **Live App:** [riskradar.ovh](https://riskradar.ovh/)
 - **Demo Video:**
-<video width="100%" controls autoplay muted style="border-radius: 8px; margin: 20px 0;">
-  <source src="docs/demo_video.mp4" type="video/mp4">
-  Your browser does not support the video tag.
+<video src="https://github.com/user-attachments/assets/77bdea1f-f4ab-4494-b2f1-e9c5533b7b15" width="100%" controls autoplay muted style="border-radius: 8px; margin: 20px 0;">
 </video>
 
 ---
